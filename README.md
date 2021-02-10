@@ -1,3 +1,21 @@
-# afb-oidc-sgate
+# OpenID-Connect Secure-Gateway AFB-Extension
 
-afb-oidc-sgate is a secure gateway protecting Websockets API imported through --ws-client=xxx as well as HTML5 or REST page/api serve by afb-binder.  afb-oidc-sgate  complies with OpenID-connect standard and supports most social authentication.
+oidc-sgate is an openid-connect compliant extension to the application framework binder. It provides a secure filtering gateway for REST and websocket incoming request.
+
+On the external Internet interface is leverage OpenID user profile services to map incoming browser to profile and roles as defined by the identity authority. On the backend level (micro-service APIs) it respond to Cynagora privilege request for lower micro-service API to accept or deny a given request.
+
+oidc-sgate complies with any OpenID-connect identity public authority as github, google, microsoft, facebook, ... it also complies with internal authorities as Dex, Keycloak, Forgerock, ...
+
+Dependences
+	json-c
+	libafb
+	libcurl
+    uthash
+
+makedir build & cd build
+cmake ..
+make
+
+![oidc-biding-html5](docs/assets/afb-oidc-ext-dirconf.jpg)
+
+Generate keys

@@ -1,0 +1,40 @@
+<html>
+
+<meta charset="utf-8" />
+
+<head>
+	<title>oidc-sgate-login</title>
+	<link rel="stylesheet" href="/jscss/iotbzh-Binding.css">
+	<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+	<script type="text/javascript" src="/jscss/AFB-websock.js"></script>
+	<script type="text/javascript" src="/jscss/iotbzh-Binding.js"></script>
+</head>
+
+<body class="page-content" onload="init()">
+	<img src="/assets/iot-bzh-logo-small.png">
+
+	<h1>OpenId Connect Login Page</h1>
+	<button id="connected" onclick="init()">Binder WS Fail</button></html><br><br>
+
+
+	<button id="login" onclick="window.open('/github/login','_login_ctl')">github-auth</a></button><br><br>
+
+	<div>
+		<button onclick="callbinder('oidc-sgate','ping' ,{});">oidc ping</button>	</li>
+		<button onclick="callbinder('oidc-sgate','list' ,{});">idp-list</button>	</li>
+	</div>
+
+	<div id="main" style="visibility:hidden">
+		<ol>
+			<li>Question
+				<pre id="question"></pre>
+			</li>
+			<li>Response
+				<pre id="output"></pre>
+			</li>
+			<li>Events:
+				<pre id="outevt"></pre>
+			</li>
+		</ol>
+	</div>
+</body>

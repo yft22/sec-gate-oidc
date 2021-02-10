@@ -1,0 +1,43 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+
+
+
+        {
+          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-config.json
+          "name": "oidc-config",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "/usr/local/bin/afb-binder",
+          "args": [
+            "--name=afb-oidc",
+            "--config=${workspaceFolder}/conf.d/project/etc/oidc-config.json",
+            "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
+            "--roothttp=.",
+            "--verbose",
+            "--verbose",
+            "--verbose",
+            "--trap-faults=no"
+          ],
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}/build",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        }
+
+
+    ]
+}

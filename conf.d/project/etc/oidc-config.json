@@ -1,0 +1,54 @@
+{
+  "name": "afb-oidc",
+  "tracereq": "none",
+  "verbose": 2,
+  "port": 1234,
+  "https": false,
+  "https-cert": "../conf.d/project/ssl/devel-cert.pem",
+  "https-key": "../conf.d/project/ssl/devel-key.pem",
+  "extension": "./package/lib/afb-oidc-sgate.extso",
+  "roothttp": ".",
+  "rootdir":  "../conf.d/project/htdocs",
+  "alias": ["/devtools:/usr/share/afb-ui-devtools/binder"],
+
+  "@extconfig": {
+    "oidc-sgate": {
+      "idp": {
+        "uid": "github",
+        "info": "Demo Client for afb-binder test",
+        "credentials": {
+          "clientid": "7899e605a7c15ae42f07",
+          "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
+        },
+        "wellknown": {
+          "loginTokenUrl": "https://github.com/login/oauth/authorize",
+          "accessTokenUrl": "https://github.com/login/oauth/access_token",
+          "identityApiUrl": "https://api.github.com/user",
+        },
+        "acls": {
+          "callback": "/github/callback",
+          "login": "/github/login",
+          "timeout": 600
+        },
+        "profils": [
+            {"uid":"basic", "loa":1, "scope":"user:email"},
+            {"uid":"teams", "loa":2, "scope":"read:org", "label":"groups"}
+        ]
+      },
+      "apis": [
+        {"uid": "test1","lazy":1},
+        {"uid": "test2","uri":"unix:@test2", "loa":1, "role": ["user"], "lazy":1},
+        {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "role": ["user","admin"], "lazy":1},
+      ],
+      "alias": [
+        {"uid": "login" , "url":"/login", "path":"login" },
+        {"uid": "github"  , "url":"/github","loa":2, "from":"github", "path":"idps/github" },
+        {"uid": "idp-github"  , "url":"/idp/github","loa":2, "from":"github", "path":"idps/github" },
+        {"uid": "public" , "url":"/public", "path":"public" },
+        {"uid": "private", "url":"/private", "loa":1, "path":"private" },
+        {"uid": "admin"  , "url":"/idp/admin", "loa":2, "prio":1, "role":"admin", "path":"idps/admin" },
+      ]
+    }
+  }
+}
+

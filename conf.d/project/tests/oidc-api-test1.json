@@ -1,0 +1,103 @@
+{
+  "metadata": {
+    "uid": "spawn-test1",
+    "version": "1.0",
+    "api": "test1",
+    "info": "Basic Config with no namespace, no plugin, no capabiliy"
+  },
+  "sandboxes": [
+    {
+      "uid": "sandbox-test1",
+      "info": "test1 demo [basic acls, no namespace]",
+      "prefix": "admin",
+      "verbose": 1,
+      "acls": {
+        "umask": "027",
+        "user": "daemon",
+        "group":"dialout",
+        "chdir": "/var/tmp"
+      },
+      "commands": [
+        {
+          "uid": "afbroot",
+          "info" : "expand afb_binder root directory",
+          "exec": {"cmdpath": "/bin/echo", "args": ["$AFB_ROOTDIR"]}
+        },
+        {
+          "uid": "sleep",
+          "info" : "sleep timeout second",
+          "usage": {"timeout": "xx"},
+          "exec": {"cmdpath": "/bin/sleep", "args": ["%timeout%"]},
+          "sample": [
+            {"action":"start", "args": {"timeout": "180"}},
+            {"action":"stop", "args": {"signal":"sigterm"}}
+          ]
+        },
+        {
+          "uid": "timeout",
+          "info" : "sleep should fail because of 3s timeout",
+          "timeout": 3,
+          "exec": {"cmdpath": "/bin/sleep", "args": 80}
+        },
+        {
+          "uid": "myid",
+          "info" : "return current namespace id",
+          "exec": {"cmdpath": "/usr/bin/id"}
+        },
+        {
+          "uid": "env",
+          "encoder":"line",
+          "info" : "return current namespace env",
+          "exec": {"cmdpath": "/usr/bin/env"}
+        },
+        {
+          "uid": "json",
+          "info" : "test json encoder take json from stdout",
+          "encoder": {"output": "json", "opts": {"maxlen":1024}},
+          "exec": {"cmdpath": "/bin/echo", "args": "%query%"},
+          "sample": [
+            {"args": {"query": "{'message':'test1'}"}},
+            {"args": {"query": "{'message':'complex'} {'test_1':1} {'test_2':0} {'complex':1, 'array':['elem1','elem2','elem3']}"}}
+          ]
+        },
+        {
+          "uid": "display",
+          "info": "(format text) return one event per line",
+          "usage": {"filename":"xxxx"},
+          "encoder":"text",
+          "exec": {"cmdpath": "/bin/cat", "args":["%filename%"]},
+          "sample": [
+            {"args": {"filename": "/etc/passwd"}}
+          ]
+        },
+        {
+          "uid": "optional",
+          "info": "?argument? are optional %argument% are man",
+          "usage": {"filename":"xxxx"},
+          "encoder":"text",
+          "exec": {"cmdpath": "/bin/cat", "args":["?dirname?%filename%"]},
+          "sample": [
+            {"args": {"dirname":"/etc/", "filename": "passwd"}},
+            {"args": {"filename": "/etc/fstab"}}
+          ]
+        },
+        {
+          "uid": "dir",
+          "info" : "list a directory",
+          "usage": {"dirname": "xxxxx"},
+          "exec": {"cmdpath": "/bin/ls", "args": ["-l", "%dirname%"]},
+          "sample": [
+            {"args": {"dirname": "/"}},
+            {"args": {"dirname": "/etc"}},
+            {"args": {"dirname": "/var"}}
+          ]
+        },
+        {
+          "uid": "home",
+          "info" : "list $HOME (may fail depending on acls->user)",
+          "exec": {"cmdpath": "/bin/ls", "args": ["-l", "$HOME"]}
+        }
+      ]
+    }
+  ]
+}

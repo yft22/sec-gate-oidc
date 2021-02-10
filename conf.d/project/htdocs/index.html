@@ -1,0 +1,48 @@
+<html>
+
+<meta charset="utf-8" />
+
+<head>
+	<title>oidc-sgate-root</title>
+	<link rel="stylesheet" href="/jscss/iotbzh-Binding.css">
+	<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+	<script type="text/javascript" src="/jscss/AFB-websock.js"></script>
+	<script type="text/javascript" src="/jscss/iotbzh-Binding.js"></script>
+</head>
+
+<body class="page-content" onload="init()">
+
+	<img src="/assets/iot-bzh-logo-small.png">
+
+	<h1>OpenId Connect Secure Gateway Test</h1>
+
+	<button id="connected" onclick="init()">Binder WS Fail</button></html><br><br>
+
+	<button id="login" onclick="window.open('/login','_login_ctl')">login-page (loa-0)</a></button>
+
+	<button id="public"	onclick="window.open('/public','_public_ctl')">public-page (loa-0)</a></button>
+
+	<button id="private"onclick="window.open('/private','_private_ctl')">private-page (loa-1)</a></button>
+
+	<br><br>
+	<div>
+		<button onclick="callbinder('oidc','ping' ,{});">oidc ping</button>	</li>
+		<button onclick="callbinder('test-1','ping' ,{});">test-1 ping (loa-0)</button>	</li>
+		<button onclick="callbinder('test-2','ping' ,{});">test-2 ping (loa-1) </button></li>
+		<button onclick="callbinder('test-3','ping' ,{});">test-3 ping (loa-2) </button></li>
+	</div>
+
+	<div id="main" style="visibility:hidden">
+		<ol>
+			<li>Question
+				<pre id="question"></pre>
+			</li>
+			<li>Response
+				<pre id="output"></pre>
+			</li>
+			<li>Events:
+				<pre id="outevt"></pre>
+			</li>
+		</ol>
+	</div>
+</body>

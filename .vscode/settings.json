@@ -1,0 +1,15 @@
+{
+    "cSpell.words": [
+        "Cynagora",
+        "bubblewrap",
+        "bwrap",
+        "cgroup",
+        "cgroups",
+        "libcap",
+        "redpesk",
+        "seccomp"
+    ],
+    "files.associations": {
+        "oidc-core.h": "c"
+    }
+}
