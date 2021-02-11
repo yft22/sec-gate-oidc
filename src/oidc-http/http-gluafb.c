@@ -39,7 +39,8 @@ static void glueOnSocketCB (struct ev_fd *efd, int sock, uint32_t revents, void 
     else if (revents & EPOLLOUT) action= CURL_POLL_OUT;
     else action= 0;
 
-    (void)httpOnSocketCB(httpPool, sock, action);
+    int err= httpOnSocketCB(httpPool, sock, action);
+    if (err) ev_fd_unref(efd);
 }
 
 
@@ -54,7 +55,7 @@ static int glueSetSocketCB (httpPoolT *httpPool, CURL *easy, int sock, int actio
     // map CURL events with system events
     switch (action) {
       case CURL_POLL_REMOVE:
-	    EXT_ERROR("[no-waiting-fd] should not be called (multiOnSocketCB)");
+	    EXT_NOTICE("[curl-remove-fd] curl finished with sock=%d (glueSetSocketCB)", sock);
         goto OnErrorExit;
       case CURL_POLL_IN:
         events= EPOLLIN;

@@ -36,6 +36,19 @@
 #include <string.h>
 #include <locale.h>
 
+/*
+	// token not json
+	char *ptr = strtok(httpRqt->body, "&");
+	while(ptr != NULL)	{
+		index= strncmp(ptr, tokenLabel, sizeof(tokenLabel)-1);
+		if (!index) {
+			accessToken= &ptr[sizeof(tokenLabel)-1];
+			break;
+		}
+		ptr = strtok(NULL, "&");
+	}
+*/
+
 static const httpKeyValT dfltHeaders[]= {
 	{.tag="Content-type", .value="application/x-www-form-urlencoded"},
 	{.tag="Accept", .value="application/json"},
@@ -54,7 +67,6 @@ static const oidcWellknownT dfltWellknown= {
 };
 
 static const oidcAlcsT dfltAcls= {
-  .aliasAuth="/github/auth/callback",
   .aliasLogin="/github/auth/login",
 };
 
@@ -63,33 +75,9 @@ static const httpOptsT dfltOpts= {
 	.headers= dfltHeaders,
 	.freeCtx= free,
 	.follow=1,
-	.verbose=1
+	// .verbose=1
 };
 
-typedef struct {
-	const char *id;
-
-} oidcFedUserT;
-
-// The URL callback in your application where users are sent after authorization.
-void githubAuthCB(afb_hreq *hreq, void *ctx) {
-	oidcIdpT *idp= (oidcIdpT*)ctx;
-	oidcAliasT *endpts;
-
-	// if not origin endpoint redirect to "/"
-	afb_session_get_cookie (hreq->comreq.session, "endpts", (void**)&endpts);
-	if (!endpts) {
-		afb_hreq_redirect_to(hreq, "/", HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
-
-	} else if (endpts->loa > afb_session_get_loa(hreq->comreq.session, "set")) {
-		// loa too week return to authentication
-		afb_hreq_redirect_to(hreq, idp->acls->aliasLogin, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
-
-	} else {
-		// loa OK redirect to requested page.
-		afb_hreq_redirect_to(hreq, endpts->url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
-	}
-}
 
 // call when IDP respond to user profil request
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
@@ -101,11 +89,11 @@ static httpRqtActionT githubGetUserByTokenCB (httpRqtT *httpRqt) {
 	json_object *responseJ= json_tokener_parse(httpRqt->body);
 	if (!responseJ) goto OnErrorExit;
 
-	fprintf (stderr, "**** githubOnAccessTokenCB profil=%s\n", json_object_get_string (responseJ));
+	fprintf (stderr, "**** user profil=%s", json_object_get_string (responseJ));
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
-	EXT_CRITICAL ("[github-fail-user-profil] Fail to get user profil from github status=%ld body=%s, error=%s", httpRqt->status, httpRqt->body, httpRqt->error);
+	EXT_CRITICAL ("[github-fail-user-profil] Fail to get user profil from github status=%ld body='%s'", httpRqt->status, httpRqt->body);
 	afb_hreq_reply_error(ctx->hreq, EXT_HTTP_UNAUTHORIZED);
 	return HTTP_HANDLE_FREE;
 }
@@ -142,18 +130,10 @@ static httpRqtActionT githubAccessTokenCB (httpRqtT *httpRqt) {
 	// github returns "access_token=ffefd8e2f7b0fbe2de25b54e6a415c92a15491b8&scope=user%3Aemail&token_type=bearer"
 	if (httpRqt->status != 200) goto OnErrorExit;
 
-	// split string by params '&', then search for "access_token="
-	char *ptr = strtok(httpRqt->body, "&");
-	while(ptr != NULL)	{
-		index= strncmp(ptr, tokenLabel, sizeof(tokenLabel)-1);
-		if (!index) {
-			accessToken= &ptr[sizeof(tokenLabel)-1];
-			break;
-		}
-		ptr = strtok(NULL, "&");
-	}
-
 	// we should have a valid token or something when wrong
+	json_object *responseJ= json_tokener_parse(httpRqt->body);
+	if (!responseJ) goto OnErrorExit;
+	accessToken= json_object_get_string (json_object_object_get(responseJ, "access_token"));
 	if (!accessToken) goto OnErrorExit;
 
 	EXT_DEBUG ("[github-auth-token] token=%s (githubAccessTokenCB)", accessToken);
@@ -165,7 +145,7 @@ static httpRqtActionT githubAccessTokenCB (httpRqtT *httpRqt) {
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
-	EXT_CRITICAL ("[github-fail-access-token] Fail to process response from github status=%ld error='%s'", httpRqt->status, httpRqt->error);
+	EXT_CRITICAL ("[fail-access-token] Fail to process response from github status=%ld body='%s' (githubAccessTokenCB)", httpRqt->status, httpRqt->body);
 	afb_hreq_reply_error(rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
 	return HTTP_HANDLE_FREE;
 }

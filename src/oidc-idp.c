@@ -240,8 +240,7 @@ static const oidcAlcsT *idpParseAcls (oidcIdpT *idp, json_object *aclsJ, const o
 	oidcAlcsT *acls=calloc(1, sizeof(oidcAlcsT));
 	if (defaults) memcpy(acls, &defaults, sizeof(oidcAlcsT));
 
-	int err= wrap_json_unpack (aclsJ, "{s?s,s?s,s?i,s?o}"
-		, "callback", &acls->aliasAuth
+	int err= wrap_json_unpack (aclsJ, "{s?s,s?i,s?o}"
 		, "login", &acls->aliasLogin
 		, "timeout", &acls->timeout
 		);
@@ -436,13 +435,11 @@ OnErrorExit:
 int idpRegisterOne (oidcCoreHandleT *oidc, oidcIdpT *idp, afb_hsrv *hsrv) {
   int err;
 
-  EXT_DEBUG ("[idp-register] uid=%s login='%s' authent='%s'", idp->uid, idp->acls->aliasLogin, idp->acls->aliasAuth);
+  EXT_DEBUG ("[idp-register] uid=%s login='%s'", idp->uid, idp->acls->aliasLogin);
 
   err= afb_hsrv_add_handler(hsrv, idp->acls->aliasLogin, idp->plugin->loginCB, idp, EXT_HIGHEST_PRIO);
   if (!err) goto OnErrorExit;
 
-  err= afb_hsrv_add_handler(hsrv, idp->acls->aliasAuth, idp->plugin->authCB, idp, EXT_HIGHEST_PRIO);
-  if (!err) goto OnErrorExit;
 
   return 0;
 
@@ -453,7 +450,7 @@ OnErrorExit:
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 idpPluginT idpBuiltin[] = {
-  {.uid="github" , .info="github public oauth2 idp", .initCB=githubInitCB, .loginCB=githubLoginCB, .authCB=githubAuthCB},
+  {.uid="github" , .info="github public oauth2 idp", .initCB=githubInitCB, .loginCB=githubLoginCB},
   {.uid= NULL} // must be null terminated
 };
 

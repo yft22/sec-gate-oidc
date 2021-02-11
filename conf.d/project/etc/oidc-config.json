@@ -26,7 +26,6 @@
           "identityApiUrl": "https://api.github.com/user",
         },
         "acls": {
-          "callback": "/github/callback",
           "login": "/github/login",
           "timeout": 600
         },

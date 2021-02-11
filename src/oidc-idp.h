@@ -93,7 +93,6 @@ typedef struct idpPluginS{
   const char *info;
   int (*initCB)(oidcIdpT *idp, json_object *idpJ, idpGenericCbT *oidcCB);
   int (*loginCB)(struct afb_hreq *hreq, void *ctx);
-  int (*authCB)(struct afb_hreq *hreq, void *ctx);
   void *ctx;
 } idpPluginT;
 

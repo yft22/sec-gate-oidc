@@ -124,8 +124,7 @@ int httpOnSocketCB(httpPoolT *httpPool, int sock, int action)
     assert(httpPool->magic == MAGIC_HTTP_POOL);
     int running = 0;
 
-    if (httpPool->verbose > 2)
-        fprintf(stderr, "httpOnSocketCB: sock=%d action=%d\n", sock, action);
+    if (httpPool->verbose > 2) fprintf(stderr, "httpOnSocketCB: sock=%d action=%d\n", sock, action);
     CURLMcode status = curl_multi_socket_action(httpPool->multi, sock, action, &running);
     if (status != CURLM_OK)
         goto OnErrorExit;
@@ -163,7 +162,6 @@ static int httpSendQuery(httpPoolT *httpPool, const char *url, const httpOptsT *
     httpRqt->magic = MAGIC_HTTP_RQT;
     httpRqt->easy = curl_easy_init();
     httpRqt->callback = callback;
-    httpRqt->freeCtx = opts->freeCtx;
     httpRqt->userData = ctx;
     clock_gettime(CLOCK_MONOTONIC, &httpRqt->startTime);
 
@@ -182,17 +180,19 @@ static int httpSendQuery(httpPoolT *httpPool, const char *url, const httpOptsT *
     curl_easy_setopt(httpRqt->easy, CURLOPT_PRIVATE, httpRqt);
 
     if (tokens) for (int idx = 0; tokens[idx].tag; idx++)  {
-            snprintf(header, sizeof(header), "%s=%s", tokens[idx].tag, tokens[idx].value);
+            snprintf(header, sizeof(header), "%s: %s", tokens[idx].tag, tokens[idx].value);
             rqtHeaders = curl_slist_append(rqtHeaders, header);
         }
 
     if (opts) {
 
+
         if (opts->headers) for (int idx = 0; opts->headers[idx].tag; idx++)   {
-            snprintf(header, sizeof(header), "%s=%s", opts->headers[idx].tag, opts->headers[idx].value);
+            snprintf(header, sizeof(header), "%s: %s", opts->headers[idx].tag, opts->headers[idx].value);
             rqtHeaders = curl_slist_append(rqtHeaders, header);
         }
 
+        if (opts->freeCtx) httpRqt->freeCtx = opts->freeCtx;
         if (opts->follow) curl_easy_setopt(httpRqt->easy, CURLOPT_FOLLOWLOCATION, opts->follow);
         if (opts->verbose)  curl_easy_setopt(httpRqt->easy, CURLOPT_VERBOSE, opts->verbose);
         if (opts->agent) curl_easy_setopt(httpRqt->easy, CURLOPT_USERAGENT, opts->agent);
