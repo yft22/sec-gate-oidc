@@ -2,13 +2,14 @@
  * Copyright (C) 2021 "IoT.bzh"
  * Author "Fulup Ar Foll" <fulup@iot.bzh>
  *
- * Use of this source code is governed by an MIT-style
+ * Use of this efd code is governed by an MIT-style
  * license that can be found in the LICENSE file or at https://opensource.org/licenses/MIT.
  * $RP_END_LICENSE$
  */
 
 #define _GNU_SOURCE
 
+#include "../oidc-defaults.h"
 #include "http-client.h"
 
 #include <errno.h>
@@ -20,77 +21,68 @@
 #include <assert.h>
 #include <fcntl.h>
 
-#include <systemd/sd-event.h>
+#include <libafb/core/afb-ev-mgr.h>
+#include <libafb/sys/ev-mgr.h>
+#include <libafb/core/afb-sched.h>
 
 #define FLAGS_SET(v, flags) ((~(v) & (flags)) == 0)
 
-//  (void *source, int sock, uint32_t revents, void *ctx)
-static int glueOnSocketCB (sd_event_source *source, int sock, uint32_t revents, void *ctx)
+//  (void *efd, int sock, uint32_t revents, void *ctx)
+static void glueOnSocketCB (struct ev_fd *efd, int sock, uint32_t revents, void *ctx)
 {
     httpPoolT *httpPool= (httpPoolT*)ctx;
     int action;
 
-   // translate systemd event into curl event
+    // translate libafb event into curl event
     if (FLAGS_SET(revents, EPOLLIN | EPOLLOUT)) action= CURL_POLL_INOUT;
     else if (revents & EPOLLIN)  action= CURL_POLL_IN;
     else if (revents & EPOLLOUT) action= CURL_POLL_OUT;
     else action= 0;
 
-    int status=httpOnSocketCB(httpPool, sock, action);
-    return status;
+    (void)httpOnSocketCB(httpPool, sock, action);
 }
 
 
-// create systemd source event and attach http processing callback to sock fd
+// create libafb efd event and attach http processing callback to sock fd
 static int glueSetSocketCB (httpPoolT *httpPool, CURL *easy, int sock, int action, void *sockp)
 {
-    sd_event_source *source = (sd_event_source *)sockp; // on 1st call source is null
-    sd_event *evtLoop = (sd_event *)httpPool->evtLoop;
-    uint32_t events;
+    struct ev_fd *efd= (struct ev_fd *) sockp; // on 1st call efd is null
+    assert (httpPool->magic == MAGIC_HTTP_POOL);
+    uint32_t events= 0;
     int err;
 
     // map CURL events with system events
-    switch (action)
-    {
-    case CURL_POLL_REMOVE:
-        sd_event_source_set_enabled(source, SD_EVENT_OFF);
-        sd_event_source_unref(source);
+    switch (action) {
+      case CURL_POLL_REMOVE:
+	    EXT_ERROR("[no-waiting-fd] should not be called (multiOnSocketCB)");
         goto OnErrorExit;
-
-    case CURL_POLL_IN:
-        events = EPOLLIN;
+      case CURL_POLL_IN:
+        events= EPOLLIN;
         break;
-    case CURL_POLL_OUT:
-        events = EPOLLOUT;
+      case CURL_POLL_OUT:
+        events= EPOLLOUT;
         break;
-    case CURL_POLL_INOUT:
-        events = EPOLLIN | EPOLLOUT;
+      case CURL_POLL_INOUT:
+        events= EPOLLIN|EPOLLOUT;
         break;
-    default:
+      default:
         goto OnErrorExit;
     }
 
-    // at initial call source does not exist, we create a new one and add it to sock userData
-    if (!source)
-    {
-        // attach new event source and attach it to systemd mainloop
-        err = sd_event_add_io(evtLoop, &source, sock, events, glueOnSocketCB, httpPool);
-        if (err < 0)
-            goto OnErrorExit;
+	// if efd exit set event else create a new efd
+    if (!efd) {
 
-        // insert new source to socket userData on 2nd call it will comeback as sockp
-        err = curl_multi_assign(httpPool->multi, sock, source);
-        if (err != CURLM_OK)
-            goto OnErrorExit;
-    }
+		// create a new efd
+		err= afb_ev_mgr_add_fd(&efd, sock, events, glueOnSocketCB, httpPool, 0, 1);
+		if (err < 0) goto OnErrorExit;
 
-    err = sd_event_source_set_io_events(source, events);
-    if (err < 0)
-        goto OnErrorExit;
+		// add new created efd to sock context on 2nd call it will comeback as sockCtx
+		err= curl_multi_assign(httpPool->multi, sock, efd);
+		if (err != CURLM_OK) goto OnErrorExit;
 
-    err = sd_event_source_set_enabled(source, SD_EVENT_ON);
-    if (err < 0)
-        goto OnErrorExit;
+	} else {
+	 	ev_fd_set_events (efd, ev_fd_events(efd) | events);
+	}
 
     return 0;
 
@@ -98,45 +90,25 @@ OnErrorExit:
     return -1;
 }
 
-// map libuv ontimer with multi version
-static int glueOnTimerCB(sd_event_source *timer, uint64_t usec, void *ctx)
+// map libafb ontimer with multi version
+static void glueOnTimerCB(int signal, void *ctx)
 {
+    // signal should be null
+    if (signal) return;
+
     httpPoolT *httpPool = (httpPoolT *)ctx;
-    int status= httpOnTimerCB(httpPool);
-    return status;
+    (void)httpOnTimerCB(httpPool);
 }
 
 // arm a one shot timer in ms
 static int glueSetTimerCB(httpPoolT *httpPool, long timeout)
 {
     int err;
-    sd_event_source *evtTimer = (sd_event_source *)httpPool->evtTimer;
-    sd_event *evtLoop = (sd_event *)httpPool->evtLoop;
 
-    // if time is negative just kill it
-    if (timeout < 0)
-    {
-        if (httpPool->evtTimer)
-        {
-            err = sd_event_source_set_enabled(httpPool->evtTimer, SD_EVENT_OFF);
-            if (err < 0)
-                goto OnErrorExit;
-        }
-    }
-    else
-    {
-        uint64_t usec;
-        sd_event_now(httpPool->evtLoop, CLOCK_MONOTONIC, &usec);
-        if (!httpPool->evtTimer)
-        { // new timer
-            sd_event_add_time(evtLoop, &evtTimer, CLOCK_MONOTONIC, usec + timeout * 1000, 0, glueOnTimerCB, httpPool);
-            sd_event_source_set_description(evtTimer, "curl-timer");
-        }
-        else
-        {
-            sd_event_source_set_time(evtTimer, usec + timeout * 1000);
-            sd_event_source_set_enabled(evtTimer, SD_EVENT_ONESHOT);
-        }
+    if (timeout >= 0) {
+      // ms delay for OnTimerCB (timeout is dynamic and depends on CURLOPT_LOW_SPEED_TIME)
+      err= afb_sched_post_job (NULL /*group*/, timeout,  0 /*exec-timeout*/,glueOnTimerCB, httpPool);
+	  if (err <= 0) goto OnErrorExit;
     }
     return 0;
 
@@ -144,35 +116,15 @@ OnErrorExit:
     return -1;
 }
 
-// run mainloop
-static int glueRunLoop(httpPoolT *httpPool, long seconds)
-{
-    int status = sd_event_run(httpPool->evtLoop, seconds * 1000000);
-    return status;
-}
 
-// create a new systemd event loop
-static void *gluenewEventLoop()
-{
-    sd_event *evtLoop;
-    int err = sd_event_new(&evtLoop);
-    if (err)
-        goto OnErrorExit;
-    return (void *)evtLoop;
-
-OnErrorExit:
-    fprintf(stderr, "fail to create evtLoop\n");
-    return NULL;
-}
-
-static httpCallbacksT systemdCbs = {
+static httpCallbacksT libafbCbs = {
     .multiTimer = glueSetTimerCB,
     .multiSocket = glueSetSocketCB,
-    .evtMainLoop = gluenewEventLoop,
-    .evtRunLoop = glueRunLoop,
+    .evtMainLoop = NULL,
+    .evtRunLoop = NULL,
 };
 
 httpCallbacksT *glueGetCbs()
 {
-    return &systemdCbs;
+    return &libafbCbs;
 }

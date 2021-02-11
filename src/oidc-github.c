@@ -58,6 +58,14 @@ static const oidcAlcsT dfltAcls= {
   .aliasLogin="/github/auth/login",
 };
 
+static const httpOptsT dfltOpts= {
+	.agent= HTTP_DFLT_AGENT,
+	.headers= dfltHeaders,
+	.freeCtx= free,
+	.follow=1,
+	.verbose=1
+};
+
 typedef struct {
 	const char *id;
 
@@ -97,7 +105,7 @@ static httpRqtActionT githubGetUserByTokenCB (httpRqtT *httpRqt) {
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
-	EXT_CRITICAL ("[github-fail-user-profil] Fail to get user profil from github status=%ld error=%s", httpRqt->status, httpRqt->error);
+	EXT_CRITICAL ("[github-fail-user-profil] Fail to get user profil from github status=%ld body=%s, error=%s", httpRqt->status, httpRqt->body, httpRqt->error);
 	afb_hreq_reply_error(ctx->hreq, EXT_HTTP_UNAUTHORIZED);
 	return HTTP_HANDLE_FREE;
 }
@@ -108,14 +116,14 @@ static void githubGetUserByToken (idpRqtCtxT *rqtCtx, const char *accessToken) {
 	char tokenVal [EXT_TOKEN_MAX_LEN];
 	oidcIdpT *idp= rqtCtx->idp;
 
-	snprintf(tokenVal, sizeof(tokenVal), "Token %s", accessToken);
+	snprintf(tokenVal, sizeof(tokenVal), "token %s", accessToken);
 	httpKeyValT authToken[]= {
 		{.tag="Authorization", .value=tokenVal},
 		{NULL}  // terminator
 	};
 
 	// asynchronous request to IDP user profil service
-	int err= httpSendGet(idp->oidc->httpPool, idp->wellknown->identityApiUrl, idp->headers, authToken, NULL/*opts*/, githubGetUserByTokenCB, rqtCtx, free);
+	int err= httpSendGet(idp->oidc->httpPool, idp->wellknown->identityApiUrl, &dfltOpts, authToken, githubGetUserByTokenCB, rqtCtx);
 	if (err) goto OnErrorExit;
 	return;
 
@@ -124,7 +132,7 @@ OnErrorExit:
 }
 
 // call when github return a valid access_token
-static httpRqtActionT githubRequestAccessTokenCB (httpRqtT *httpRqt) {
+static httpRqtActionT githubAccessTokenCB (httpRqtT *httpRqt) {
 	char tokenLabel[]="access_token=";
 	assert (httpRqt->magic == MAGIC_HTTP_RQT);
 	idpRqtCtxT *rqtCtx= (idpRqtCtxT*) httpRqt->userData;
@@ -148,6 +156,8 @@ static httpRqtActionT githubRequestAccessTokenCB (httpRqtT *httpRqt) {
 	// we should have a valid token or something when wrong
 	if (!accessToken) goto OnErrorExit;
 
+	EXT_DEBUG ("[github-auth-token] token=%s (githubAccessTokenCB)", accessToken);
+
 	// we have our request token let's try to get user profil
 	githubGetUserByToken (rqtCtx, accessToken);
 
@@ -160,7 +170,7 @@ OnErrorExit:
 	return HTTP_HANDLE_FREE;
 }
 
-static int githubRequestAccessToken (afb_hreq *hreq, oidcIdpT *idp, const char *redirectUrl, const char *code) {
+static int githubAccessToken (afb_hreq *hreq, oidcIdpT *idp, const char *redirectUrl, const char *code) {
 	assert (idp->magic == MAGIC_OIDC_IDP);
 	char url[EXT_URL_MAX_LEN];
 	oidcCoreHandleT *oidc= idp->oidc;
@@ -185,7 +195,7 @@ static int githubRequestAccessToken (afb_hreq *hreq, oidcIdpT *idp, const char *
 	err= httpBuildQuery (idp->uid, url, sizeof(url), NULL /* prefix */, idp->wellknown->accessTokenUrl, params);
 	if (err) goto OnErrorExit;
 
-	err= httpSendPost(oidc->httpPool, url, idp->headers, NULL/*token*/, NULL /*opts*/, (void*)1/*post*/,0 /*no data*/, githubRequestAccessTokenCB, ctx, NULL);
+	err= httpSendPost(oidc->httpPool, url, &dfltOpts, NULL/*token*/, (void*)1/*post*/,0 /*no data*/, githubAccessTokenCB, ctx);
 	if (err) goto OnErrorExit;
 
 	return 0;
@@ -201,15 +211,15 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 	assert (idp->magic == MAGIC_OIDC_IDP);
 	char redirectUrl [EXT_HEADER_MAX_LEN];
 	const oidcProfilsT *profil=NULL;
-	int err;
+	int err, status;
 
 	// check if request as a code
 	const char *code = afb_hreq_get_argument(hreq, "code");
 	int requestedLoa =afb_session_get_loa (hreq->comreq.session, "ask");
 
 	// add afb-binder endpoint to login redirect alias
-    err= afb_hreq_make_here_url(hreq,idp->acls->aliasLogin,redirectUrl,sizeof(redirectUrl));
-    if (err) goto OnErrorExit;
+    status= afb_hreq_make_here_url(hreq,idp->acls->aliasLogin,redirectUrl,sizeof(redirectUrl));
+    if (status < 0) goto OnErrorExit;
 
 	// if no code then set state and redirect to IDP
 	if (!code) {
@@ -254,7 +264,7 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 		EXT_DEBUG ("[github-auth-code] code=%s (githubLoginCB)", code);
 
 		// request authentication token from tempry code
-		err= githubRequestAccessToken (hreq, idp, redirectUrl, code);
+		err= githubAccessToken (hreq, idp, redirectUrl, code);
 		if (err) goto OnErrorExit;
 	}
 

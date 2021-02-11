@@ -40,6 +40,7 @@ typedef struct idpPluginS idpPluginT;
 typedef struct {
   long magic;
   const char *uid;
+  int verbose;
   oidcAliasT *aliases;
   oidcApisT *apis;
   oidcIdpT *idps;

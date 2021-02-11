@@ -435,6 +435,9 @@ OnErrorExit:
 // register IDP login and authentication callback endpoint
 int idpRegisterOne (oidcCoreHandleT *oidc, oidcIdpT *idp, afb_hsrv *hsrv) {
   int err;
+
+  EXT_DEBUG ("[idp-register] uid=%s login='%s' authent='%s'", idp->uid, idp->acls->aliasLogin, idp->acls->aliasAuth);
+
   err= afb_hsrv_add_handler(hsrv, idp->acls->aliasLogin, idp->plugin->loginCB, idp, EXT_HIGHEST_PRIO);
   if (!err) goto OnErrorExit;
 

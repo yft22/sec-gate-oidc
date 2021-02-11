@@ -20,68 +20,6 @@
 #include <assert.h>
 #include <fcntl.h>
 
-#define FLAGS_SET(v, flags) ((~(v) & (flags)) == 0)
-
-// build request with query
-int httpBuildQuery(const char *uid, char *response, size_t maxlen, const char *prefix, const char *url, httpKeyValT *query)
-{
-    size_t index = 0;
-    maxlen = maxlen - 1; // space for '\0'
-
-    // hoops nothing to build url
-    if (!prefix && !url)
-        goto OnErrorExit;
-
-    // place prefix
-    if (prefix)
-    {
-        for (int idx = 0; prefix[idx]; idx++)
-        {
-            response[index++] = prefix[idx];
-            if (index == maxlen)
-                goto OnErrorExit;
-        }
-        response[index++] = '/';
-    }
-
-    // place url
-    if (url)
-    {
-        for (int idx = 0; url[idx]; idx++)
-        {
-            response[index++] = url[idx];
-            if (index == maxlen)
-                goto OnErrorExit;
-        }
-        response[index++] = '?';
-    }
-
-    // loop on query arguments
-    for (int idx = 0; query[idx].tag; idx++)
-    {
-        for (int jdx = 0; query[idx].tag[jdx]; jdx++)
-        {
-            response[index++] = query[idx].tag[jdx];
-            if (index == maxlen)
-                goto OnErrorExit;
-        }
-        response[index++] = '=';
-        for (int jdx = 0; query[idx].value[jdx]; jdx++)
-        {
-            response[index++] = query[idx].value[jdx];
-            if (index == maxlen)
-                goto OnErrorExit;
-        }
-        response[index++] = '&';
-    }
-    response[index] = '\0'; // remove last '&'
-    return 0;
-
-OnErrorExit:
-    fprintf(stderr, "[url-too-long] idp=%s url=%s cannot add query to url (httpMakeRequest)", uid, url);
-    return 1;
-}
-
 // callback might be called as many time as needed to transfert all data
 static size_t httpBodyCB(void *data, size_t blkSize, size_t blkCount, void *ctx)
 {
@@ -219,31 +157,18 @@ OnErrorExit:
     return -1;
 }
 
-static int httpSendQuery(httpPoolT *httpPool, const char *url, const httpKeyValT *headers, httpKeyValT *tokens, httpOptsT *opts, void *datas, long datalen, httpRqtCbT callback, void *ctx, httpFreeCtxCbT freeCtx)
+static int httpSendQuery(httpPoolT *httpPool, const char *url, const httpOptsT *opts, httpKeyValT *tokens, void *datas, long datalen, httpRqtCbT callback, void *ctx)
 {
     httpRqtT *httpRqt = calloc(1, sizeof(httpRqtT));
     httpRqt->magic = MAGIC_HTTP_RQT;
     httpRqt->easy = curl_easy_init();
     httpRqt->callback = callback;
-    httpRqt->freeCtx = freeCtx;
+    httpRqt->freeCtx = opts->freeCtx;
     httpRqt->userData = ctx;
     clock_gettime(CLOCK_MONOTONIC, &httpRqt->startTime);
 
     char header[DFLT_HEADER_MAX_LEN];
     struct curl_slist *rqtHeaders = NULL;
-    if (headers)
-        for (int idx = 0; headers[idx].tag; idx++)
-        {
-            snprintf(header, sizeof(header), "%s=%s", headers[idx].tag, headers[idx].value);
-            rqtHeaders = curl_slist_append(rqtHeaders, header);
-        }
-
-    if (tokens)
-        for (int idx = 0; tokens[idx].tag; idx++)
-        {
-            snprintf(header, sizeof(header), "%s=%s", tokens[idx].tag, tokens[idx].value);
-            rqtHeaders = curl_slist_append(rqtHeaders, header);
-        }
 
     curl_easy_setopt(httpRqt->easy, CURLOPT_URL, url);
     curl_easy_setopt(httpRqt->easy, CURLOPT_NOSIGNAL, 1L);
@@ -255,32 +180,33 @@ static int httpSendQuery(httpPoolT *httpPool, const char *url, const httpKeyValT
     curl_easy_setopt(httpRqt->easy, CURLOPT_HEADERDATA, httpRqt);
     curl_easy_setopt(httpRqt->easy, CURLOPT_WRITEDATA, httpRqt);
     curl_easy_setopt(httpRqt->easy, CURLOPT_PRIVATE, httpRqt);
-    curl_easy_setopt(httpRqt->easy, CURLOPT_FOLLOWLOCATION, 1L);
 
-    if (opts)
-    {
+    if (tokens) for (int idx = 0; tokens[idx].tag; idx++)  {
+            snprintf(header, sizeof(header), "%s=%s", tokens[idx].tag, tokens[idx].value);
+            rqtHeaders = curl_slist_append(rqtHeaders, header);
+        }
 
-        curl_easy_setopt(httpRqt->easy, CURLOPT_VERBOSE, opts->verbose);
-        if (opts->timeout)
-            curl_easy_setopt(httpRqt->easy, CURLOPT_TIMEOUT, opts->timeout);
-        if (opts->sslchk)
-        {
+    if (opts) {
+
+        if (opts->headers) for (int idx = 0; opts->headers[idx].tag; idx++)   {
+            snprintf(header, sizeof(header), "%s=%s", opts->headers[idx].tag, opts->headers[idx].value);
+            rqtHeaders = curl_slist_append(rqtHeaders, header);
+        }
+
+        if (opts->follow) curl_easy_setopt(httpRqt->easy, CURLOPT_FOLLOWLOCATION, opts->follow);
+        if (opts->verbose)  curl_easy_setopt(httpRqt->easy, CURLOPT_VERBOSE, opts->verbose);
+        if (opts->agent) curl_easy_setopt(httpRqt->easy, CURLOPT_USERAGENT, opts->agent);
+        if (opts->timeout)  curl_easy_setopt(httpRqt->easy, CURLOPT_TIMEOUT, opts->timeout);
+        if (opts->sslchk) {
             curl_easy_setopt(httpRqt->easy, CURLOPT_SSL_VERIFYPEER, 1L);
             curl_easy_setopt(httpRqt->easy, CURLOPT_SSL_VERIFYHOST, 1L);
         }
-        if (opts->sslcert)
-            curl_easy_setopt(httpRqt->easy, CURLOPT_SSLCERT, opts->sslcert);
-        if (opts->sslkey)
-            curl_easy_setopt(httpRqt->easy, CURLOPT_SSLKEY, opts->sslkey);
-        if (opts->maxsz)
-            curl_easy_setopt(httpRqt->easy, CURLOPT_MAXFILESIZE, opts->maxsz);
-        if (opts->speedlow)
-            curl_easy_setopt(httpRqt->easy, CURLOPT_LOW_SPEED_TIME, opts->speedlow);
-        if (opts->speedlimit)
-            curl_easy_setopt(httpRqt->easy, CURLOPT_LOW_SPEED_LIMIT, opts->speedlimit);
-        if (opts->maxredir)    
-            curl_easy_setopt(httpRqt->easy, CURLOPT_MAXREDIRS, opts->maxredir);
-
+        if (opts->sslcert) curl_easy_setopt(httpRqt->easy, CURLOPT_SSLCERT, opts->sslcert);
+        if (opts->sslkey)  curl_easy_setopt(httpRqt->easy, CURLOPT_SSLKEY, opts->sslkey);
+        if (opts->maxsz)   curl_easy_setopt(httpRqt->easy, CURLOPT_MAXFILESIZE, opts->maxsz);
+        if (opts->speedlow)curl_easy_setopt(httpRqt->easy, CURLOPT_LOW_SPEED_TIME, opts->speedlow);
+        if (opts->speedlimit) curl_easy_setopt(httpRqt->easy, CURLOPT_LOW_SPEED_LIMIT, opts->speedlimit);
+        if (opts->maxredir)   curl_easy_setopt(httpRqt->easy, CURLOPT_MAXREDIRS, opts->maxredir);
     }
 
     if (datas)
@@ -345,14 +271,14 @@ OnErrorExit:
     return 1;
 }
 
-int httpSendPost(httpPoolT *httpPool, const char *url, const httpKeyValT *headers, httpKeyValT *tokens, httpOptsT *opts, void *datas, long len, httpRqtCbT callback, void *ctx, httpFreeCtxCbT freeCtx)
+int httpSendPost(httpPoolT *httpPool, const char *url, const httpOptsT *opts, httpKeyValT *tokens, void *datas, long len, httpRqtCbT callback, void *ctx)
 {
-    return httpSendQuery(httpPool, url, headers, tokens, opts, datas, len, callback, ctx, freeCtx);
+    return httpSendQuery(httpPool, url, opts, tokens, datas, len, callback, ctx);
 }
 
-int httpSendGet(httpPoolT *httpPool, const char *url, const httpKeyValT *headers, httpKeyValT *tokens, httpOptsT *opts, httpRqtCbT callback, void *ctx, httpFreeCtxCbT freeCtx)
+int httpSendGet(httpPoolT *httpPool, const char *url, const httpOptsT *opts, httpKeyValT *tokens, httpRqtCbT callback, void *ctx)
 {
-    return httpSendQuery(httpPool, url, headers, tokens, opts, NULL, 0, callback, ctx, freeCtx);
+    return httpSendQuery(httpPool, url, opts, tokens, NULL, 0, callback, ctx);
 }
 
 // create systemd source event and attach http processing callback to sock fd
@@ -426,4 +352,64 @@ OnErrorExit:
     fprintf(stderr, "[httpPool-create-fail] hoop curl_multi_init failed (httpCreatePool)");
     free(httpPool);
     return NULL;
+}
+
+// build request with query
+int httpBuildQuery(const char *uid, char *response, size_t maxlen, const char *prefix, const char *url, httpKeyValT *query)
+{
+    size_t index = 0;
+    maxlen = maxlen - 1; // space for '\0'
+
+    // hoops nothing to build url
+    if (!prefix && !url)
+        goto OnErrorExit;
+
+    // place prefix
+    if (prefix)
+    {
+        for (int idx = 0; prefix[idx]; idx++)
+        {
+            response[index++] = prefix[idx];
+            if (index == maxlen)
+                goto OnErrorExit;
+        }
+        response[index++] = '/';
+    }
+
+    // place url
+    if (url)
+    {
+        for (int idx = 0; url[idx]; idx++)
+        {
+            response[index++] = url[idx];
+            if (index == maxlen)
+                goto OnErrorExit;
+        }
+        response[index++] = '?';
+    }
+
+    // loop on query arguments
+    for (int idx = 0; query[idx].tag; idx++)
+    {
+        for (int jdx = 0; query[idx].tag[jdx]; jdx++)
+        {
+            response[index++] = query[idx].tag[jdx];
+            if (index == maxlen)
+                goto OnErrorExit;
+        }
+        response[index++] = '=';
+        for (int jdx = 0; query[idx].value[jdx]; jdx++)
+        {
+            response[index++] = query[idx].value[jdx];
+            if (index == maxlen)
+                goto OnErrorExit;
+        }
+        response[index++] = '&';
+    }
+    response[index] = '\0'; // remove last '&'
+    return 0;
+
+OnErrorExit:
+    fprintf(stderr, "[url-too-long] idp=%s url=%s cannot add query to url (httpMakeRequest)", uid, url);
+    return 1;
 }

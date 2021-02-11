@@ -63,9 +63,10 @@ int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ) {
 	if (err) goto OnErrorExit;
 
 	json_object *idpsJ=NULL, *aliasJ=NULL, *apisJ=NULL;
-	err= wrap_json_unpack (oidcJ, "{ s?o,s?o,s?o,s?o}"
+	err= wrap_json_unpack (oidcJ, "{ s?o,s?i,s?o,s?o,s?o}"
 		, "idp" , &idpsJ
-		, "idps", &idpsJ
+		, "verbose", &oidc->verbose
+ 		, "idps", &idpsJ
 		, "alias", &aliasJ
 		, "apis", &apisJ
 		);
@@ -133,8 +134,9 @@ int AfbExtensionHTTPV1 (void *ctx, afb_hsrv *hsrv) {
 	}
 
 	// create libcurl http multi pool
-	// oidc->httpPool= httpCreatePool(NULL);
-	// if (!oidc->httpPool) goto OnErrorExit;
+	//oidc->httpPool= httpCreatePool(hsrv->efd, glueGetCbs(), oidc->verbose);
+	oidc->httpPool= httpCreatePool(NULL, glueGetCbs(), oidc->verbose);
+	if (!oidc->httpPool) goto OnErrorExit;
 
 	return 0;
 
