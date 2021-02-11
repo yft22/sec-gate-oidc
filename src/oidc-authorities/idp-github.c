@@ -78,18 +78,51 @@ static const httpOptsT dfltOpts= {
 	// .verbose=1
 };
 
+typedef struct {
+	const char *fedid;
+	const char *pseudo;
+	const char *avatar;
+	const char *name;
+	const char *company;
+	const char *email;
+	const char *location;
+} oidcUserProfilT;
+
+// normalize userinfo profile
+static oidcUserProfilT *githubNormalizeUser (json_object *githubProfil) {
+	oidcUserProfilT *oidcProfil= calloc (sizeof(oidcUserProfilT))
+
+	int err= wrap_json_unpack (githubProfil, "{ss ss ss ss ss ss ss}"
+		, "id"      , &oidcProfil->fedid
+		, "login"   , &oidcProfil->pseudo
+		, "avatar"  , &oidcProfil->avatar
+		, "name"    , &oidcProfil->name
+		, "company" , &oidcProfil->company
+		, "email"   , &oidcProfil->email
+	);
+	if (err) goto OnErrorExit;
+	return oidcProfil;
+
+OnErrorExit:
+	return NULL;
+}
 
 // call when IDP respond to user profil request
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
-static httpRqtActionT githubGetUserByTokenCB (httpRqtT *httpRqt) {
+static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
 	idpRqtCtxT *ctx= (idpRqtCtxT*) httpRqt->userData;
 	if (httpRqt->status != 200) goto OnErrorExit;
 
 	// unwrap user profil
-	json_object *responseJ= json_tokener_parse(httpRqt->body);
-	if (!responseJ) goto OnErrorExit;
+	json_object *profilJ= json_tokener_parse(httpRqt->body);
+	if (!profilJ) goto OnErrorExit;
+
+	oidcUserProfilT *oidcProfil= githubNormalizeUser(profilJ);
+	if (!oidcProfil) goto OnErrorExit;
+
 
 	fprintf (stderr, "**** user profil=%s", json_object_get_string (responseJ));
+
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
@@ -100,7 +133,7 @@ OnErrorExit:
 
 // from acces token request user profil
 // reference https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
-static void githubGetUserByToken (idpRqtCtxT *rqtCtx, const char *accessToken) {
+static void githubUserGetByToken (idpRqtCtxT *rqtCtx, const char *accessToken) {
 	char tokenVal [EXT_TOKEN_MAX_LEN];
 	oidcIdpT *idp= rqtCtx->idp;
 
@@ -111,7 +144,7 @@ static void githubGetUserByToken (idpRqtCtxT *rqtCtx, const char *accessToken) {
 	};
 
 	// asynchronous request to IDP user profil service
-	int err= httpSendGet(idp->oidc->httpPool, idp->wellknown->identityApiUrl, &dfltOpts, authToken, githubGetUserByTokenCB, rqtCtx);
+	int err= httpSendGet(idp->oidc->httpPool, idp->wellknown->identityApiUrl, &dfltOpts, authToken, githubUserGetByTokenCB, rqtCtx);
 	if (err) goto OnErrorExit;
 	return;
 
@@ -121,11 +154,9 @@ OnErrorExit:
 
 // call when github return a valid access_token
 static httpRqtActionT githubAccessTokenCB (httpRqtT *httpRqt) {
-	char tokenLabel[]="access_token=";
 	assert (httpRqt->magic == MAGIC_HTTP_RQT);
 	idpRqtCtxT *rqtCtx= (idpRqtCtxT*) httpRqt->userData;
 	const char *accessToken=NULL;
-	int index;
 
 	// github returns "access_token=ffefd8e2f7b0fbe2de25b54e6a415c92a15491b8&scope=user%3Aemail&token_type=bearer"
 	if (httpRqt->status != 200) goto OnErrorExit;
@@ -139,7 +170,7 @@ static httpRqtActionT githubAccessTokenCB (httpRqtT *httpRqt) {
 	EXT_DEBUG ("[github-auth-token] token=%s (githubAccessTokenCB)", accessToken);
 
 	// we have our request token let's try to get user profil
-	githubGetUserByToken (rqtCtx, accessToken);
+	githubUserGetByToken (rqtCtx, accessToken);
 
 	// callback is responsible to free request & context
 	return HTTP_HANDLE_FREE;

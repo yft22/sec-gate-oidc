@@ -15,7 +15,8 @@
 ###########################################################################
 
 # should include static http-client lib before main source
-add_subdirectory("oidc-http")
+add_subdirectory(oidc-http)
+add_subdirectory(oidc-authorities)
 
 # Add target to project dependency list
 PROJECT_TARGET_ADD(oidc-sgate)
@@ -27,11 +28,11 @@ PROJECT_TARGET_ADD(oidc-sgate)
 	# Define project Targets
 	add_library(${TARGET_NAME} MODULE ${CSOURCES})
 
-    add_dependencies(${TARGET_NAME} afb-http-client)
    	target_include_directories(${TARGET_NAME}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/oidc-http
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/oidc-http ${CMAKE_CURRENT_SOURCE_DIR}/autorities
     )
-    target_link_libraries(${TARGET_NAME} afb-http-client)
+    add_dependencies(${TARGET_NAME} afb-http-client oidc-authorities)
+    target_link_libraries(${TARGET_NAME} afb-http-client oidc-authorities)
 
     target_compile_options(${TARGET_NAME}
         PUBLIC  -Wno-unused-variable

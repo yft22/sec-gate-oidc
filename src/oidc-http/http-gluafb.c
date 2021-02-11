@@ -9,7 +9,7 @@
 
 #define _GNU_SOURCE
 
-#include "../oidc-defaults.h"
+#include "oidc-defaults.h"
 #include "http-client.h"
 
 #include <errno.h>
@@ -42,7 +42,6 @@ static void glueOnSocketCB (struct ev_fd *efd, int sock, uint32_t revents, void 
     int err= httpOnSocketCB(httpPool, sock, action);
     if (err) ev_fd_unref(efd);
 }
-
 
 // create libafb efd event and attach http processing callback to sock fd
 static int glueSetSocketCB (httpPoolT *httpPool, CURL *easy, int sock, int action, void *sockp)

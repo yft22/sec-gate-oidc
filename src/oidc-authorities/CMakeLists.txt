@@ -1,4 +1,4 @@
-PROJECT_TARGET_ADD(afb-http-client)
+PROJECT_TARGET_ADD(oidc-authorities)
 
 	# compile any C file starting with a lower case
 	file(GLOB CSOURCES [a-z]*.c)
@@ -15,4 +15,5 @@ PROJECT_TARGET_ADD(afb-http-client)
 	target_include_directories(${TARGET_NAME}
 	    INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
 	    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..
+		PRIVATE  ${CMAKE_CURRENT_SOURCE_DIR}/../oidc-http
     )

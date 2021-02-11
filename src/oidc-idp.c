@@ -23,7 +23,7 @@
 
 #include "oidc-core.h"
 #include "oidc-idp.h"
-#include "oidc-github.h"
+#include "oidc-authorities/idp-callbacks.h"
 
 #include <libafb/http/afb-hsrv.h>
 
