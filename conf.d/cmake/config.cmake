@@ -74,6 +74,7 @@ set (PKG_REQUIRED_LIST
 	json-c
 	libafb
 	libcurl
+    fedid-types
 )
 
 # Print a helper message when every thing is finished

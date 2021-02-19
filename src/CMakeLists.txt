@@ -29,7 +29,7 @@ PROJECT_TARGET_ADD(oidc-sgate)
 	add_library(${TARGET_NAME} MODULE ${CSOURCES})
 
    	target_include_directories(${TARGET_NAME}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/oidc-http ${CMAKE_CURRENT_SOURCE_DIR}/autorities
+        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/oidc-http ${CMAKE_CURRENT_SOURCE_DIR}/autorities ${PROJECT_SOURCE_DIR}/../fedid-binding/src/fedid-types
     )
     add_dependencies(${TARGET_NAME} afb-http-client oidc-authorities)
     target_link_libraries(${TARGET_NAME} afb-http-client oidc-authorities)

@@ -38,7 +38,6 @@
 
 static const char unauthorizedMsg[]="[unauthorized-api-call] authenticate to upgrade session/loa (idsvcList)";
 
-
 static void idsvcPing (afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
     static int count=0;
     char *response;
@@ -82,7 +81,6 @@ OnErrorExit:
     afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_STRINGZ, unauthorizedMsg, sizeof(unauthorizedMsg), NULL, NULL);
     afb_req_reply (request, -1, 1, &reply);
 }
-
 
 // Static verb not depending on shell json config file
 static afb_verb_t idsvcVerbs[] = {

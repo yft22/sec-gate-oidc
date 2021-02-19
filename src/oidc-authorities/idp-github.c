@@ -36,6 +36,8 @@
 #include <string.h>
 #include <locale.h>
 
+#include <fedid-types.h>
+
 /*
 	// token not json
 	char *ptr = strtok(httpRqt->body, "&");
@@ -86,25 +88,38 @@ typedef struct {
 	const char *company;
 	const char *email;
 	const char *location;
-} oidcUserProfilT;
+} userProfilProfilT;
 
 // normalize userinfo profile
-static oidcUserProfilT *githubNormalizeUser (json_object *githubProfil) {
-	oidcUserProfilT *oidcProfil= calloc (sizeof(oidcUserProfilT))
+static int githubNormalizeUser (, json_object *githubProfil) {
+	fedUserRawT tmpUser;
+	fedSocialRawT tmpsocial;
 
+
+    // unpack github user profil into twp tempry object 
 	int err= wrap_json_unpack (githubProfil, "{ss ss ss ss ss ss ss}"
-		, "id"      , &oidcProfil->fedid
-		, "login"   , &oidcProfil->pseudo
-		, "avatar"  , &oidcProfil->avatar
-		, "name"    , &oidcProfil->name
-		, "company" , &oidcProfil->company
-		, "email"   , &oidcProfil->email
+		, "id"      , &tmpsocial->fedkey
+		, "login"   , &tmpUser->pseudo
+		, "avatar"  , &tmpUser->avatar
+		, "name"    , &tmpUser->name
+		, "company" , &tmpUser->company
+		, "email"   , &tmpUser->email
 	);
 	if (err) goto OnErrorExit;
-	return oidcProfil;
+	return 0;
+
+    // allocate two object and dup string to break json object dependency
+	fedSocialRawT *fedSocial= calloc (1, sizeof(fedSocialRawT));
+    fedSocial->fedkey= strdup(tmpsocial->fedkey);
+    fedSocial->idp= strdup(httpRqt->);
+
+	fedUserRawT *fedUser= calloc (1, sizeof(fedUserRawT));
+
+
+
 
 OnErrorExit:
-	return NULL;
+	return -1;
 }
 
 // call when IDP respond to user profil request
@@ -117,7 +132,7 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
 	json_object *profilJ= json_tokener_parse(httpRqt->body);
 	if (!profilJ) goto OnErrorExit;
 
-	oidcUserProfilT *oidcProfil= githubNormalizeUser(profilJ);
+	userProfilProfilT *oidcProfil= githubCheckUser(profilJ);
 	if (!oidcProfil) goto OnErrorExit;
 
 
