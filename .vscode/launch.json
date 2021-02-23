@@ -15,6 +15,7 @@
           "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-oidc",
+            "--binding=${workspaceFolder}/../fedid-binding/build/package/lib/fedid-binding.so",
             "--config=${workspaceFolder}/conf.d/project/etc/oidc-config.json",
             "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
             "--roothttp=.",

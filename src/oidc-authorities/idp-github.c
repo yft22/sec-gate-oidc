@@ -28,6 +28,7 @@
 #include "oidc-core.h"
 #include "oidc-idp.h"
 #include "oidc-alias.h"
+#include "oidc-fedid.h"
 #include "http-client.h"
 
 #include <libafb/core/afb-session.h>
@@ -35,8 +36,6 @@
 #include <assert.h>
 #include <string.h>
 #include <locale.h>
-
-#include <fedid-types.h>
 
 /*
 	// token not json
@@ -80,69 +79,47 @@ static const httpOptsT dfltOpts= {
 	// .verbose=1
 };
 
-typedef struct {
-	const char *fedid;
-	const char *pseudo;
-	const char *avatar;
-	const char *name;
-	const char *company;
-	const char *email;
-	const char *location;
-} userProfilProfilT;
-
-// normalize userinfo profile
-static int githubNormalizeUser (, json_object *githubProfil) {
-	fedUserRawT tmpUser;
-	fedSocialRawT tmpsocial;
-
-
-    // unpack github user profil into twp tempry object 
-	int err= wrap_json_unpack (githubProfil, "{ss ss ss ss ss ss ss}"
-		, "id"      , &tmpsocial->fedkey
-		, "login"   , &tmpUser->pseudo
-		, "avatar"  , &tmpUser->avatar
-		, "name"    , &tmpUser->name
-		, "company" , &tmpUser->company
-		, "email"   , &tmpUser->email
-	);
-	if (err) goto OnErrorExit;
-	return 0;
-
-    // allocate two object and dup string to break json object dependency
-	fedSocialRawT *fedSocial= calloc (1, sizeof(fedSocialRawT));
-    fedSocial->fedkey= strdup(tmpsocial->fedkey);
-    fedSocial->idp= strdup(httpRqt->);
-
-	fedUserRawT *fedUser= calloc (1, sizeof(fedUserRawT));
-
-
-
-
-OnErrorExit:
-	return -1;
+// duplicate key value if not null
+static char * json_object_dup_key_value (json_object *objJ, const char *key) {
+	char *value;
+	value= (char*) json_object_get_string (json_object_object_get (objJ,key));
+	if (value) value=strdup(value);
+	return value;
 }
 
 // call when IDP respond to user profil request
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
 static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
-	idpRqtCtxT *ctx= (idpRqtCtxT*) httpRqt->userData;
 	if (httpRqt->status != 200) goto OnErrorExit;
+	idpRqtCtxT *rqtCtx= (idpRqtCtxT*) httpRqt->userData;
+	oidcIdpT *idp= rqtCtx->idp;
+	int err;
 
 	// unwrap user profil
 	json_object *profilJ= json_tokener_parse(httpRqt->body);
 	if (!profilJ) goto OnErrorExit;
+    fprintf (stderr, "**** user profil=%s", json_object_get_string (profilJ));
 
-	userProfilProfilT *oidcProfil= githubCheckUser(profilJ);
-	if (!oidcProfil) goto OnErrorExit;
+	// build social fedkey from idp->uid+github->id
+	fedSocialRawT *fedKey= calloc (1, sizeof(fedSocialRawT));
+    fedKey->fedkey= strdup (json_object_get_string (json_object_object_get (profilJ,"id")));
+    fedKey->idp= strdup(idp->uid);
 
+	fedUserRawT *fedUser= calloc (1, sizeof(fedUserRawT));
+	fedUser->pseudo= json_object_dup_key_value (profilJ, "login");
+	fedUser->avatar= json_object_dup_key_value (profilJ, "avatar");
+	fedUser->name= json_object_dup_key_value (profilJ, "name");
+	fedUser->company= json_object_dup_key_value (profilJ, "company");
+	fedUser->email= json_object_dup_key_value (profilJ, "email");
 
-	fprintf (stderr, "**** user profil=%s", json_object_get_string (responseJ));
+	err= fedidCheck (rqtCtx->hreq, idp, fedKey, fedUser);
+	if (err) goto OnErrorExit;
 
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
 	EXT_CRITICAL ("[github-fail-user-profil] Fail to get user profil from github status=%ld body='%s'", httpRqt->status, httpRqt->body);
-	afb_hreq_reply_error(ctx->hreq, EXT_HTTP_UNAUTHORIZED);
+	afb_hreq_reply_error(rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
 	return HTTP_HANDLE_FREE;
 }
 
@@ -199,7 +176,7 @@ OnErrorExit:
 static int githubAccessToken (afb_hreq *hreq, oidcIdpT *idp, const char *redirectUrl, const char *code) {
 	assert (idp->magic == MAGIC_OIDC_IDP);
 	char url[EXT_URL_MAX_LEN];
-	oidcCoreHandleT *oidc= idp->oidc;
+	oidcCoreHdlT *oidc= idp->oidc;
 	int err;
 
 	httpKeyValT params[]= {
@@ -215,7 +192,6 @@ static int githubAccessToken (afb_hreq *hreq, oidcIdpT *idp, const char *redirec
 	idpRqtCtxT *ctx = calloc (1, sizeof(idpRqtCtxT));
 	ctx->hreq= hreq;
 	ctx->idp= idp;
-
 
 	// send asynchronous post request with params in query // https://gist.github.com/technoweenie/419219
 	err= httpBuildQuery (idp->uid, url, sizeof(url), NULL /* prefix */, idp->wellknown->accessTokenUrl, params);
@@ -273,6 +249,9 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 
 			{NULL} // terminator
 		};
+
+		// store requested profil to retreive attached loa and role filter if login succeded
+		afb_session_set_cookie (hreq->comreq.session, oidcIdpProfilCookie, (void*)profil, NULL);
 
 		// build request and send it
 		err= httpBuildQuery (idp->uid, url, sizeof(url), NULL /* prefix */, idp->wellknown->loginTokenUrl, query);

@@ -25,6 +25,7 @@
 
 #include "oidc-core.h"
 #include "oidc-alias.h"
+#include "oidc-idsvc.h"
 
 #define WITH_LIBMICROHTTPD 1
 #include <libafb/extend/afb-extension.h>
@@ -40,6 +41,7 @@
 MAGIC_OIDC_SESSION(oidcIdpLoa);
 MAGIC_OIDC_SESSION(oidcIdpRoles);
 MAGIC_OIDC_SESSION(oidcAliasCookie);
+;
 
 int aliasCheckRoles (afb_session *session, oidcAliasT *alias) {
 	char **avaliableRoles;
@@ -81,11 +83,12 @@ static void aliasRedirectLogin (afb_hreq *hreq, oidcAliasT *alias) {
 	cookie->alias=alias;
 	afb_session_set_cookie (hreq->comreq.session, oidcAliasCookie, cookie, aliasFreeCookie);
 	afb_req_common_set_token (&hreq->comreq, NULL);
-	afb_hreq_redirect_to(hreq, "/login", HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+	afb_hreq_redirect_to(hreq, URL_OIDC_USR_LOGIN, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 }
 
 static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 	oidcAliasT *alias= (oidcAliasT*)ctx;
+	int currentLoa;
 
 	// in case session create failed
 	if (!hreq->comreq.session) {
@@ -97,7 +100,20 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 	EXT_NOTICE ("session uuid=%s (aliasCheckLoaCB)", afb_session_uuid(hreq->comreq.session));
 
 	// if LOA too weak redirect to authentication  //afb_session_close ()
-	if (alias->loa > afb_session_get_loa (hreq->comreq.session, oidcIdpLoa)) {
+	currentLoa=  afb_session_get_loa (hreq->comreq.session, oidcIdpLoa);
+	if (alias->loa > currentLoa) {
+		json_object *eventJ;
+
+		wrap_json_pack (&eventJ, "{si ss ss si si}"
+			, "status", STATUS_OIDC_AUTH_DENY
+			, "uid", alias->uid
+			, "url", alias->url
+			, "loa-target", alias->loa
+			, "loa-session", currentLoa 
+		);
+
+		// try to push event to notify the access deny and replay with redirect to login
+		idscvPushEvent (hreq, eventJ);
 		aliasRedirectLogin (hreq, alias);
 		goto OnRedirectExit;
 	}
@@ -118,7 +134,7 @@ OnRedirectExit:
 	return 1;
 }
 
-int aliasRegisterOne (oidcCoreHandleT *oidc, oidcAliasT *alias, afb_hsrv *hsrv) {
+int aliasRegisterOne (oidcCoreHdlT *oidc, oidcAliasT *alias, afb_hsrv *hsrv) {
 	const char* rootdir;
 	int status;
 
@@ -140,7 +156,7 @@ OnErrorExit:
 	return 1;
 }
 
-static int idpParseOneAlias (oidcCoreHandleT *oidc, json_object *aliasJ, oidcAliasT *alias) {
+static int idpParseOneAlias (oidcCoreHdlT *oidc, json_object *aliasJ, oidcAliasT *alias) {
 	json_object *rolesJ=NULL;
 
 	int err= wrap_json_unpack (aliasJ, "{ss,s?s,s?s,s?s,s?i,s?i,s?o}"
@@ -194,7 +210,7 @@ OnErrorExit:
   return 1;
 }
 
-oidcAliasT *aliasParseConfig (oidcCoreHandleT *oidc, json_object *aliasesJ) {
+oidcAliasT *aliasParseConfig (oidcCoreHdlT *oidc, json_object *aliasesJ) {
 
     oidcAliasT *aliases;
     int err;

@@ -37,9 +37,9 @@ typedef struct oidcApisS {
   int lazy;
   const char **roles;
   UT_hash_handle hh;
-  oidcCoreHandleT *oidc;
+  oidcCoreHdlT *oidc;
 } oidcApisT;
 
-oidcApisT *apisParseConfig (oidcCoreHandleT *oidc, json_object *apisJ);
-int apisRegisterOne (oidcCoreHandleT *oidc, oidcApisT *api, afb_apiset *declare_set, afb_apiset *call_set);
-int apisCreateSvc (oidcCoreHandleT *oidc, oidcApisT *api, afb_apiset *declare_set, afb_apiset *call_set, afb_verb_v4 *apiVerbs);
+oidcApisT *apisParseConfig (oidcCoreHdlT *oidc, json_object *apisJ);
+int apisRegisterOne (oidcCoreHdlT *oidc, oidcApisT *api, afb_apiset *declare_set, afb_apiset *call_set);
+int apisCreateSvc (oidcCoreHdlT *oidc, oidcApisT *api, afb_apiset *declare_set, afb_apiset *call_set, afb_verb_v4 *apiVerbs);

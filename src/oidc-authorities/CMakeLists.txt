@@ -15,5 +15,5 @@ PROJECT_TARGET_ADD(oidc-authorities)
 	target_include_directories(${TARGET_NAME}
 	    INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
 	    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..
-		PRIVATE  ${CMAKE_CURRENT_SOURCE_DIR}/../oidc-http
+		PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../oidc-http
     )

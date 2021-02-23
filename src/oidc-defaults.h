@@ -26,8 +26,11 @@
 #include <json-c/json.h>
 #include <wrap-json.h>
 
+#define AFB_BINDING_VERSION 4
+#include <afb/afb-verbosity.h>
 #include <libafb/sys/verbose.h>
 #include <libafb/extend/afb-extension.h>
+
 
 // few magic to help debugging
 typedef enum {
@@ -58,6 +61,9 @@ typedef enum {
 #define HREQ_REDIR_TERM 1
 #define HREQ_QUERY_INCL 1
 #define HREQ_QUERY_EXCL 0
+
+// local or remote federated identity service api name
+#define API_OIDC_USR_SVC "fedid"
 
 // return code
 #define AFB_HSRV_OK 1

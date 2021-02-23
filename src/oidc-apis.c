@@ -34,7 +34,7 @@
 #include <libafb/apis/afb-api-ws.h>
 #include <afb/afb-auth.h>
 
-int apisCreateSvc (oidcCoreHandleT *oidc, oidcApisT *apiSvc, afb_apiset *declare_set, afb_apiset *call_set, afb_verb_v4 *apiVerbs) {
+int apisCreateSvc (oidcCoreHdlT *oidc, oidcApisT *apiSvc, afb_apiset *declare_set, afb_apiset *call_set, afb_verb_v4 *apiVerbs) {
 	char apiUri [EXT_URL_MAX_LEN];
 	afb_api_v4 *apiv4;
 
@@ -50,6 +50,7 @@ int apisCreateSvc (oidcCoreHandleT *oidc, oidcApisT *apiSvc, afb_apiset *declare
 	if (status) goto OnErrorExit;
 
 	// add oidc context to internal api
+	oidc->apiv4= apiv4;
 	afb_api_v4_set_userdata(apiv4, oidc);
 
 	// add verb to API
@@ -67,14 +68,31 @@ OnErrorExit:
 }
 
 // import API client from uri and map corresponding roles into apis hashtable
-int apisRegisterOne (oidcCoreHandleT *oidc, oidcApisT *api, afb_apiset *declare_set, afb_apiset *call_set) {
-	int err= afb_api_ws_add_client(api->uri, declare_set, call_set, !api->lazy);
-	if (err) goto OnErrorExit;
+int apisRegisterOne (oidcCoreHdlT *oidc, oidcApisT *api, afb_apiset *declare_set, afb_apiset *call_set) {
+    int err, index;
+
+    // if API is not runnning within the binder register client API
+    if (api->uri[0] != '@') {
+	    int err= afb_api_ws_add_client(api->uri, declare_set, call_set, !api->lazy);
+	    if (err) goto OnErrorExit;
+    }
+
+	// Extract API from URI 
+    for (index=0; api->uri[index]; index ++) {
+        if (api->uri[index] == '@' || api->uri[index] == '/') break;
+    }
+
+    // If needed create an alias
+    if (api->uri[index]) {
+        if (strcasecmp (&api->uri[index+1], api->uid)) {
+            err= afb_alias_api(&api->uri[index+1],api->uid);
+            if (err) goto OnErrorExit;
+        }
+
+    }
 
 	// register api for later loa/roles check
-	HASH_ADD_KEYPTR(hh, oidc->apisHash, api->uid, strlen(api->uid), api);  // **** FULUP uri or udi ???
-
-	// external api should be hooked to check roles outside of Cynagora
+	HASH_ADD_KEYPTR(hh, oidc->apisHash, api->uid, strlen(api->uid), api);  // **** FULUP TBD still needed 
 
 	return 0;
 
@@ -83,7 +101,7 @@ OnErrorExit:
 	return 1;
 }
 
-static int apisParseOne (oidcCoreHandleT *oidc, json_object *apiJ, oidcApisT *api) {
+static int apisParseOne (oidcCoreHdlT *oidc, json_object *apiJ, oidcApisT *api) {
 	json_object *rolesJ=NULL;
 
 	int err= wrap_json_unpack (apiJ, "{ss,s?s,s?s,s?i,s?i,s?o}"
@@ -135,7 +153,7 @@ OnErrorExit:
   return 1;
 }
 
-oidcApisT *apisParseConfig (oidcCoreHandleT *oidc, json_object *apisJ) {
+oidcApisT *apisParseConfig (oidcCoreHdlT *oidc, json_object *apisJ) {
     oidcApisT *apis;
     int err;
 

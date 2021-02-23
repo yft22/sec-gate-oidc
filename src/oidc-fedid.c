@@ -22,42 +22,98 @@
 */
 
 #include "oidc-core.h"
-#include "oidc-idp.h"
 #include "oidc-alias.h"
-#include "http-client.h"
+#include "oidc-fedid.h"
+#include <http-client.h>
 
 #include <libafb/core/afb-session.h>
 #include <libafb/http/afb-hreq.h>
+#include <libafb/core/afb-api-v4.h>
+
 #include <assert.h>
 #include <string.h>
 #include <locale.h>
 
-#include <fedid-types.h>
+
+MAGIC_OIDC_SESSION(oidcFedUserCookie);
+MAGIC_OIDC_SESSION(oidcFedSocialCookie);
 
 typedef struct {
-    void *raw;
-    json_object *json;
-} oidcProfilObjectT;
+	afb_hreq *hreq;
+	oidcIdpT *idp;
+	fedUserRawT *fedUser;
+	fedSocialRawT *fedSocial;
+} oidcFedidHdlT;
 
-fedidCheckRegister (fedUserRawT *userRaw, fedSocialRawT *socialRaw, json_object *sourceJ) {
+// if fedkey exists callback receive local store user profil otherwise we should create it
+static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_t replies[], struct afb_api_v4 *api) {
+    char *errorMsg = "[invalid-profil] Fail to process user profile (fedidCheckCB)";
+	oidcFedidHdlT *userInfoHdl= (oidcFedidHdlT*)ctx;
+    afb_data_t reply, data;
+	fedUserRawT *fedUser;
+	oidcProfilsT *idpProfil;
+	oidcCookieT *cookie;
+	afb_hreq *hreq= userInfoHdl->hreq;
+	const char* redirect;
+
+	int err;
+
+	if (status < 0) {
+		// fedkey not fount let's store social authority profil into session and redirect user on userprofil creation
+        userInfoHdl->fedUser->ucount++;
+        userInfoHdl->fedSocial->ucount++;
+		afb_session_set_cookie (hreq->comreq.session, oidcFedUserCookie, userInfoHdl->fedUser, fedUserFreeCB);
+		afb_session_set_cookie (hreq->comreq.session, oidcFedSocialCookie, userInfoHdl->fedSocial, fedSocialFreeCB);
+		redirect= URL_OIDC_USR_PROFIL;
+
+	} else {
+		// fed key found let's push data with user-profil into session cookie
+		err= afb_data_convert(replies[0], fedUserObjType, &data);
+		if (err < 0) goto OnErrorExit;
+		fedUser= (fedUserRawT*)afb_data_ro_pointer(replies[0]);
+
+		// free idp social federated profil, and set current session loa+profil to fedid service values
+		fedUserFreeCB(userInfoHdl->fedUser);
+		fedSocialFreeCB(userInfoHdl->fedSocial);
+		afb_session_get_cookie (hreq->comreq.session, oidcIdpProfilCookie, (void**) &idpProfil);
+		afb_session_set_loa (hreq->comreq.session, oidcIdpLoa, idpProfil->loa);
+
+		// let's store user profil into session cookie (/oidc/profil/get servs it)
+   		afb_session_set_cookie (hreq->comreq.session, oidcFedUserCookie, fedUser, fedUserFreeCB);
+
+
+		// everyting looks good let's return user to original page
+		afb_session_get_cookie (hreq->comreq.session, oidcAliasCookie, (void**)&cookie);
+		if (!cookie) goto OnErrorExit;
+	}
+	// free user info handle and redirect to initial targeted url
+	free (userInfoHdl);
+	afb_hreq_redirect_to(hreq, redirect, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+	return;
+
+OnErrorExit:
+    afb_hreq_redirect_to(hreq, URL_OIDC_USR_ERROR, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+}
+
+// try to request user profile from its federation key
+int fedidCheck (afb_hreq *hreq, oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser) {
     int err;
-    afb_data_t userData, socialData;
-    err= afb_create_data_raw(&userData, userObjType, fedUserObjType, 0, fedidProfileFreeCB, userProfil);
+    afb_data_t argv[1];
 
-void afb_api_v4_call_hookable(
-	struct afb_api_v4 *apiv4,
-	const char *apiname,
-	const char *verbname,
-	unsigned nparams,
-	struct afb_data * const params[],
-	void (*callback)(
-		void *closure,
-		int status,
-		unsigned nreplies,
-		struct afb_data * const replies[],
-		struct afb_api_v4 *api),
-	void *closure
-);
+	oidcFedidHdlT *userInfoHdl= malloc(sizeof(oidcFedidHdlT));
+	userInfoHdl->hreq=hreq;
+	userInfoHdl->idp=idp;
+	userInfoHdl->fedUser=fedUser;
+	userInfoHdl->fedSocial=fedSocial;
 
+	// increase fedSocial usagecount and checl social fedkey
+	fedSocial->ucount++;
+    err= afb_create_data_raw(&argv[0], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, fedSocial);
+	if (err) goto OnErrorExit;
+  
+	afb_api_v4_call_hookable(idp->oidc->apiv4, "fedid", "social-check", 1, argv, fedidCheckCB, userInfoHdl);
+	return 0;
 
+OnErrorExit:
+	return -1;
 }

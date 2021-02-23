@@ -24,10 +24,11 @@
 #include "oidc-core.h"
 #include "oidc-idp.h"
 #include "oidc-authorities/idp-callbacks.h"
-
 #include <libafb/http/afb-hsrv.h>
 
 #include <string.h>
+
+MAGIC_OIDC_SESSION(oidcIdpProfilCookie);
 
 typedef struct idpRegistryS {
    struct idpRegistryS *next;
@@ -40,7 +41,7 @@ idpPluginT idpBuiltin[];
 static idpRegistryT *registryHead= NULL;
 
 // return the idp list to display corresponding login page.
-json_object *idpLoaProfilsGet (oidcCoreHandleT *oidc, int loa) {
+json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa) {
 	json_object *idpsJ= NULL;
 
 	for (int idx=0; oidc->idps[idx].uid; idx++) {
@@ -363,7 +364,7 @@ idpGenericCbT idpGenericCB = {
   .parseConfig= idpParseOidcConfig,
 };
 
-static int idpParseOne (oidcCoreHandleT *oidc, json_object *idpJ, oidcIdpT *idp) {
+static int idpParseOne (oidcCoreHdlT *oidc, json_object *idpJ, oidcIdpT *idp) {
   int err;
 
   // search idp with registry
@@ -392,7 +393,7 @@ OnErrorExit:
 	return 1;
 }
 
-oidcIdpT const *idpParseConfig (oidcCoreHandleT *oidc, json_object *idpsJ) {
+oidcIdpT const *idpParseConfig (oidcCoreHdlT *oidc, json_object *idpsJ) {
 	oidcIdpT *idps;
   	int err, count;
 
@@ -432,7 +433,7 @@ OnErrorExit:
 }
 
 // register IDP login and authentication callback endpoint
-int idpRegisterOne (oidcCoreHandleT *oidc, oidcIdpT *idp, afb_hsrv *hsrv) {
+int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv) {
   int err;
 
   EXT_DEBUG ("[idp-register] uid=%s login='%s'", idp->uid, idp->acls->aliasLogin);

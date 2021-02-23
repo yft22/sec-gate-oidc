@@ -35,12 +35,15 @@
         ]
       },
       "apis": [
+        {"uid": "fedid","info":"embedded social federated user identity svc","loa":0,"uri":"@fedid"},
         {"uid": "test1","lazy":1},
         {"uid": "test2","uri":"unix:@test2", "loa":1, "role": ["user"], "lazy":1},
-        {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "role": ["user","admin"], "lazy":1},
+        {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "role": ["user","admin"], "lazy":1}
       ],
       "alias": [
-        {"uid": "login" , "url":"/login", "path":"login" },
+        {"uid": "user-error"  , "url":"/user/error", "path":"idps/user/error" },
+        {"uid": "user-profil" , "url":"/user/profil", "path":"idps/user/profil" },
+        {"uid": "user-login"  , "url":"/user/login", "path":"idps/user/login" },
         {"uid": "github"  , "url":"/github","loa":2, "from":"github", "path":"idps/github" },
         {"uid": "idp-github"  , "url":"/idp/github","loa":2, "from":"github", "path":"idps/github" },
         {"uid": "public" , "url":"/public", "path":"public" },

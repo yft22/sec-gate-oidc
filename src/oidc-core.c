@@ -52,7 +52,7 @@ const struct argp_option AfbExtensionOptionsV1[] = {
 
 // Pase and load config.json info oidc global context
 int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ) {
-	oidcCoreHandleT *oidc=calloc (1, sizeof(oidcCoreHandleT));
+	oidcCoreHdlT *oidc=calloc (1, sizeof(oidcCoreHdlT));
 	oidc->magic= MAGIC_OIDC_MAIN;
 	oidc->uid= AfbExtensionManifest.name;
 	json_object_get (oidcJ);
@@ -63,7 +63,8 @@ int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ) {
 	if (err) goto OnErrorExit;
 
 	json_object *idpsJ=NULL, *aliasJ=NULL, *apisJ=NULL;
-	err= wrap_json_unpack (oidcJ, "{ s?o,s?i,s?o,s?o,s?o}"
+	err= wrap_json_unpack (oidcJ, "{s?s,s?o,s?i,s?o,s?o,s?o}"
+		, "info" , &oidc->info
 		, "idp" , &idpsJ
 		, "verbose", &oidc->verbose
  		, "idps", &idpsJ
@@ -90,7 +91,7 @@ OnErrorExit:
 
 // import APIs with corresponding callback
 int AfbExtensionDeclareV1(void *ctx, struct afb_apiset *declare_set, struct afb_apiset *call_set) {
-	oidcCoreHandleT *oidc= (oidcCoreHandleT*)ctx;
+	oidcCoreHdlT *oidc= (oidcCoreHdlT*)ctx;
 	int err;
 	if (!oidc) goto OnErrorExit;
 	EXT_NOTICE("Extension %s got to declare", oidc->uid);
@@ -118,7 +119,7 @@ OnErrorExit:
 }
 
 int AfbExtensionHTTPV1 (void *ctx, afb_hsrv *hsrv) {
-	oidcCoreHandleT *oidc= (oidcCoreHandleT*)ctx;
+	oidcCoreHdlT *oidc= (oidcCoreHdlT*)ctx;
 	int err;
 	if (!oidc) goto OnErrorExit;
 	EXT_NOTICE("Extension %s got to http", oidc->uid);
@@ -145,7 +146,7 @@ OnErrorExit:
 }
 
 int AfbExtensionServeV1(void *ctx, afb_apiset *call_set) {
-	oidcCoreHandleT *oidc= (oidcCoreHandleT*)ctx;
+	oidcCoreHdlT *oidc= (oidcCoreHdlT*)ctx;
 	if (!oidc) goto OnErrorExit;
 	EXT_NOTICE("Extension %s got to serve", oidc->uid);
 
@@ -156,7 +157,7 @@ OnErrorExit:
 }
 
 int AfbExtensionExitV1(void *ctx, afb_apiset *declare_set) {
-	oidcCoreHandleT *oidc= (oidcCoreHandleT*)ctx;
+	oidcCoreHdlT *oidc= (oidcCoreHdlT*)ctx;
 
 	if (!oidc) goto OnErrorExit;
 	EXT_NOTICE("Extension %s exit", oidc->uid);

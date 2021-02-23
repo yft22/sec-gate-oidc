@@ -23,30 +23,12 @@
 
 #pragma once
 
-#include "oidc-core.h"
+#include "oidc-defaults.h"
+#include "oidc-idp.h"
+#include <fedid-types.h>
 
-// MAGIC_OIDC_SESSION() used as session key
-extern void* oidcIdpLoa;
-extern void* oidcIdpRoles;
-extern void* oidcAliasCookie;
+int fedidCheck (afb_hreq *hreq, oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser);
 
-
-typedef struct oidcAliasesS {
-  const char *uid;
-  const char *info;
-  int loa;
-  int priority;
-  const char *url;
-  const char *path;
-  const char **roles;
-  oidcCoreHdlT *oidc;
-} oidcAliasT;
-
-typedef struct {
-  char *url;
-  oidcAliasT *alias;
-} oidcCookieT;
-
-oidcAliasT *aliasParseConfig (oidcCoreHdlT *oidc, json_object *aliasesJ);
-int aliasRegisterOne (oidcCoreHdlT *oidc, oidcAliasT *alias, afb_hsrv *hsrv);
+extern void* oidcFedUserCookie;
+extern void* oidcFedSocialCookie;
 

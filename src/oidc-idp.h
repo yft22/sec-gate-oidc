@@ -26,6 +26,7 @@
 #include "oidc-core.h"
 #include "oidc-http/http-client.h"
 
+extern void* oidcIdpProfilCookie;
 
 typedef struct {
   const char *loginTokenUrl;
@@ -66,7 +67,7 @@ typedef struct oidcIdpS {
   const oidcProfilsT *profils;
   void *ctx;
   const idpPluginT *plugin;
-  oidcCoreHandleT *oidc;
+  oidcCoreHdlT *oidc;
 } oidcIdpT;
 
 typedef struct {
@@ -105,7 +106,7 @@ typedef struct {
 } idpRqtCtxT;
 
 // idp exported functions
-const oidcIdpT *idpParseConfig (oidcCoreHandleT *oidc, json_object *idpsJ);
-int idpRegisterOne (oidcCoreHandleT *oidc, oidcIdpT *idp, afb_hsrv *hsrv);
-json_object *idpLoaProfilsGet (oidcCoreHandleT *oidc, int loa);
+const oidcIdpT *idpParseConfig (oidcCoreHdlT *oidc, json_object *idpsJ);
+int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv);
+json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa);
 int idpPLuginRegistryInit(void);
