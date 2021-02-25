@@ -28,6 +28,7 @@
 
 #include <libafb/core/afb-session.h>
 #include <libafb/http/afb-hreq.h>
+#include <libafb/core/afb-data.h>
 #include <libafb/core/afb-api-v4.h>
 
 #include <assert.h>
@@ -108,7 +109,7 @@ int fedidCheck (afb_hreq *hreq, oidcIdpT *idp, fedSocialRawT *fedSocial, fedUser
 
 	// increase fedSocial usagecount and checl social fedkey
 	fedSocial->ucount++;
-    err= afb_create_data_raw(&argv[0], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, fedSocial);
+    err= afb_data_create_raw(&argv[0], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, fedSocial);
 	if (err) goto OnErrorExit;
   
 	afb_api_v4_call_hookable(idp->oidc->apiv4, "fedid", "social-check", 1, argv, fedidCheckCB, userInfoHdl);

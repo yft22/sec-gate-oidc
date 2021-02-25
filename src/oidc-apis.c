@@ -34,6 +34,8 @@
 #include <libafb/apis/afb-api-ws.h>
 #include <afb/afb-auth.h>
 
+#include <stdio.h>
+
 int apisCreateSvc (oidcCoreHdlT *oidc, oidcApisT *apiSvc, afb_apiset *declare_set, afb_apiset *call_set, afb_verb_v4 *apiVerbs) {
 	char apiUri [EXT_URL_MAX_LEN];
 	afb_api_v4 *apiv4;

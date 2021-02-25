@@ -36,8 +36,8 @@ typedef struct idpPluginS idpPluginT;
 #define MAGIC_OIDC_MAIN 321987
 #define MAGIC_OIDC_SESSION(VAR) void *VAR=&VAR
 
-#define URL_OIDC_USR_ERROR "user-error"
-#define URL_OIDC_USR_LOGIN "user-login"
+#define URL_OIDC_USR_ERROR "/sgate/common/user-error.html"
+#define URL_OIDC_USR_LOGIN "/sgate/common/user-login.html"
 #define URL_OIDC_USR_PROFIL "user-profil"
 
 #define STATUS_OIDC_AUTH_DENY 403

@@ -29,8 +29,6 @@
 #define AFB_BINDING_VERSION 4
 #include <afb/afb-verbosity.h>
 #include <libafb/sys/verbose.h>
-#include <libafb/extend/afb-extension.h>
-
 
 // few magic to help debugging
 typedef enum {

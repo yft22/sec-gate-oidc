@@ -74,7 +74,6 @@ static const oidcAlcsT dfltAcls= {
 static const httpOptsT dfltOpts= {
 	.agent= HTTP_DFLT_AGENT,
 	.headers= dfltHeaders,
-	.freeCtx= free,
 	.follow=1,
 	// .verbose=1
 };
@@ -115,6 +114,7 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
 	err= fedidCheck (rqtCtx->hreq, idp, fedKey, fedUser);
 	if (err) goto OnErrorExit;
 
+    free (rqtCtx);
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
@@ -189,15 +189,15 @@ static int githubAccessToken (afb_hreq *hreq, oidcIdpT *idp, const char *redirec
 		{NULL} // terminator
 	};
 
-	idpRqtCtxT *ctx = calloc (1, sizeof(idpRqtCtxT));
-	ctx->hreq= hreq;
-	ctx->idp= idp;
+	idpRqtCtxT *rqtCtx = calloc (1, sizeof(idpRqtCtxT));
+	rqtCtx->hreq= hreq;
+	rqtCtx->idp= idp;
 
 	// send asynchronous post request with params in query // https://gist.github.com/technoweenie/419219
 	err= httpBuildQuery (idp->uid, url, sizeof(url), NULL /* prefix */, idp->wellknown->accessTokenUrl, params);
 	if (err) goto OnErrorExit;
 
-	err= httpSendPost(oidc->httpPool, url, &dfltOpts, NULL/*token*/, (void*)1/*post*/,0 /*no data*/, githubAccessTokenCB, ctx);
+	err= httpSendPost(oidc->httpPool, url, &dfltOpts, NULL/*token*/, (void*)1/*post*/,0 /*no data*/, githubAccessTokenCB, rqtCtx);
 	if (err) goto OnErrorExit;
 
 	return 0;

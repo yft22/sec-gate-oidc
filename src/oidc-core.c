@@ -51,7 +51,7 @@ const struct argp_option AfbExtensionOptionsV1[] = {
 };
 
 // Pase and load config.json info oidc global context
-int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ) {
+int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ, char const *uid) {
 	oidcCoreHdlT *oidc=calloc (1, sizeof(oidcCoreHdlT));
 	oidc->magic= MAGIC_OIDC_MAIN;
 	oidc->uid= AfbExtensionManifest.name;

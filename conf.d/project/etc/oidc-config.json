@@ -26,7 +26,7 @@
           "identityApiUrl": "https://api.github.com/user",
         },
         "acls": {
-          "login": "/github/login",
+          "login": "/sgate/github/login",
           "timeout": 600
         },
         "profils": [
@@ -41,11 +41,8 @@
         {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "role": ["user","admin"], "lazy":1}
       ],
       "alias": [
-        {"uid": "user-error"  , "url":"/user/error", "path":"idps/user/error" },
-        {"uid": "user-profil" , "url":"/user/profil", "path":"idps/user/profil" },
-        {"uid": "user-login"  , "url":"/user/login", "path":"idps/user/login" },
-        {"uid": "github"  , "url":"/github","loa":2, "from":"github", "path":"idps/github" },
-        {"uid": "idp-github"  , "url":"/idp/github","loa":2, "from":"github", "path":"idps/github" },
+        {"uid": "idp-common"  , "url":"/sgate/common", "path":"idps/common" },
+        {"uid": "idp-github"  , "url":"/sgate/github","loa":2, "from":"github", "path":"idps/github" },
         {"uid": "public" , "url":"/public", "path":"public" },
         {"uid": "private", "url":"/private", "loa":1, "path":"private" },
         {"uid": "admin"  , "url":"/idp/admin", "loa":2, "prio":1, "role":"admin", "path":"idps/admin" },
