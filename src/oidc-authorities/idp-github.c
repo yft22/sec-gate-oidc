@@ -67,8 +67,9 @@ static const oidcWellknownT dfltWellknown= {
 	 .identityApiUrl= "https://api.github.com/user",
 };
 
-static const oidcAlcsT dfltAcls= {
+static const oidcStaticsT dfltstatic= {
   .aliasLogin="/github/auth/login",
+  .aliasLogo="/sgate/github/logo-64px.png"
 };
 
 static const httpOptsT dfltOpts= {
@@ -97,7 +98,7 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
 	// unwrap user profil
 	json_object *profilJ= json_tokener_parse(httpRqt->body);
 	if (!profilJ) goto OnErrorExit;
-    fprintf (stderr, "**** user profil=%s", json_object_get_string (profilJ));
+    fprintf (stderr, "**** user profil=%s\n", json_object_get_string (profilJ));
 
 	// build social fedkey from idp->uid+github->id
 	fedSocialRawT *fedKey= calloc (1, sizeof(fedSocialRawT));
@@ -106,7 +107,7 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
 
 	fedUserRawT *fedUser= calloc (1, sizeof(fedUserRawT));
 	fedUser->pseudo= json_object_dup_key_value (profilJ, "login");
-	fedUser->avatar= json_object_dup_key_value (profilJ, "avatar");
+	fedUser->avatar= json_object_dup_key_value (profilJ, "avatar_url");
 	fedUser->name= json_object_dup_key_value (profilJ, "name");
 	fedUser->company= json_object_dup_key_value (profilJ, "company");
 	fedUser->email= json_object_dup_key_value (profilJ, "email");
@@ -220,7 +221,7 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 	int requestedLoa =afb_session_get_loa (hreq->comreq.session, "ask");
 
 	// add afb-binder endpoint to login redirect alias
-    status= afb_hreq_make_here_url(hreq,idp->acls->aliasLogin,redirectUrl,sizeof(redirectUrl));
+    status= afb_hreq_make_here_url(hreq,idp->statics->aliasLogin,redirectUrl,sizeof(redirectUrl));
     if (status < 0) goto OnErrorExit;
 
 	// if no code then set state and redirect to IDP
@@ -286,7 +287,7 @@ int githubInitCB (oidcIdpT *idp, json_object *configJ, idpGenericCbT *oidcCB) {
 
 	oidcDefaultsT defaults = {
 		. credentials= NULL,
-		. acls=  &dfltAcls,
+		. statics=  &dfltstatic,
 		. wellknown = &dfltWellknown,
 		. profils=  dfltProfils,
 		. headers = dfltHeaders,

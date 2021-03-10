@@ -50,6 +50,34 @@ const struct argp_option AfbExtensionOptionsV1[] = {
 	{ .name=0, .key=0, .doc=0 }
 };
 
+
+static oidGlobalsT* globalConfig (json_object *globalJ) {
+    int err;
+    json_object *commentJ;
+    oidGlobalsT *global= (oidGlobalsT*) calloc (1, sizeof(oidGlobalsT));
+
+    if (globalJ) {
+        err= wrap_json_unpack (globalJ, "{s?o s?s s?s s?s}"
+            , "info", &commentJ
+            , "login", &global->loginUrl
+            , "error", &global->errorUrl
+            , "register", &global->registerUrl
+        );
+        if (err < 0) goto OnErrorExit;
+    }
+
+    if (!global->loginUrl) global->loginUrl= URL_OIDC_USR_LOGIN;
+    if (!global->registerUrl) global->loginUrl= URL_OIDC_USR_REGISTER;
+    if (!global->errorUrl) global->errorUrl= URL_OIDC_USR_ERROR;
+
+    return (global);
+
+OnErrorExit:
+    free (global);
+    return NULL;
+}
+
+
 // Pase and load config.json info oidc global context
 int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ, char const *uid) {
 	oidcCoreHdlT *oidc=calloc (1, sizeof(oidcCoreHdlT));
@@ -62,9 +90,11 @@ int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ, char const *uid)
 	err= idpPLuginRegistryInit();
 	if (err) goto OnErrorExit;
 
-	json_object *idpsJ=NULL, *aliasJ=NULL, *apisJ=NULL;
-	err= wrap_json_unpack (oidcJ, "{s?s,s?o,s?i,s?o,s?o,s?o}"
+	json_object *idpsJ=NULL, *aliasJ=NULL, *apisJ=NULL, *globalJ=NULL;
+	err= wrap_json_unpack (oidcJ, "{s?s,s?s,s?o,s?o,s?i,s?o,s?o,s?o}"
+		, "api" , &oidc->api
 		, "info" , &oidc->info
+        , "globals", &globalJ
 		, "idp" , &idpsJ
 		, "verbose", &oidc->verbose
  		, "idps", &idpsJ
@@ -76,10 +106,13 @@ int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ, char const *uid)
         goto OnErrorExit;
 	}
 
+    if (!oidc->api) oidc->api= oidc->uid;
+    
 	oidc->idps= (oidcIdpT*)idpParseConfig (oidc, idpsJ);
 	oidc->aliases= (oidcAliasT*)aliasParseConfig(oidc, aliasJ);
 	oidc->apis= (oidcApisT*)apisParseConfig(oidc, apisJ);
-	if (!oidc->idps || !oidc->aliases || !oidc->apis)  goto OnErrorExit;
+    oidc->globals= globalConfig(globalJ);
+	if (!oidc->idps || !oidc->aliases || !oidc->apis || !oidc->globals)  goto OnErrorExit;
 
 	*ctx= oidc;
 	return 0;

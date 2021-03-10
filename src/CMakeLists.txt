@@ -43,7 +43,7 @@ PROJECT_TARGET_ADD(oidc-sgate)
 		PREFIX "afb-"
 		LABELS "LIBRARY"
         SUFFIX ".extso"
-		LINK_FLAGS "-Wl,--version-script=${PROJECT_SOURCE_DIR}/conf.d/cmake/afb-ext-link.flags"
+		# LINK_FLAGS "-Wl,--version-script=${PROJECT_SOURCE_DIR}/conf.d/cmake/afb-ext-link.flags"
 		IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/afb-${TARGET_NAME}.extso
 		OUTPUT_NAME ${TARGET_NAME}
 	)

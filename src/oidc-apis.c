@@ -27,7 +27,7 @@
 #include "oidc-apis.h"
 
 #include <assert.h>
-#include <afb/afb-binding-v4.h>
+// #include <afb/afb-binding-v4.h>
 #include <libafb/core/afb-v4.h>
 #include <libafb/core/afb-api-v4.h>
 #include <libafb/core/afb-string-mode.h>
@@ -87,7 +87,7 @@ int apisRegisterOne (oidcCoreHdlT *oidc, oidcApisT *api, afb_apiset *declare_set
     // If needed create an alias
     if (api->uri[index]) {
         if (strcasecmp (&api->uri[index+1], api->uid)) {
-            err= afb_alias_api(&api->uri[index+1],api->uid);
+            err= afb_api_v4_add_alias_hookable(oidc->apiv4, &api->uri[index+1],api->uid);
             if (err) goto OnErrorExit;
         }
 

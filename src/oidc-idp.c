@@ -71,10 +71,10 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa) {
 			wrap_json_pack (&idpJ, "{ss ss* ss* ss* ss* ss* so}"
 				,"uid",  idp->uid
 				,"info", idp->info
-				,"logo", idp->logo
+				,"logo", idp->statics->aliasLogo
 				,"client-id", idp->credentials->clientId
 				,"token-url", idp->wellknown->loginTokenUrl
-				,"login-url", idp->acls->aliasLogin
+				,"login-url", idp->statics->aliasLogin
 				,"profils", profilsJ
 			);
 
@@ -233,30 +233,31 @@ OnErrorExit:
   return NULL;
 }
 
-static const oidcAlcsT *idpParseAcls (oidcIdpT *idp, json_object *aclsJ, const oidcAlcsT *defaults) {
+static const oidcStaticsT *idpParsestatic (oidcIdpT *idp, json_object *staticJ, const oidcStaticsT *defaults) {
 
     // no config use defaults
-    if (!aclsJ) return defaults;
+    if (!staticJ) return defaults;
 
-	oidcAlcsT *acls=calloc(1, sizeof(oidcAlcsT));
-	if (defaults) memcpy(acls, &defaults, sizeof(oidcAlcsT));
+	oidcStaticsT *statics=calloc(1, sizeof(oidcStaticsT));
+	if (defaults) memcpy(statics, &defaults, sizeof(oidcStaticsT));
 
-	int err= wrap_json_unpack (aclsJ, "{s?s,s?i,s?o}"
-		, "login", &acls->aliasLogin
-		, "timeout", &acls->timeout
+	int err= wrap_json_unpack (staticJ, "{s?s,s?s s?i}"
+		, "login", &statics->aliasLogin
+		, "logo",  &statics->aliasLogo
+		, "timeout", &statics->timeout
 		);
 	if (err) {
-		EXT_CRITICAL ("[idp-acls-error] idp=%s parsing fail alcs expect: loa,roles,callback,login,profil (idpParseAlcs)", idp->uid);
+		EXT_CRITICAL ("[idp-static-error] idp=%s parsing fail alcs expect: loa,roles,callback,login,profil (idpParseAlcs)", idp->uid);
 		goto OnErrorExit;
 	}
 
 	// if session timeout null use default (600s)
-	if (acls->timeout <0) acls->timeout= EXT_SESSION_TIMEOUT;
+	if (statics->timeout <0) statics->timeout= EXT_SESSION_TIMEOUT;
 
-    return(acls);
+    return(statics);
 
 OnErrorExit:
-  free(acls);
+  free(statics);
   return NULL;
 }
 
@@ -292,19 +293,18 @@ static int idpParseOidcConfig (oidcIdpT *idp, json_object *configJ, oidcDefaults
     }
 
     // unpack main IDP config
-    json_object* credentialsJ=NULL, *aclsJ=NULL, *wellknownJ=NULL, *headersJ=NULL, *profilsJ;
-    int err= wrap_json_unpack (configJ, "{ss s?s s?s s?o s?o s?o s?o}"
+    json_object* credentialsJ=NULL, *staticJ=NULL, *wellknownJ=NULL, *headersJ=NULL, *profilsJ;
+    int err= wrap_json_unpack (configJ, "{ss s?s s?o s?o s?o s?o}"
       , "uid", &idp->uid
       , "info", &idp->info
-      , "logo", &idp->logo
       , "credentials", &credentialsJ
-      , "acls", &aclsJ
+      , "static", &staticJ
       , "profils", &profilsJ
       , "wellknown", &wellknownJ
       , "headers", &headersJ
       );
     if (err) {
-      EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','acls','alias' (githubInitCB)", idp->uid);
+      EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (githubInitCB)", idp->uid);
       goto OnErrorExit;
     }
 
@@ -312,13 +312,13 @@ static int idpParseOidcConfig (oidcIdpT *idp, json_object *configJ, oidcDefaults
     idp->magic= MAGIC_OIDC_IDP;
     idp->ctx= ctx;
     idp->credentials= idpParseCredentials (idp, credentialsJ, defaults->credentials);
-    idp->acls= idpParseAcls (idp, aclsJ, defaults->acls);
+    idp->statics= idpParsestatic (idp, staticJ, defaults->statics);
     idp->profils= idpParseProfils (idp, profilsJ, defaults->profils);
     idp->wellknown= idpParseWellknown (idp, wellknownJ, defaults->wellknown);
     idp->headers = idpParseHeaders(idp, headersJ, defaults->headers);
 
     // any error is fatal, even if section check continue after 1st error
-    if (!idp->wellknown || !idp->acls || !idp->credentials || !idp->headers) goto OnErrorExit;
+    if (!idp->wellknown || !idp->statics || !idp->credentials || !idp->headers) goto OnErrorExit;
 
     idp->ctx= ctx; // optional idp context specific handle
     return 0;
@@ -358,7 +358,7 @@ OnErrorExit:
 idpGenericCbT idpGenericCB = {
   .magic= MAGIC_OIDC_CBS,
   .parseCredentials= idpParseCredentials,
-  .parseAcls= idpParseAcls,
+  .parsestatic= idpParsestatic,
   .parseWellknown= idpParseWellknown,
   .parseHeaders= idpParseHeaders,
   .parseConfig= idpParseOidcConfig,
@@ -436,9 +436,9 @@ OnErrorExit:
 int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv) {
   int err;
 
-  EXT_DEBUG ("[idp-register] uid=%s login='%s'", idp->uid, idp->acls->aliasLogin);
+  EXT_DEBUG ("[idp-register] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
 
-  err= afb_hsrv_add_handler(hsrv, idp->acls->aliasLogin, idp->plugin->loginCB, idp, EXT_HIGHEST_PRIO);
+  err= afb_hsrv_add_handler(hsrv, idp->statics->aliasLogin, idp->plugin->loginCB, idp, EXT_HIGHEST_PRIO);
   if (!err) goto OnErrorExit;
 
 

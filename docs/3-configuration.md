@@ -78,10 +78,10 @@ Default when prefix is not defined. If config.json declare more than one 'sandbo
 * **namespace**: create an unprivileged rootless container based on [unshare](https://www.kernel.org/doc/html/v4.16/userspace-api/unshare.html?highlight=unshare#benefits) kernel call.
 * **commands**: the list of commands use wish to expose as HTML5 api/verb.
 
-#### acls (basic access control)
+#### static (basic access control)
 
 ```json
-  "acls": {
+  "static": {
         "umask": "027",
         "user": "daemon",
         "group":"dialout",
@@ -90,7 +90,7 @@ Default when prefix is not defined. If config.json declare more than one 'sandbo
 ```
 
 * **umask**: standard Linux umask, if not defined use system default.
-* **user**:  either 'fullname' or 'uid'. **WARNING**: when running 'root' privileged mode, 'acl->user' must be defined. When 'root' is requirer, you have to enforce it and explicitly add 'user:root' in your acls config. Note than running 'root' is a bad behavior. As much as possible you should run with a less privilege user and add only minimum requirer capabilities to run your command.
+* **user**:  either 'fullname' or 'uid'. **WARNING**: when running 'root' privileged mode, 'acl->user' must be defined. When 'root' is requirer, you have to enforce it and explicitly add 'user:root' in your static config. Note than running 'root' is a bad behavior. As much as possible you should run with a less privilege user and add only minimum requirer capabilities to run your command.
 * **group**: equivalent to user
 * **chdir**: change dir before child fork/exec.
 * **label**: set SeLinux/Smack security label for oidc children to either: LSM_LABEL_SBOX, LSM_LABEL_API, LSM_LABEL_CMD or LSM_LABEL_NO. Tagging children with a security label requirer either SMACK or SeLinux on the platform as well as running under privileged mode.
@@ -177,7 +177,7 @@ Namespace allows to restrict children visibility to the filesystem by executing 
 
 * **shares**: defines what existing namespace you import from afb-oidc-ext to forked children.  Shares support 'default','disable','enable' tags. Default depend on the hosting environment but generally match with 'enable'.
   * **all**: set all following namespaces.
-  * **users**: allow or not access to core userspace. When 'disable' children visible UID/GID do not match with hosting environment. *Note that in order to simplify developer live afb-oidc-ext will set a 'fake' uid/gid matching with the one define with namespace->acls.*
+  * **users**: allow or not access to core userspace. When 'disable' children visible UID/GID do not match with hosting environment. *Note that in order to simplify developer live afb-oidc-ext will set a 'fake' uid/gid matching with the one define with namespace->static.*
   * **cgroup**: when 'disable' children see a new empty cgroup. This even if previously defined cgroups still apply.
   * **net**: remove network visibility. When 'disable' the only remaining available network is 'localhost'. This mode allows the children to exchange with the hosting environment, while preventing them from accessing the Internet.
   * **ipc**: equivalent to 'net' restriction but for Linux 'ipc' mgsset/get system call.

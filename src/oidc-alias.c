@@ -26,6 +26,7 @@
 #include "oidc-core.h"
 #include "oidc-alias.h"
 #include "oidc-idsvc.h"
+#include "http-client.h"
 
 #define WITH_LIBMICROHTTPD 1
 #include <libafb/extend/afb-extension.h>
@@ -36,6 +37,7 @@
 
 #include <string.h>
 #include <microhttpd.h>
+#include <locale.h>
 
 // dummy unique value for session key
 MAGIC_OIDC_SESSION(oidcIdpLoa);
@@ -78,12 +80,33 @@ static void aliasFreeCookie (void* ctx) {
 // create aliasFrom cookie and redirect to login page
 static void aliasRedirectLogin (afb_hreq *hreq, oidcAliasT *alias) {
 	oidcCookieT *cookie= malloc (sizeof(oidcCookieT));
+    int err;
 
 	cookie->url= strdup (hreq->url);
 	cookie->alias=alias;
 	afb_session_set_cookie (hreq->comreq.session, oidcAliasCookie, cookie, aliasFreeCookie);
 	afb_req_common_set_token (&hreq->comreq, NULL);
-	afb_hreq_redirect_to(hreq, URL_OIDC_USR_LOGIN, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+
+	char url[EXT_URL_MAX_LEN];
+	httpKeyValT query[]= {
+			{.tag="action"    , .value="login"},
+			{.tag="language"  , .value=setlocale(LC_CTYPE, "")},
+
+			{NULL} // terminator
+	};
+
+    err= httpBuildQuery (alias->uid, url, sizeof(url), NULL /* prefix */, alias->oidc->globals->loginUrl, query);
+	if (err) {
+        EXT_ERROR ("[fail-login-redirect] fail to build redirect url (aliasRedirectLogin)");
+        goto OnErrorExit;
+    }
+
+	EXT_DEBUG ("[alias-redirect-login] %s (aliasRedirectLogin)", url);
+	afb_hreq_redirect_to(hreq, url, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
+    return;
+
+OnErrorExit:
+	afb_hreq_redirect_to(hreq, alias->oidc->globals->loginUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 }
 
 static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
@@ -142,7 +165,7 @@ int aliasRegisterOne (oidcCoreHdlT *oidc, oidcAliasT *alias, afb_hsrv *hsrv) {
 	if (status != AFB_HSRV_OK) goto OnErrorExit;
 
 	// if alias full path does not start with '/' then prefix it with http_root_dir
-	if (alias->path[0] == '/') rootdir=NULL;
+	if (alias->path[0] == '/') rootdir="";
 	else rootdir= afb_common_rootdir_get_path();
 
 	status= afb_hsrv_add_alias_path(hsrv, alias->url, rootdir, alias->path, alias->priority-1, 0 /*not relax*/);

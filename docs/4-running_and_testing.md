@@ -99,7 +99,7 @@ Check for conf.d/project/etc for more advance samples.
 Note: depending if you start afb-oidc-ext in a privilege mode or not, some behavior may change. For example "user/group" or "capacity" required to start the binder in admin mode with sudo.
 
 ```log
-- NOTICE: [API oidc] sandboxParseAcls: [ignoring user/group acls] sandbox='sandbox-demo' no uid/gid privileges ignoring user='"daemon"' group='"dialout"' [/home/fulup/afb-oidc-ext/src/- oidc-sandbox.c:510,sandboxParseAcls]
+- NOTICE: [API oidc] sandboxParsestatic: [ignoring user/group static] sandbox='sandbox-demo' no uid/gid privileges ignoring user='"daemon"' group='"dialout"' [/home/fulup/afb-oidc-ext/src/- oidc-sandbox.c:510,sandboxParsestatic]
 - NOTICE: [API oidc] [capability ignored] sandbox='sandbox-demo' capability='KILL[set]' (sandboxParseOneCap)
 - NOTICE: [API oidc] [cgroups ignored] sandbox=sandbox-demo user=1000 not privileged (sandboxLoadOne)
 ```

@@ -47,23 +47,22 @@ typedef struct {
   int loa;
 } oidcProfilsT;
 
-typedef struct oidcAlcsS {
+typedef struct oidcStaticsS {
   int loa;
   int timeout;
-  const char *aliasAuth;
+  const char *aliasLogo;
   const char *aliasLogin;
-} oidcAlcsT;
+} oidcStaticsT;
 
 typedef struct oidcIdpS {
   int magic;
   const char *uid;
   const char *info;
-  const char *logo;
   const oidcCredentialsT *credentials;
   const oidcWellknownT *wellknown;
   const httpKeyValT *headers;
   const oidcProfilsT *scopes;
-  const oidcAlcsT *acls;
+  const oidcStaticsT *statics;
   const oidcProfilsT *profils;
   void *ctx;
   const idpPluginT *plugin;
@@ -72,7 +71,7 @@ typedef struct oidcIdpS {
 
 typedef struct {
   const oidcCredentialsT *credentials;
-  const oidcAlcsT *acls;
+  const oidcStaticsT *statics;
   const oidcWellknownT *wellknown;
   const oidcProfilsT *profils;
   const httpKeyValT *headers;
@@ -82,7 +81,7 @@ typedef struct {
 typedef struct idpGenericCbS {
   const oidcMagicT magic;
   const oidcCredentialsT* (*parseCredentials) (oidcIdpT *idp, json_object *credentialJ, const oidcCredentialsT *defaults);
-  const oidcAlcsT* (*parseAcls) (oidcIdpT *idp, json_object *aclsJ, const oidcAlcsT *defaults);
+  const oidcStaticsT* (*parsestatic) (oidcIdpT *idp, json_object *staticJ, const oidcStaticsT *defaults);
   const oidcWellknownT* (*parseWellknown) (oidcIdpT *idp, json_object *wellknownJ, const oidcWellknownT *defaults);
   const httpKeyValT* (*parseHeaders) (oidcIdpT *idp, json_object *headersJ, const httpKeyValT *defaults);
   int (*parseConfig) (oidcIdpT *idp, json_object *configJ, oidcDefaultsT *defaults, void*ctx);

@@ -9,10 +9,20 @@
   "extension": "./package/lib/afb-oidc-sgate.extso",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
-  "alias": ["/devtools:/usr/share/afb-ui-devtools/binder"],
-
+  "alias": [
+      "/devtools:/usr/share/afb-ui-devtools/binder",
+    ],
+  //"binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
   "@extconfig": {
     "oidc-sgate": {
+      "api": "sgate",
+      "info": "oidc secure gateway demo config",
+      "globals": {
+          "info" : "Rodrigo demo uses a 'one-page' app",
+          "login": "/sgate/common/index.html",
+          "register": "/sgate/common/index.html",
+          "error": "/sgate/common/index.html"
+      },
       "idp": {
         "uid": "github",
         "info": "Demo Client for afb-binder test",
@@ -25,8 +35,9 @@
           "accessTokenUrl": "https://github.com/login/oauth/access_token",
           "identityApiUrl": "https://api.github.com/user",
         },
-        "acls": {
+        "static": {
           "login": "/sgate/github/login",
+          "logo": "/sgate/github/logo-64px.png",
           "timeout": 600
         },
         "profils": [
@@ -41,8 +52,8 @@
         {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "role": ["user","admin"], "lazy":1}
       ],
       "alias": [
-        {"uid": "idp-common"  , "url":"/sgate/common", "path":"idps/common" },
-        {"uid": "idp-github"  , "url":"/sgate/github","loa":2, "from":"github", "path":"idps/github" },
+        {"uid": "idp-common"  , "url":"/sgate/common", "path":"/home/fulup/Workspace/AFB-binder/afb-oidc-rodrigo" },
+        {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "from":"github", "path":"idps/github" },
         {"uid": "public" , "url":"/public", "path":"public" },
         {"uid": "private", "url":"/private", "loa":1, "path":"private" },
         {"uid": "admin"  , "url":"/idp/admin", "loa":2, "prio":1, "role":"admin", "path":"idps/admin" },

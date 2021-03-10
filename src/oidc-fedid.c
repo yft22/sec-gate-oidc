@@ -23,13 +23,16 @@
 
 #include "oidc-core.h"
 #include "oidc-alias.h"
-#include "oidc-fedid.h"
 #include <http-client.h>
 
+#undef AFB_BINDING_VERSION
+#include "libafb/core/afb-v4.h"
 #include <libafb/core/afb-session.h>
 #include <libafb/http/afb-hreq.h>
 #include <libafb/core/afb-data.h>
 #include <libafb/core/afb-api-v4.h>
+
+#include "oidc-fedid.h"
 
 #include <assert.h>
 #include <string.h>
@@ -47,10 +50,11 @@ typedef struct {
 } oidcFedidHdlT;
 
 // if fedkey exists callback receive local store user profil otherwise we should create it
-static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_t replies[], struct afb_api_v4 *api) {
+static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_x4_t const replies[], struct afb_api_v4 *api) {
     char *errorMsg = "[invalid-profil] Fail to process user profile (fedidCheckCB)";
 	oidcFedidHdlT *userInfoHdl= (oidcFedidHdlT*)ctx;
-    afb_data_t reply, data;
+   	char url[EXT_URL_MAX_LEN];
+    afb_data_x4_t reply, data;
 	fedUserRawT *fedUser;
 	oidcProfilsT *idpProfil;
 	oidcCookieT *cookie;
@@ -59,17 +63,35 @@ static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_t re
 
 	int err;
 
-	if (status < 0) {
+    // internal API error
+    if (status < 0) goto OnErrorExit;
+
+    switch (status) {
+
+	case FEDID_USER_UNKNOWN:
 		// fedkey not fount let's store social authority profil into session and redirect user on userprofil creation
         userInfoHdl->fedUser->ucount++;
         userInfoHdl->fedSocial->ucount++;
 		afb_session_set_cookie (hreq->comreq.session, oidcFedUserCookie, userInfoHdl->fedUser, fedUserFreeCB);
 		afb_session_set_cookie (hreq->comreq.session, oidcFedSocialCookie, userInfoHdl->fedSocial, fedSocialFreeCB);
-		redirect= URL_OIDC_USR_PROFIL;
+	    httpKeyValT query[]= {
+			{.tag="action"    , .value="register"},
+			{.tag="language"  , .value=setlocale(LC_CTYPE, "")},
+			{NULL} // terminator
+	    };
+        err= httpBuildQuery (userInfoHdl->idp->uid, url, sizeof(url), NULL /* prefix */, userInfoHdl->idp->oidc->globals->registerUrl, query);
+    	if (err) {
+            EXT_ERROR ("[fail-register-redirect] fail to build redirect url (fedidCheckCB)");
+            goto OnErrorExit;
+        }
+		redirect= url;
+        break;
 
-	} else {
+	case FEDID_USER_EXIST:
+        if (nreplies != 1) goto OnErrorExit;
+        
 		// fed key found let's push data with user-profil into session cookie
-		err= afb_data_convert(replies[0], fedUserObjType, &data);
+		err= afb_data_convert (replies[0], fedUserObjType, &data);
 		if (err < 0) goto OnErrorExit;
 		fedUser= (fedUserRawT*)afb_data_ro_pointer(replies[0]);
 
@@ -79,27 +101,32 @@ static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_t re
 		afb_session_get_cookie (hreq->comreq.session, oidcIdpProfilCookie, (void**) &idpProfil);
 		afb_session_set_loa (hreq->comreq.session, oidcIdpLoa, idpProfil->loa);
 
-		// let's store user profil into session cookie (/oidc/profil/get servs it)
+		// let's store user profil into session cookie (/oidc/profil/get serves it)
    		afb_session_set_cookie (hreq->comreq.session, oidcFedUserCookie, fedUser, fedUserFreeCB);
 
 
 		// everyting looks good let's return user to original page
 		afb_session_get_cookie (hreq->comreq.session, oidcAliasCookie, (void**)&cookie);
-		if (!cookie) goto OnErrorExit;
-	}
+	    redirect= cookie->alias->url;
+        break;
+
+        default:
+            goto OnErrorExit;
+    }
 	// free user info handle and redirect to initial targeted url
-	free (userInfoHdl);
+    EXT_DEBUG ("[fedid-authent-redirect] %s (fedidCheckCB)", url);
 	afb_hreq_redirect_to(hreq, redirect, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+	free (userInfoHdl);
 	return;
 
 OnErrorExit:
-    afb_hreq_redirect_to(hreq, URL_OIDC_USR_ERROR, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+    afb_hreq_redirect_to(hreq, userInfoHdl->idp->oidc->globals->errorUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 }
 
 // try to request user profile from its federation key
 int fedidCheck (afb_hreq *hreq, oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser) {
     int err;
-    afb_data_t argv[1];
+    afb_data_x4_t argv[1];
 
 	oidcFedidHdlT *userInfoHdl= malloc(sizeof(oidcFedidHdlT));
 	userInfoHdl->hreq=hreq;

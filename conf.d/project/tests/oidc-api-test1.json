@@ -8,10 +8,10 @@
   "sandboxes": [
     {
       "uid": "sandbox-test1",
-      "info": "test1 demo [basic acls, no namespace]",
+      "info": "test1 demo [basic static, no namespace]",
       "prefix": "admin",
       "verbose": 1,
-      "acls": {
+      "static": {
         "umask": "027",
         "user": "daemon",
         "group":"dialout",
@@ -94,7 +94,7 @@
         },
         {
           "uid": "home",
-          "info" : "list $HOME (may fail depending on acls->user)",
+          "info" : "list $HOME (may fail depending on statics->user)",
           "exec": {"cmdpath": "/bin/ls", "args": ["-l", "$HOME"]}
         }
       ]

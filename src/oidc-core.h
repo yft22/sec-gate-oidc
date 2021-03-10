@@ -36,18 +36,24 @@ typedef struct idpPluginS idpPluginT;
 #define MAGIC_OIDC_MAIN 321987
 #define MAGIC_OIDC_SESSION(VAR) void *VAR=&VAR
 
-#define URL_OIDC_USR_ERROR "/sgate/common/user-error.html"
-#define URL_OIDC_USR_LOGIN "/sgate/common/user-login.html"
-#define URL_OIDC_USR_PROFIL "user-profil"
+#define URL_OIDC_USR_ERROR "/sgate/common/error.html"
+#define URL_OIDC_USR_LOGIN "/sgate/common/login.html"
+#define URL_OIDC_USR_REGISTER "/sgate/common/register.html"
 
 #define STATUS_OIDC_AUTH_DENY 403
 
+typedef struct {
+    const char *loginUrl;
+    const char *errorUrl;
+    const char *registerUrl;
+} oidGlobalsT;
 
 // this structure is returned by plugin registration callback
 typedef struct {
   long magic;
   const char *uid;
   const char *info;
+  const char *api;
   int verbose;
   oidcAliasT *aliases;
   oidcApisT *apis;
@@ -56,5 +62,6 @@ typedef struct {
   const char *fedapi;
   oidcApisT *apisHash;
   afb_api_v4 *apiv4;
+  oidGlobalsT *globals;
 } oidcCoreHdlT;
 

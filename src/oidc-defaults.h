@@ -26,8 +26,7 @@
 #include <json-c/json.h>
 #include <wrap-json.h>
 
-#define AFB_BINDING_VERSION 4
-#include <afb/afb-verbosity.h>
+#define AFB_BINDING_NO_ROOT 1
 #include <libafb/sys/verbose.h>
 
 // few magic to help debugging
@@ -65,6 +64,7 @@ typedef enum {
 
 // return code
 #define AFB_HSRV_OK 1
+
 
 // make our live simpler
 typedef struct afb_hsrv afb_hsrv;
