@@ -11,7 +11,7 @@
       "info": "test3 demo [basic static, no namespace]",
       "prefix": "admin",
       "verbose": 1,
-      "static": {
+      "statics": {
         "umask": "027",
         "user": "daemon",
         "group":"dialout",

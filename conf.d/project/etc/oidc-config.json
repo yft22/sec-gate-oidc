@@ -23,28 +23,47 @@
           "register": "/sgate/common/index.html",
           "error": "/sgate/common/index.html"
       },
-      "idp": {
-        "uid": "github",
-        "info": "Demo Client for afb-binder test",
-        "credentials": {
-          "clientid": "7899e605a7c15ae42f07",
-          "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
-        },
-        "wellknown": {
-          "loginTokenUrl": "https://github.com/login/oauth/authorize",
-          "accessTokenUrl": "https://github.com/login/oauth/access_token",
-          "identityApiUrl": "https://api.github.com/user",
-        },
-        "static": {
-          "login": "/sgate/github/login",
-          "logo": "/sgate/github/logo-64px.png",
-          "timeout": 600
-        },
-        "profils": [
-            {"uid":"basic", "loa":1, "scope":"user:email"},
-            {"uid":"teams", "loa":2, "scope":"read:org", "label":"groups"}
-        ]
-      },
+      "idps": [
+        {
+            "uid": "pam-login",
+            "info": "Linux local account authentication",
+            "plugin": {
+              "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
+              "ldpath": "./package/lib/plugins/pam-auth.idpso:/usr/local/afb-oidc/lib/pam-auth.idpso",
+              "avatar":"/sgate/pam/triskel_iot_bzh_64px.png",
+              "gids":10
+            },
+            "statics": {
+                "login": "/sgate/pam/login",
+                "logo": "/sgate/pam/logo-64px.png",
+                "timeout": 600
+            },
+            "profils": [
+                {"uid":"login", "loa":1, "scope":"login"}
+            ]
+        }, {
+            "uid": "github",
+            "info": "Demo Client for afb-binder test",
+            "credentials": {
+            "clientid": "7899e605a7c15ae42f07",
+            "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
+            },
+            "wellknown": {
+                "loginTokenUrl": "https://github.com/login/oauth/authorize",
+                "accessTokenUrl": "https://github.com/login/oauth/access_token",
+                "identityApiUrl": "https://api.github.com/user",
+            },
+            "statics": {
+                "login": "/sgate/github/login",
+                "logo": "/sgate/github/logo-64px.png",
+                "timeout": 600
+            },
+            "profils": [
+                {"uid":"basic", "loa":1, "scope":"user:email"},
+                {"uid":"teams", "loa":2, "scope":"read:org", "label":"groups"}
+            ]
+        }
+      ],
       "apis": [
         {"uid": "fedid","info":"embedded social federated user identity svc","loa":0,"uri":"@fedid"},
         {"uid": "test1","lazy":1},
@@ -52,8 +71,9 @@
         {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "role": ["user","admin"], "lazy":1}
       ],
       "alias": [
-        {"uid": "idp-common"  , "url":"/sgate/common", "path":"/home/fulup/Workspace/AFB-binder/afb-oidc-rodrigo" },
+        //{"uid": "idp-common"  , "url":"/sgate/common", "path":"/home/fulup/Workspace/AFB-binder/afb-oidc-rodrigo" },
         {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "from":"github", "path":"idps/github" },
+        {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "from":"pam", "path":"idps/pam" },
         {"uid": "public" , "url":"/public", "path":"public" },
         {"uid": "private", "url":"/private", "loa":1, "path":"private" },
         {"uid": "admin"  , "url":"/idp/admin", "loa":2, "prio":1, "role":"admin", "path":"idps/admin" },

@@ -43,7 +43,6 @@
 MAGIC_OIDC_SESSION(oidcIdpLoa);
 MAGIC_OIDC_SESSION(oidcIdpRoles);
 MAGIC_OIDC_SESSION(oidcAliasCookie);
-;
 
 int aliasCheckRoles (afb_session *session, oidcAliasT *alias) {
 	char **avaliableRoles;

@@ -1,4 +1,4 @@
-PROJECT_TARGET_ADD(oidc-authorities)
+PROJECT_TARGET_ADD(idps-builtin)
 
 	# compile any C file starting with a lower case
 	file(GLOB CSOURCES [a-z]*.c)
@@ -14,6 +14,6 @@ PROJECT_TARGET_ADD(oidc-authorities)
 	# compilation include path
 	target_include_directories(${TARGET_NAME}
 	    INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
-	    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/..
-		PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../oidc-http
+	    PRIVATE ${CMAKE_SOURCE_DIR}/src
+		PRIVATE ${CMAKE_SOURCE_DIR}/src/oidc-http
     )

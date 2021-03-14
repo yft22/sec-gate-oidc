@@ -81,7 +81,7 @@ Default when prefix is not defined. If config.json declare more than one 'sandbo
 #### static (basic access control)
 
 ```json
-  "static": {
+  "statics": {
         "umask": "027",
         "user": "daemon",
         "group":"dialout",

@@ -67,9 +67,10 @@ static const oidcWellknownT dfltWellknown= {
 	 .identityApiUrl= "https://api.github.com/user",
 };
 
-static const oidcStaticsT dfltstatic= {
-  .aliasLogin="/github/auth/login",
-  .aliasLogo="/sgate/github/logo-64px.png"
+static const oidcStaticsT dfltstatics= {
+  .aliasLogin="/sgate/github/login",
+  .aliasLogo="/sgate/github/logo-64px.png",
+  .timeout=600
 };
 
 static const httpOptsT dfltOpts= {
@@ -287,7 +288,7 @@ int githubInitCB (oidcIdpT *idp, json_object *configJ, idpGenericCbT *oidcCB) {
 
 	oidcDefaultsT defaults = {
 		. credentials= NULL,
-		. statics=  &dfltstatic,
+		. statics=  &dfltstatics,
 		. wellknown = &dfltWellknown,
 		. profils=  dfltProfils,
 		. headers = dfltHeaders,

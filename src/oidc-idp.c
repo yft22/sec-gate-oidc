@@ -23,10 +23,11 @@
 
 #include "oidc-core.h"
 #include "oidc-idp.h"
-#include "oidc-authorities/idp-callbacks.h"
+#include "idps-builtin.h"
 #include <libafb/http/afb-hsrv.h>
 
 #include <string.h>
+#include <dlfcn.h>
 
 MAGIC_OIDC_SESSION(oidcIdpProfilCookie);
 
@@ -86,14 +87,14 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa) {
 
 
 // add a new plugin idp to the registry
-static int idpPluginRegisterCB (oidcIdpT *idp, idpPluginT *idpPlugin) {
+static int idpPluginRegisterCB (const char *pluginUid, idpPluginT *pluginCbs) {
     idpRegistryT *registryIdx, *registryEntry;
 
     // create holding hat for idp/decoder CB
     registryEntry= (idpRegistryT*) calloc (1, sizeof(idpRegistryT));
-    if (idp) registryEntry->uid = idp->uid;
+    if (pluginUid) registryEntry->uid = pluginUid;
 	else registryEntry->uid = "built-in";
-    registryEntry->plugin = idpPlugin;
+    registryEntry->plugin = pluginCbs;
 
     // if not 1st idp insert at the end of the chain
     if (!registryHead) {
@@ -108,16 +109,18 @@ static int idpPluginRegisterCB (oidcIdpT *idp, idpPluginT *idpPlugin) {
 
 static const oidcCredentialsT *idpParseCredentials (oidcIdpT *idp, json_object *credentialsJ, const oidcCredentialsT *defaults) {
 
-  oidcCredentialsT *credentials = calloc(1, sizeof(oidcCredentialsT));
-  if (defaults) memcpy(credentials, &defaults, sizeof(oidcCredentialsT));
+    oidcCredentialsT *credentials = calloc(1, sizeof(oidcCredentialsT));
+    if (defaults) memcpy(credentials, &defaults, sizeof(oidcCredentialsT));
 
-	int err= wrap_json_unpack (credentialsJ, "{ss,ss}"
-			, "clientid", &credentials->clientId
-			, "secret", &credentials->secret
-			);
-	if (err) {
-	  EXT_CRITICAL ("idp=%s parsing fail 'credentials' should define 'clientid','secret' (idpParseCredentials)", idp->uid);
-		goto OnErrorExit;
+	if (credentialsJ) {
+		int err= wrap_json_unpack (credentialsJ, "{ss,ss}"
+				, "clientid", &credentials->clientId
+				, "secret", &credentials->secret
+				);
+		if (err) {
+		EXT_CRITICAL ("idp=%s parsing fail 'credentials' should define 'clientid','secret' (idpParseCredentials)", idp->uid);
+			goto OnErrorExit;
+		}
 	}
 	return credentials;
 
@@ -241,13 +244,13 @@ static const oidcStaticsT *idpParsestatic (oidcIdpT *idp, json_object *staticJ, 
 	oidcStaticsT *statics=calloc(1, sizeof(oidcStaticsT));
 	if (defaults) memcpy(statics, &defaults, sizeof(oidcStaticsT));
 
-	int err= wrap_json_unpack (staticJ, "{s?s,s?s s?i}"
+	int err= wrap_json_unpack (staticJ, "{s?s,s?s,s?i}"
 		, "login", &statics->aliasLogin
 		, "logo",  &statics->aliasLogo
 		, "timeout", &statics->timeout
 		);
 	if (err) {
-		EXT_CRITICAL ("[idp-static-error] idp=%s parsing fail alcs expect: loa,roles,callback,login,profil (idpParseAlcs)", idp->uid);
+		EXT_CRITICAL ("[idp-static-error] idp=%s parsing fail statics expect: login,logo,plugin,timeout (idpParsestatic)", idp->uid);
 		goto OnErrorExit;
 	}
 
@@ -298,7 +301,7 @@ static int idpParseOidcConfig (oidcIdpT *idp, json_object *configJ, oidcDefaults
       , "uid", &idp->uid
       , "info", &idp->info
       , "credentials", &credentialsJ
-      , "static", &staticJ
+      , "statics", &staticJ
       , "profils", &profilsJ
       , "wellknown", &wellknownJ
       , "headers", &headersJ
@@ -342,11 +345,7 @@ static const idpPluginT *idpFindPlugin (const char *uid) {
           }
         }
     }
-
-    if (!idp) {
-        EXT_ERROR("[idp-not-found] idp=%s", uid);
-        goto OnErrorExit;
-    }
+    if (!idp) goto OnErrorExit;
 
     return idp;
 
@@ -365,29 +364,68 @@ idpGenericCbT idpGenericCB = {
 };
 
 static int idpParseOne (oidcCoreHdlT *oidc, json_object *idpJ, oidcIdpT *idp) {
-  int err;
+	int err;
 
-  // search idp with registry
-  const char *uid= json_object_get_string (json_object_object_get (idpJ,"uid"));
-    if (!uid) {
-    EXT_ERROR("[idp-parsing-error] invalid json requires: uid (idpParseOne)");
-	goto OnErrorExit;
-  }
+	// search idp with registry
+	const char *uid= json_object_get_string (json_object_object_get (idpJ,"uid"));
+		if (!uid) {
+		EXT_ERROR("[idp-parsing-error] invalid json requires: uid");
+		goto OnErrorExit;
+	}
 
-  idp->magic = MAGIC_OIDC_IDP;
-  idp->oidc= oidc;
-  idp->plugin= idpFindPlugin (uid);
-  if (!idp->plugin) goto OnErrorExit;
+	// if not builtin load plugin before processing any further the config
+	json_object *pluginJ = json_object_object_get (idpJ,"plugin");
+	if (pluginJ) {
+		const char *ldpath = json_object_get_string (json_object_object_get (pluginJ,"ldpath"));
+		if (!ldpath) {
+			EXT_CRITICAL("[idp-parsing-ldpath] idp=%s invalid json 'ldpath' missing", uid);
+			goto OnErrorExit;
+		} else {
+			void *handle=NULL;
+			char* filepath;
+			char* tokpath= strdup(ldpath);
+		    // split string into multiple configpath
+            for (filepath=strtok(tokpath, ":"); filepath; filepath=strtok(NULL, ":")) {
+				handle= dlopen (filepath, RTLD_NOW|RTLD_LOCAL);
+				if (handle) break;
+            }
+			free(tokpath);
+			if (!handle) {
+				EXT_ERROR("[idp-plugin-load] idp=%s plugin=%s error=%s", uid, ldpath, dlerror());
+				goto OnErrorExit; 
+			}
 
-  // call idp init callback
-  if (idp->plugin->initCB) {
-    err= idp->plugin->initCB(idp, idpJ, &idpGenericCB);
-    if (err) {
-      EXT_ERROR("[idp-initcb-fail] idp=%s not avaliable within registered idp plugins (idpParseOne)", uid);
-      goto OnErrorExit;
-    }
-  }
-  return 0;
+			oidcPluginRegisterCbT registerPluginCB= (oidcPluginRegisterCbT) dlsym(handle, "oidcPluginRegister");  
+			if (!registerPluginCB) {
+				EXT_ERROR("[idp-plugin-symb] idp=%s plugin=%s initcb='oidcPluginRegister' (symbol not found)", uid, filepath);
+				goto OnErrorExit; 
+			}
+
+			err= registerPluginCB (oidc, idpPluginRegisterCB);
+			if (err) {
+				EXT_ERROR("[idp-plugin-init] idp=%s plugin=%s initcb='oidcPluginRegister' (call fail)", uid, filepath);
+				goto OnErrorExit; 
+			}
+		}
+	}
+
+	idp->magic = MAGIC_OIDC_IDP;
+	idp->oidc= oidc;
+	idp->plugin= idpFindPlugin (uid);
+	if (!idp->plugin) {
+		EXT_ERROR("[idp-plugin-missing] fail to find idp=%s", uid);
+		goto OnErrorExit;
+	}
+
+	// call idp init callback
+	if (idp->plugin->initCB) {
+		err= idp->plugin->initCB(idp, idpJ, &idpGenericCB);
+		if (err) {
+		EXT_ERROR("[idp-initcb-fail] idp=%s not avaliable within registered idp plugins (idpParseOne)", uid);
+		goto OnErrorExit;
+		}
+	}
+	return 0;
 
 OnErrorExit:
 	return 1;
@@ -417,13 +455,13 @@ oidcIdpT const *idpParseConfig (oidcCoreHdlT *oidc, json_object *idpsJ) {
 			idps = calloc (2, sizeof(oidcIdpT));
 			err= idpParseOne (oidc, idpsJ, &idps[0]);
 			if (err) {
-				EXT_ERROR("[idp-parsing-error] ext=%s check config (AfbExtensionConfigV1)", oidc->uid);
+				EXT_ERROR("[idp-parsing-error] ext=%s check config", oidc->uid);
 				goto OnErrorExit;
 			}
 			break;
 
 		default:
-			EXT_ERROR("[idp-parsing-error] ext=%s idp config should be json/array|object (AfbExtensionConfigV1)", oidc->uid);
+			EXT_ERROR("[idp-parsing-error] ext=%s idp config should be json/array|object", oidc->uid);
 			goto OnErrorExit;
 	}
 	return idps;
@@ -445,7 +483,7 @@ int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv) {
   return 0;
 
 OnErrorExit:
-  EXT_ERROR("[idp-register-error] ext=%s idp=%s config should be json/array|object (AfbExtensionConfigV1)", oidc->uid, idp->uid);
+  EXT_ERROR("[idp-register-error] ext=%s idp=%s config should be json/array|object (idpRegisterOne)", oidc->uid, idp->uid);
   return 1;
 }
 

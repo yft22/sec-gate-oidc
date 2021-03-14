@@ -25,7 +25,9 @@
 #include "oidc-alias.h"
 #include <http-client.h>
 
-#undef AFB_BINDING_VERSION
+
+// #undef AFB_BINDING_VERSION
+#define AFB_BINDING_VERSION 4
 #include "libafb/core/afb-v4.h"
 #include <libafb/core/afb-session.h>
 #include <libafb/http/afb-hreq.h>

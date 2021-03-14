@@ -16,7 +16,8 @@
 
 # should include static http-client lib before main source
 add_subdirectory(oidc-http)
-add_subdirectory(oidc-authorities)
+add_subdirectory(idps-builtin)
+add_subdirectory(idps-plugins)
 
 # Add target to project dependency list
 PROJECT_TARGET_ADD(oidc-sgate)
@@ -31,8 +32,8 @@ PROJECT_TARGET_ADD(oidc-sgate)
    	target_include_directories(${TARGET_NAME}
         PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/oidc-http ${CMAKE_CURRENT_SOURCE_DIR}/autorities ${PROJECT_SOURCE_DIR}/../fedid-binding/src/fedid-types
     )
-    add_dependencies(${TARGET_NAME} afb-http-client oidc-authorities)
-    target_link_libraries(${TARGET_NAME} afb-http-client oidc-authorities)
+    add_dependencies(${TARGET_NAME} afb-http-client idps-builtin)
+    target_link_libraries(${TARGET_NAME} afb-http-client idps-builtin)
 
     target_compile_options(${TARGET_NAME}
         PUBLIC  -Wno-unused-variable

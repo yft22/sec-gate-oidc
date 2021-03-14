@@ -25,6 +25,7 @@
 
 #include "oidc-core.h"
 #include "oidc-http/http-client.h"
+#include <fedid-types.h>
 
 extern void* oidcIdpProfilCookie;
 
@@ -85,6 +86,7 @@ typedef struct idpGenericCbS {
   const oidcWellknownT* (*parseWellknown) (oidcIdpT *idp, json_object *wellknownJ, const oidcWellknownT *defaults);
   const httpKeyValT* (*parseHeaders) (oidcIdpT *idp, json_object *headersJ, const httpKeyValT *defaults);
   int (*parseConfig) (oidcIdpT *idp, json_object *configJ, oidcDefaultsT *defaults, void*ctx);
+  int (*fedidCheck) (afb_hreq *hreq, oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser);
 } idpGenericCbT;
 
 
@@ -103,6 +105,10 @@ typedef struct {
 	oidcIdpT *idp;
 	int loa;
 } idpRqtCtxT;
+
+// idp callback definition
+typedef int (*pluginRegisterCbT)(const char* pluginName, idpPluginT *pluginCb);
+typedef int (*oidcPluginRegisterCbT) (oidcCoreHdlT *oidc, pluginRegisterCbT registerCB);
 
 // idp exported functions
 const oidcIdpT *idpParseConfig (oidcCoreHdlT *oidc, json_object *idpsJ);
