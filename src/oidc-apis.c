@@ -27,7 +27,7 @@
 #include "oidc-apis.h"
 
 #include <assert.h>
-// #include <afb/afb-binding-v4.h>
+#include <afb/afb-binding-x4.h>
 #include <libafb/core/afb-v4.h>
 #include <libafb/core/afb-api-v4.h>
 #include <libafb/core/afb-string-mode.h>

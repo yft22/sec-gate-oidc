@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>PAM minimalist login (!!! passwd in clear text !!!)</title>
+</head>
+
+<script type="text/javascript">
+    var urlQuery;
+    (window.onpopstate = function () {
+    var match,
+        pl     = /\+/g,  // Regex for replacing addition symbol with a space
+        search = /([^&=]+)=?([^&]*)/g,
+        decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+        query  = window.location.search.substring(1);
+
+    urlQuery = {};
+    while (match = search.exec(query))
+       urlQuery[decode(match[1])] = decode(match[2]);
+    })();
+</script>
+
+<body>
+
+<img src="/sgate/pam/logo-64px.png" style="float:left;" alt="'logo'">    
+<h1>PAM simple login</h1>
+
+<form id="loginForm" action="/sgate/pam/login" method="get">
+    <label for="login">Login  :</label>
+    <input type="text" id="login" name="login" required><br><br>
+    <label for="passwd">Passwd:</label>
+    <input type="password" id="passwd" name="passwd" required><br><br>
+    <input type="hidden" id="state" name="state"> 
+    <input type="submit" value="Submit">
+    <script>
+        document.getElementById("state").value = urlQuery["state"];
+        document.getElementById("loginForm").action = urlQuery["redirect_uri"]; 
+    </script>
+</form> 
+
+</body>
+</html>

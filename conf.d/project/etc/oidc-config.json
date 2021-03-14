@@ -30,7 +30,7 @@
             "plugin": {
               "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
               "ldpath": "./package/lib/plugins/pam-auth.idpso:/usr/local/afb-oidc/lib/pam-auth.idpso",
-              "avatar":"/sgate/pam/triskel_iot_bzh_64px.png",
+              "avatar":"/sgate/pam/tux-iot.png",
               "gids":10
             },
             "statics": {

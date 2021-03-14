@@ -23,6 +23,7 @@
 
 #include "oidc-core.h"
 #include "oidc-idp.h"
+#include "oidc-fedid.h"
 #include "idps-builtin.h"
 #include <libafb/http/afb-hsrv.h>
 
@@ -361,6 +362,7 @@ idpGenericCbT idpGenericCB = {
   .parseWellknown= idpParseWellknown,
   .parseHeaders= idpParseHeaders,
   .parseConfig= idpParseOidcConfig,
+  .fedidCheck= fedidCheck,
 };
 
 static int idpParseOne (oidcCoreHdlT *oidc, json_object *idpJ, oidcIdpT *idp) {
