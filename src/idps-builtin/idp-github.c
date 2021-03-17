@@ -283,8 +283,7 @@ OnErrorExit:
 }
 
 // github is openid compliant. Provide default and delegate parsing to default ParseOidcConfigCB
-int githubInitCB (oidcIdpT *idp, json_object *configJ, idpGenericCbT *oidcCB) {
-	assert (oidcCB->magic == MAGIC_OIDC_CBS); // check provided callback magic
+int githubConfigCB (oidcIdpT *idp, json_object *configJ, ) {
 
 	oidcDefaultsT defaults = {
 		. credentials= NULL,
@@ -293,7 +292,7 @@ int githubInitCB (oidcIdpT *idp, json_object *configJ, idpGenericCbT *oidcCB) {
 		. profils=  dfltProfils,
 		. headers = dfltHeaders,
 	};
-	int err = oidcCB->parseConfig (idp, configJ, &defaults, NULL);
+	int err = idpParseOidcConfig (idp, configJ, &defaults, NULL);
 	if (err) goto OnErrorExit;
 	return 0;
 

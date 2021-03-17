@@ -135,14 +135,19 @@ int AfbExtensionDeclareV1(void *ctx, struct afb_apiset *declare_set, struct afb_
 		if (err) goto OnErrorExit;
 	}
 
+	// declare internal identity service api
+	err= idsvcDeclare (oidc, declare_set, call_set);
+	if (err) goto OnErrorExit;
+
+  	for (int idx=0; oidc->idps[idx].uid; idx++) {
+		err = idpRegisterOne (oidc, &oidc->idps[idx], declare_set, call_set);
+		if (err) goto OnErrorExit;
+	}
+
 	for (int idx=0; oidc->apis[idx].uid; idx++) {
 		err = apisRegisterOne (oidc, &oidc->apis[idx], declare_set, call_set);
 		if (err) goto OnErrorExit;
 	}
-
-	// declare internal identity service api
-	err= idsvcDeclare (oidc, declare_set, call_set);
-	if (err) goto OnErrorExit;
 
 	return 0;
 
@@ -157,20 +162,20 @@ int AfbExtensionHTTPV1 (void *ctx, afb_hsrv *hsrv) {
 	if (!oidc) goto OnErrorExit;
 	EXT_NOTICE("Extension %s got to http", oidc->uid);
 
-	for (int idx=0; oidc->aliases[idx].uid; idx++) {
-		err = aliasRegisterOne (oidc, &oidc->aliases[idx], hsrv);
-		if (err) goto OnErrorExit;
-	}
-
-	for (int idx=0; oidc->idps[idx].uid; idx++) {
-		err = idpRegisterOne (oidc, &oidc->idps[idx], hsrv);
-		if (err) goto OnErrorExit;
-	}
-
 	// create libcurl http multi pool
 	//oidc->httpPool= httpCreatePool(hsrv->efd, glueGetCbs(), oidc->verbose);
 	oidc->httpPool= httpCreatePool(NULL, glueGetCbs(), oidc->verbose);
 	if (!oidc->httpPool) goto OnErrorExit;
+
+	for (int idx=0; oidc->idps[idx].uid; idx++) {
+		err = idpRegisterLogin (oidc, &oidc->idps[idx], hsrv);
+		if (err) goto OnErrorExit;
+	}
+
+	for (int idx=0; oidc->aliases[idx].uid; idx++) {
+		err = aliasRegisterOne (oidc, &oidc->aliases[idx], hsrv);
+		if (err) goto OnErrorExit;
+	}
 
 	return 0;
 

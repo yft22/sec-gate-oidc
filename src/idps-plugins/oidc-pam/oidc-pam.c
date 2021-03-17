@@ -38,7 +38,7 @@
 #include <pwd.h>
 
 // keep track of oidc-idp.c generic utils callbacks
-static idpGenericCbT *idpGenericCbs=NULL;
+static idpGenericCbT *idpCallbacks=NULL;
 
 // provide dummy default values to oidc callbacks
 static const oidcCredentialsT noCredentials={}; 
@@ -131,7 +131,7 @@ static int pamAccessToken (afb_hreq *hreq, oidcIdpT *idp, const oidcProfilsT *pr
 	fedUser->company= NULL;
 	fedUser->email= NULL;
 
-	err= idpGenericCbs->fedidCheck (hreq, idp, fedKey, fedUser);
+	err= idpCallbacks->fedidCheck (hreq, idp, fedKey, fedUser);
 
 	// close pam transaction
 	pam_end(pamh, status);
@@ -141,7 +141,6 @@ static int pamAccessToken (afb_hreq *hreq, oidcIdpT *idp, const oidcProfilsT *pr
 	pam_end(pamh, status);
 	return 1;
 }
-
 
 // check user email/pseudo attribute
 static void pamCheckLoginPasswd(afb_req_v4 *request, unsigned nparams, afb_data_t const params[]) {
@@ -245,14 +244,23 @@ OnErrorExit:
 	return 1;
 }
 
+int pamRegisterCB (oidcIdpT *idp, struct afb_apiset *declare_set, struct afb_apiset *call_set) {
+    int err;
+
+   	// add a dedicate verb to check login/passwd from websocket
+	err= afb_api_add_verb(idp->oidc->apiv4, dfltWellknown.identityApiUrl, idp->info, pamCheckLoginPasswd, NULL, NULL, NULL, 0);
+	if (err) goto OnErrorExit; 
+
+    return 0;
+
+OnErrorExit:    
+    return 1;
+}
 
 // pam is a fake openif authority as it get everyting locally
-int pamInitCB (oidcIdpT *idp, json_object *idpJ, idpGenericCbT *idpConfigCbs) {
+int pamConfigCB (oidcIdpT *idp, json_object *idpJ) {
 	int err;
-	assert (idpConfigCbs->magic == MAGIC_OIDC_CBS); // check provided callback magic
-
-	// save generic idp utility callbacks
-	idpGenericCbs = idpConfigCbs;
+    assert (idpCallbacks);
 
     // only default profil is usefull
 	oidcDefaultsT defaults = {
@@ -277,11 +285,7 @@ int pamInitCB (oidcIdpT *idp, json_object *idpJ, idpGenericCbT *idpConfigCbs) {
 	}
 
 	// delegate config parsing to common idp utility callbacks
-	err = idpGenericCbs->parseConfig (idp, idpJ, &defaults, NULL);
-	if (err) goto OnErrorExit;
-
-	// add a dedicate verb to check login/passwd from websocket
-	err= afb_api_add_verb(idp->oidc->apiv4, dfltWellknown.identityApiUrl, idp->info, pamCheckLoginPasswd, NULL, NULL, NULL, 0);
+	err = idpCallbacks->parseConfig (idp, idpJ, &defaults, NULL);
 	if (err) goto OnErrorExit;
 
 	return 0;
@@ -292,15 +296,17 @@ int pamInitCB (oidcIdpT *idp, json_object *idpJ, idpGenericCbT *idpConfigCbs) {
 
 // pam sample plugin exposes only one IDP
 idpPluginT idpPamAuth[] = {
-  {.uid="pam-login" , .info="use Linux pam login to check user/passwd", .ctx="login", .initCB=pamInitCB, .loginCB=pamLoginCB},
+  {.uid="pam-login" , .info="use Linux pam login to check user/passwd", .ctx="login", .configCB=pamConfigCB, .registerCB=pamRegisterCB, .loginCB=pamLoginCB},
   {.uid= NULL} // must be null terminated
 };
 
-// Plugin registration call at config parsing time
-int oidcPluginRegister (oidcCoreHdlT *oidc, pluginRegisterCbT registerCB) {
+// Plugin init call at config.json parsing time
+int oidcPluginInit (oidcCoreHdlT *oidc, idpGenericCbT *idpGenericCbs) {
+  	assert (idpGenericCbs->magic == MAGIC_OIDC_CBS); // check provided callback magic
 
 	// plugin is already loaded
-	if (idpGenericCbs) return 0;
+	if (idpCallbacks) return 0;
+    idpCallbacks= idpGenericCbs;
 
 	// make sure plugin get read access to shadow
 	int handle= open ("/etc/shadow", O_RDONLY);
@@ -310,7 +316,7 @@ int oidcPluginRegister (oidcCoreHdlT *oidc, pluginRegisterCbT registerCB) {
 	}
 	close (handle);
 
-    int status= registerCB ("pam-plugin", idpPamAuth);
+    int status= idpCallbacks->pluginRegister ("pam-plugin", idpPamAuth);
     return status;
 
 OnErrorExit:

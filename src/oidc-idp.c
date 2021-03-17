@@ -289,10 +289,10 @@ OnErrorExit:
 }
 
 
-static int idpParseOidcConfig (oidcIdpT *idp, json_object *configJ, oidcDefaultsT *defaults, void*ctx) {
+int idpParseOidcConfig (oidcIdpT *idp, json_object *configJ, oidcDefaultsT *defaults, void*ctx) {
 
     if (!configJ) {
-      EXT_CRITICAL ("ext=%s github config must define client->id & client->secret (githubInitCB)", idp->uid);
+      EXT_CRITICAL ("ext=%s github config must define client->id & client->secret (githubConfigCB)", idp->uid);
       goto OnErrorExit;
     }
 
@@ -308,7 +308,7 @@ static int idpParseOidcConfig (oidcIdpT *idp, json_object *configJ, oidcDefaults
       , "headers", &headersJ
       );
     if (err) {
-      EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (githubInitCB)", idp->uid);
+      EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (githubConfigCB)", idp->uid);
       goto OnErrorExit;
     }
 
@@ -363,6 +363,7 @@ idpGenericCbT idpGenericCB = {
   .parseHeaders= idpParseHeaders,
   .parseConfig= idpParseOidcConfig,
   .fedidCheck= fedidCheck,
+  .pluginRegister= idpPluginRegisterCB,
 };
 
 static int idpParseOne (oidcCoreHdlT *oidc, json_object *idpJ, oidcIdpT *idp) {
@@ -397,15 +398,15 @@ static int idpParseOne (oidcCoreHdlT *oidc, json_object *idpJ, oidcIdpT *idp) {
 				goto OnErrorExit; 
 			}
 
-			oidcPluginRegisterCbT registerPluginCB= (oidcPluginRegisterCbT) dlsym(handle, "oidcPluginRegister");  
+			oidcPluginInitCbT registerPluginCB= (oidcPluginInitCbT) dlsym(handle, "oidcPluginInit");  
 			if (!registerPluginCB) {
-				EXT_ERROR("[idp-plugin-symb] idp=%s plugin=%s initcb='oidcPluginRegister' (symbol not found)", uid, filepath);
+				EXT_ERROR("[idp-plugin-symb] idp=%s plugin=%s initcb='oidcPluginInit' (symbol not found)", uid, filepath);
 				goto OnErrorExit; 
 			}
 
-			err= registerPluginCB (oidc, idpPluginRegisterCB);
+			err= registerPluginCB (oidc, &idpGenericCB);
 			if (err) {
-				EXT_ERROR("[idp-plugin-init] idp=%s plugin=%s initcb='oidcPluginRegister' (call fail)", uid, filepath);
+				EXT_ERROR("[idp-plugin-init] idp=%s plugin=%s initcb='oidcPluginInit' (call fail)", uid, filepath);
 				goto OnErrorExit; 
 			}
 		}
@@ -419,14 +420,11 @@ static int idpParseOne (oidcCoreHdlT *oidc, json_object *idpJ, oidcIdpT *idp) {
 		goto OnErrorExit;
 	}
 
-	// call idp init callback
-	if (idp->plugin->initCB) {
-		err= idp->plugin->initCB(idp, idpJ, &idpGenericCB);
-		if (err) {
-		EXT_ERROR("[idp-initcb-fail] idp=%s not avaliable within registered idp plugins (idpParseOne)", uid);
-		goto OnErrorExit;
-		}
-	}
+    // when call idp custom config callback
+    if (idp->plugin->configCB) err= idp->plugin->configCB (idp, idpJ);
+    else err= idpParseOidcConfig (idp, idpJ, NULL, NULL);
+    if (err) goto OnErrorExit;
+
 	return 0;
 
 OnErrorExit:
@@ -473,25 +471,43 @@ OnErrorExit:
 }
 
 // register IDP login and authentication callback endpoint
-int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv) {
-  int err;
+int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, struct afb_apiset *declare_set, struct afb_apiset *call_set) {
+    int err;
 
-  EXT_DEBUG ("[idp-register] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
+    EXT_DEBUG ("[idp-register] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
 
-  err= afb_hsrv_add_handler(hsrv, idp->statics->aliasLogin, idp->plugin->loginCB, idp, EXT_HIGHEST_PRIO);
-  if (!err) goto OnErrorExit;
-
+    // call idp init callback
+    if (idp->plugin->registerCB) {
+		err= idp->plugin->registerCB(idp, declare_set, call_set);
+		if (err) {
+		EXT_ERROR("[idp-initcb-fail] idp=%s not avaliable within registered idp plugins", idp->uid);
+		goto OnErrorExit;
+		}
+	}
 
   return 0;
 
 OnErrorExit:
-  EXT_ERROR("[idp-register-error] ext=%s idp=%s config should be json/array|object (idpRegisterOne)", oidc->uid, idp->uid);
+  EXT_ERROR("[idp-register-error] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
   return 1;
+}
+
+int idpRegisterLogin (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv) {
+    int err;
+    EXT_DEBUG ("[idp-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
+
+    err= afb_hsrv_add_handler(hsrv, idp->statics->aliasLogin, idp->plugin->loginCB, idp, EXT_HIGHEST_PRIO);
+    if (!err) goto OnErrorExit;
+  return 0;
+
+OnErrorExit:
+  EXT_ERROR("[idp-register-alias] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
+  return 1;    
 }
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 idpPluginT idpBuiltin[] = {
-  {.uid="github" , .info="github public oauth2 idp", .initCB=githubInitCB, .loginCB=githubLoginCB},
+  {.uid="github" , .info="github public oauth2 idp", .configCB=githubConfigCB, .loginCB=githubLoginCB},
   {.uid= NULL} // must be null terminated
 };
 

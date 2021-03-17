@@ -28,4 +28,4 @@
 // github.c
 int githubLoginCB(struct afb_hreq *hreq, void *ctx);
 int githubAuthCB(struct afb_hreq *hreq, void *ctx);
-int githubInitCB (oidcIdpT *idp, json_object *idpJ, idpGenericCbT *oidcCB);
+int githubConfigCB (oidcIdpT *idp, json_object *idpJ);

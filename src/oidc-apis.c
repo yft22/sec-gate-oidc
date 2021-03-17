@@ -56,7 +56,7 @@ int apisCreateSvc (oidcCoreHdlT *oidc, oidcApisT *apiSvc, afb_apiset *declare_se
 	afb_api_v4_set_userdata(apiv4, oidc);
 
 	// add verb to API
-	int err= afb_api_v4_set_verbs_hookable (apiv4, apiVerbs);
+	int err= afb_api_v4_set_verbs_hookable (oidc->apiv4, apiVerbs);
 	if (err) goto OnErrorExit;
 
 	snprintf (apiUri, sizeof(apiUri), "unix:@%s", apiSvc->uid);
@@ -90,7 +90,6 @@ int apisRegisterOne (oidcCoreHdlT *oidc, oidcApisT *api, afb_apiset *declare_set
             err= afb_api_v4_add_alias_hookable(oidc->apiv4, &api->uri[index+1],api->uid);
             if (err) goto OnErrorExit;
         }
-
     }
 
 	// register api for later loa/roles check

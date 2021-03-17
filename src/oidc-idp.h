@@ -87,13 +87,15 @@ typedef struct idpGenericCbS {
   const httpKeyValT* (*parseHeaders) (oidcIdpT *idp, json_object *headersJ, const httpKeyValT *defaults);
   int (*parseConfig) (oidcIdpT *idp, json_object *configJ, oidcDefaultsT *defaults, void*ctx);
   int (*fedidCheck) (afb_hreq *hreq, oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser);
+  int (*pluginRegister) (const char *pluginUid, idpPluginT *pluginCbs);
 } idpGenericCbT;
 
 
 typedef struct idpPluginS{
   const char *uid;
   const char *info;
-  int (*initCB)(oidcIdpT *idp, json_object *idpJ, idpGenericCbT *oidcCB);
+  int (*configCB)(oidcIdpT *idp, json_object *idpJ);
+  int (*registerCB)(oidcIdpT *idp, struct afb_apiset *declare_set, struct afb_apiset *call_set);
   int (*loginCB)(struct afb_hreq *hreq, void *ctx);
   void *ctx;
 } idpPluginT;
@@ -107,11 +109,12 @@ typedef struct {
 } idpRqtCtxT;
 
 // idp callback definition
-typedef int (*pluginRegisterCbT)(const char* pluginName, idpPluginT *pluginCb);
-typedef int (*oidcPluginRegisterCbT) (oidcCoreHdlT *oidc, pluginRegisterCbT registerCB);
+typedef int (*oidcPluginInitCbT) (oidcCoreHdlT *oidc, idpGenericCbT *idpGenericCb);
 
 // idp exported functions
 const oidcIdpT *idpParseConfig (oidcCoreHdlT *oidc, json_object *idpsJ);
-int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv);
+int idpParseOidcConfig (oidcIdpT *idp, json_object *configJ, oidcDefaultsT *defaults, void*ctx);
+int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, struct afb_apiset *declare_set, struct afb_apiset *call_set);
+int idpRegisterLogin (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv);
 json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa);
 int idpPLuginRegistryInit(void);
