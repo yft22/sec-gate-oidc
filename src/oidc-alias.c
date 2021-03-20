@@ -89,6 +89,7 @@ static void aliasRedirectLogin (afb_hreq *hreq, oidcAliasT *alias) {
 	char url[EXT_URL_MAX_LEN];
 	httpKeyValT query[]= {
 			{.tag="action"    , .value="login"},
+			{.tag="state"     , .value=afb_session_uuid(hreq->comreq.session)},
 			{.tag="language"  , .value=setlocale(LC_CTYPE, "")},
 
 			{NULL} // terminator
@@ -131,7 +132,7 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 			, "uid", alias->uid
 			, "url", alias->url
 			, "loa-target", alias->loa
-			, "loa-session", currentLoa 
+			, "loa-session", currentLoa
 		);
 
 		// try to push event to notify the access deny and replay with redirect to login

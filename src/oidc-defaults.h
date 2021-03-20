@@ -27,6 +27,7 @@
 #include <wrap-json.h>
 
 #define AFB_BINDING_NO_ROOT 1
+#include <libafb/afb-extension.h>
 #include <libafb/sys/verbose.h>
 
 // few magic to help debugging

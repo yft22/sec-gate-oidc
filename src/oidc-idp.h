@@ -86,7 +86,7 @@ typedef struct idpGenericCbS {
   const oidcWellknownT* (*parseWellknown) (oidcIdpT *idp, json_object *wellknownJ, const oidcWellknownT *defaults);
   const httpKeyValT* (*parseHeaders) (oidcIdpT *idp, json_object *headersJ, const httpKeyValT *defaults);
   int (*parseConfig) (oidcIdpT *idp, json_object *configJ, oidcDefaultsT *defaults, void*ctx);
-  int (*fedidCheck) (afb_hreq *hreq, oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser);
+  int (*fedidCheck) (oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser, struct afb_req_v4 *request, afb_hreq *hreq);
   int (*pluginRegister) (const char *pluginUid, idpPluginT *pluginCbs);
 } idpGenericCbT;
 

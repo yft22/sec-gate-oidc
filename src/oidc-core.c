@@ -107,7 +107,6 @@ int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ, char const *uid)
 	}
 
     if (!oidc->api) oidc->api= oidc->uid;
-    
 	oidc->idps= (oidcIdpT*)idpParseConfig (oidc, idpsJ);
 	oidc->aliases= (oidcAliasT*)aliasParseConfig(oidc, aliasJ);
 	oidc->apis= (oidcApisT*)apisParseConfig(oidc, apisJ);

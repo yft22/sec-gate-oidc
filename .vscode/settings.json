@@ -11,6 +11,8 @@
     ],
     "files.associations": {
         "oidc-core.h": "c",
-        "assert.h": "c"
+        "assert.h": "c",
+        "afb-core.h": "c",
+        "afb-calls.h": "c"
     }
 }

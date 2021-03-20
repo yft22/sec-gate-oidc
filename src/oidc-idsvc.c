@@ -49,7 +49,7 @@ static void idsvcPing (afb_req_x4_t request, unsigned nparams, afb_data_x4_t con
     asprintf (&response, "Pong=%d", count++);
     AFB_REQ_NOTICE (request, "idp:ping count=%d", count);
 
-    afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_STRINGZ, response, strlen(response)+1, free, NULL);
+    afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_STRINGZ, response, strlen(response)+1, NULL, NULL);
     afb_req_reply(request, 0, 1, &reply);
 
     return;
@@ -76,13 +76,10 @@ OnErrorExit:
 
 // check user email/pseudo attribute
 static void userCheckAttr(afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
-    afb_data_t argv[nparams];
-    afb_data_t args[nparams];
-    const char *values[nparams];
     int err;
 
-    if (nparams != 2) goto OnErrorExit;
-    afb_req_subcall (request, API_OIDC_USR_SVC, "attr-check", 2, params, afb_req_subcall_on_behalf, userCheckAttrCB, NULL);
+    if (nparams != 1) goto OnErrorExit;
+    afb_req_subcall (request, API_OIDC_USR_SVC, "attr-check", nparams, params, afb_req_subcall_on_behalf, userCheckAttrCB, NULL);
 
 OnErrorExit:
     afb_req_reply (request, -100, 0, NULL);
@@ -95,9 +92,20 @@ static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_d
     fedUserRawT *fedUser=NULL;
     oidcProfilsT *profil=NULL;
     json_object *profilJ;
+    oidcCookieT *aliasCookie;
+    json_object *aliasJ;
+    afb_session *session= (*(struct afb_req_common **)request)->session;
 
     // return creation status to HTML5
     if (status < 0) goto OnErrorExit;
+
+    // return destination alias
+    afb_session_get_cookie (session, oidcAliasCookie, (void**)&aliasCookie);
+    wrap_json_pack (&aliasJ, "{ss ss}"
+	    , "url", aliasCookie->url ?: "/"
+		, "state", afb_session_uuid(session)
+    );
+
     afb_req_reply(request, status, 0, NULL);
     return;
 
@@ -109,7 +117,7 @@ OnErrorExit:
 
 // Try to store fedsocial and feduser into local store
 static void userRegister(afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
-    char *errorMsg= "[fail-user-registration] invalid request";
+    char *errorMsg= "[user-register-fail] invalid request";
     afb_data_t reply[1], argv[1];
     afb_data_t args[nparams];
     afb_event_t evtCookie=NULL;
@@ -143,7 +151,7 @@ static void userRegister(afb_req_x4_t request, unsigned nparams, afb_data_x4_t c
     afb_create_data_raw(&argv[1], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, (void*)fedSocial);
     afb_req_subcall (request, API_OIDC_USR_SVC, "user-create", 2, argv, afb_req_subcall_on_behalf, userRegisterCB, NULL);
 
-    return;    
+    return;
 
 OnErrorExit:
     AFB_REQ_ERROR (request, errorMsg);
@@ -181,7 +189,7 @@ static void sessionGet (afb_req_x4_t request, unsigned nparams, afb_data_x4_t co
     afb_create_data_raw(&reply[2], AFB_PREDEFINED_TYPE_JSON_C, profilJ, 0, (void*)json_object_put, profilJ);
 
     afb_req_reply (request, 0, 3, reply);
-    return;    
+    return;
 
 OnErrorExit:
     AFB_REQ_ERROR (request, errorMsg);
@@ -237,12 +245,12 @@ int idscvPushEvent (afb_hreq *hreq, json_object *eventJ) {
         afb_event_unref (evtCookie);
         afb_session_set_cookie (hreq->comreq.session, idsvcEvtCookie, NULL, NULL);
     }
- 
+
     return count;
 
 OnErrorExit:
     json_object_put(eventJ);
-    return -1;    
+    return -1;
 }
 
 // return the list of autorities matching requested LOA

@@ -4,8 +4,8 @@
  *
  * Use of this source code is governed by an MIT-style
  * license that can be found in the LICENSE file or at https://opensource.org/licenses/MIT.
- * 
- * WARNING: pam plugin requires read access to /etc/shadow 
+ *
+ * WARNING: pam plugin requires read access to /etc/shadow
  */
 
 #define _GNU_SOURCE
@@ -17,10 +17,8 @@
 #include "oidc-alias.h"
 #include "oidc-fedid.h"
 
-#define AFB_BINDING_VERSION 4
-#include <afb/afb-binding-v4.h>
-#include <libafb/core/afb-session.h>
-#include <libafb/http/afb-hreq.h>
+#include <libafb/afb-core.h>
+#include <libafb/afb-http.h>
 
 #include <assert.h>
 #include <string.h>
@@ -41,7 +39,7 @@
 static idpGenericCbT *idpCallbacks=NULL;
 
 // provide dummy default values to oidc callbacks
-static const oidcCredentialsT noCredentials={}; 
+static const oidcCredentialsT noCredentials={};
 static const httpKeyValT noHeaders={};
 
 typedef struct {
@@ -68,21 +66,22 @@ static const oidcStaticsT dfltstatics= {
 
 static const oidcWellknownT dfltWellknown= {
 	 .loginTokenUrl  = "/sgate/pam/login.html",
-	 .identityApiUrl= "pam-check",
+	 .identityApiUrl = "pam-check",
+     .accessTokenUrl = NULL,
 };
 
 // simulate a user UI for passwd input
-static int pamChalengeCB (int num_msg, const struct pam_message **msg, struct pam_response **resp, void *passwd)  {  
+static int pamChalengeCB (int num_msg, const struct pam_message **msg, struct pam_response **resp, void *passwd)  {
 	struct pam_response *reply= malloc(sizeof(struct pam_response));
 	reply->resp= strdup(passwd);
 	reply->resp_retcode=0;
 
-    *resp = reply; 
-    return PAM_SUCCESS;  
+    *resp = reply;
+    return PAM_SUCCESS;
 }
 
 // check pam login/passwd using scope as pam application
-static int pamAccessToken (afb_hreq *hreq, oidcIdpT *idp, const oidcProfilsT *profil, const char *login, const char *passwd) {
+int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login, const char *passwd, fedSocialRawT **fedSocial, fedUserRawT **fedUser) {
 	int status, err;
 	pam_handle_t* pamh = NULL;
 	gid_t groups[dfltOpts.gidsMax];
@@ -118,20 +117,18 @@ static int pamAccessToken (afb_hreq *hreq, oidcIdpT *idp, const oidcProfilsT *pr
 	}
 
 	// build social fedkey from idp->uid+github->id
-	fedSocialRawT *fedKey= calloc (1, sizeof(fedSocialRawT));
-	char *fedkey;
-    asprintf (&fedkey,"id:%d",pw->pw_uid);
-	fedKey->fedkey= fedkey;
-    fedKey->idp= strdup(idp->uid);
+	*fedSocial= calloc (1, sizeof(fedSocialRawT));
+	char *fedId;
+    asprintf (&fedId,"id:%d",pw->pw_uid);
+	(*fedSocial)->fedkey= fedId;
+    (*fedSocial)->idp= strdup(idp->uid);
 
-	fedUserRawT *fedUser= calloc (1, sizeof(fedUserRawT));
-	fedUser->pseudo= strdup(pw->pw_name);
-	fedUser->avatar= strdup (dfltOpts.avatarAlias);
-	fedUser->name= strdup(pw->pw_gecos);
-	fedUser->company= NULL;
-	fedUser->email= NULL;
-
-	err= idpCallbacks->fedidCheck (hreq, idp, fedKey, fedUser);
+	*fedUser= calloc (1, sizeof(fedUserRawT));
+	(*fedUser)->pseudo= strdup(pw->pw_name);
+	(*fedUser)->avatar= strdup (dfltOpts.avatarAlias);
+	(*fedUser)->name= strdup(pw->pw_gecos);
+	(*fedUser)->company= NULL;
+	(*fedUser)->email= NULL;
 
 	// close pam transaction
 	pam_end(pamh, status);
@@ -143,27 +140,56 @@ static int pamAccessToken (afb_hreq *hreq, oidcIdpT *idp, const oidcProfilsT *pr
 }
 
 // check user email/pseudo attribute
-static void pamCheckLoginPasswd(afb_req_v4 *request, unsigned nparams, afb_data_t const params[]) {
-    afb_data_t args[nparams];
-    const char *values[nparams];
+static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct afb_data *const params[]) {
+    oidcIdpT *idp =  (oidcIdpT*) afb_req_v4_vcbdata(request);
+    struct afb_data *args[nparams];
+    const char *login, *passwd=NULL, *scope=NULL;
+	const oidcProfilsT *profil=NULL;
+
     int err;
 
-    if (nparams != 2) goto OnErrorExit;
+    err = afb_data_convert(params[0], &afb_type_predefined_json_c, &args[0]);
+    json_object *queryJ=  afb_data_ro_pointer(args[0]);
+	err= wrap_json_unpack (queryJ, "{ss s?s s?s}"
+		, "login", &login
+		, "passwd", &passwd
+		, "scope", &scope
+	);
+	if (err) goto OnErrorExit;
 
-    // retreive feduser from API argv[0]
-    for (int idx=0; idx < 2; idx++) {
-        err = afb_data_convert(params[idx], AFB_PREDEFINED_TYPE_STRINGZ, &args[idx]);
-        values[idx]= afb_data_ro_pointer(args[idx]);
-        if (err < 0) goto OnErrorExit;
-    }
+	// search for a scope fiting requesting loa
+	afb_session *session= (*(struct afb_req_common **)request)->session;
+	int requestedLoa =afb_session_get_loa (session, "ask");
 
-    // err= sqlUserAttrCheck (request, values[0], values[1]);
-    afb_req_reply(request, err, 0, NULL);
+	// search for a matching profil if scope is selected then scope&loa should match
+	for (int idx=0; idp->profils[idx].uid; idx++) {
+		profil=&idp->profils[idx];
+		if (idp->profils[idx].loa >= requestedLoa) {
+			if (scope && strcasecmp (scope, idp->profils[idx].scope)) continue;
+			profil=&idp->profils[idx];
+			break;
+		}
+	}
+	if (!profil) {
+		EXT_NOTICE ("[pam-check-scope] scope=%s does not match requested loa=%d", scope, requestedLoa);
+		goto OnErrorExit;
+	}
 
+
+    // check password
+    fedUserRawT *fedUser;
+    fedSocialRawT *fedSocial;
+    err= pamAccessToken (idp, profil, login, passwd, &fedSocial, &fedUser);
+    if (err) goto OnErrorExit;
+
+    err= idpCallbacks->fedidCheck (idp, fedSocial, fedUser, request, NULL);
+    if (err) goto OnErrorExit;
+
+	// when OK api response is handle by fedidCheck
     return;
 
 OnErrorExit:
-    afb_req_reply (request, -100, 0, NULL);
+    afb_req_v4_reply_hookable (request, -100, 0, NULL);
 }
 
 
@@ -202,8 +228,7 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 		if (requestedLoa && requestedLoa < profil->loa) goto OnErrorExit;
 
 		httpKeyValT query[]= {
-			{.tag="client_id"    , .value=idp->credentials->clientId},
-			{.tag="response_type", .value="code"},
+			{.tag="action"       , .value="passwd"},
 			{.tag="state"        , .value=afb_session_uuid(hreq->comreq.session)},
 			{.tag="scope"        , .value=profil->scope},
 			{.tag="redirect_uri" , .value=redirectUrl},
@@ -232,8 +257,14 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
         afb_session_get_cookie (hreq->comreq.session, oidcIdpProfilCookie, (void**)&profil);
 		if (!profil) goto OnErrorExit;
 
-		// request authentication token from tempry code
-		err= pamAccessToken (hreq, idp, profil, login, passwd);
+		// Check received login/passwd
+        fedUserRawT *fedUser;
+        fedSocialRawT *fedSocial;
+        err= pamAccessToken (idp, profil, login, passwd, &fedSocial, &fedUser);
+        if (err) goto OnErrorExit;
+
+        // check if federated id is already present or not
+        err= idpCallbacks->fedidCheck (idp, fedSocial, fedUser, NULL, hreq);
 		if (err) goto OnErrorExit;
 	}
 
@@ -248,12 +279,13 @@ int pamRegisterCB (oidcIdpT *idp, struct afb_apiset *declare_set, struct afb_api
     int err;
 
    	// add a dedicate verb to check login/passwd from websocket
-	err= afb_api_add_verb(idp->oidc->apiv4, dfltWellknown.identityApiUrl, idp->info, pamCheckLoginPasswd, NULL, NULL, NULL, 0);
-	if (err) goto OnErrorExit; 
+	//err= afb_api_add_verb(idp->oidc->apiv4, idp->uid, idp->info, checkLoginVerb, idp, NULL, 0, 0);
+	err= afb_api_v4_add_verb_hookable(idp->oidc->apiv4, idp->uid, idp->info, checkLoginVerb, idp, NULL, 0, 0);
+	if (err) goto OnErrorExit;
 
     return 0;
 
-OnErrorExit:    
+OnErrorExit:
     return 1;
 }
 
@@ -320,5 +352,5 @@ int oidcPluginInit (oidcCoreHdlT *oidc, idpGenericCbT *idpGenericCbs) {
     return status;
 
 OnErrorExit:
-	return -1;	
+	return -1;
 }

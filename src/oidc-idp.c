@@ -111,7 +111,7 @@ static int idpPluginRegisterCB (const char *pluginUid, idpPluginT *pluginCbs) {
 static const oidcCredentialsT *idpParseCredentials (oidcIdpT *idp, json_object *credentialsJ, const oidcCredentialsT *defaults) {
 
     oidcCredentialsT *credentials = calloc(1, sizeof(oidcCredentialsT));
-    if (defaults) memcpy(credentials, &defaults, sizeof(oidcCredentialsT));
+    if (defaults) memcpy(credentials, defaults, sizeof(oidcCredentialsT));
 
 	if (credentialsJ) {
 		int err= wrap_json_unpack (credentialsJ, "{ss,ss}"
@@ -243,7 +243,7 @@ static const oidcStaticsT *idpParsestatic (oidcIdpT *idp, json_object *staticJ, 
     if (!staticJ) return defaults;
 
 	oidcStaticsT *statics=calloc(1, sizeof(oidcStaticsT));
-	if (defaults) memcpy(statics, &defaults, sizeof(oidcStaticsT));
+	if (defaults) memcpy(statics, defaults, sizeof(oidcStaticsT));
 
 	int err= wrap_json_unpack (staticJ, "{s?s,s?s,s?i}"
 		, "login", &statics->aliasLogin
@@ -269,7 +269,7 @@ static const oidcWellknownT *idpParseWellknown (oidcIdpT *idp, json_object *well
     if (!wellknownJ) return defaults;
 
 		oidcWellknownT *wellknown=calloc(1, sizeof(oidcWellknownT));
-		if (defaults) memcpy(wellknown, &defaults, sizeof(oidcWellknownT));
+		if (defaults) memcpy(wellknown, defaults, sizeof(oidcWellknownT));
 
    	int err= wrap_json_unpack (wellknownJ, "{s?s,s?s,s?s}"
 			, "loginTokenUrl", &wellknown->loginTokenUrl

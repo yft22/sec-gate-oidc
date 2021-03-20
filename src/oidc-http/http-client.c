@@ -389,22 +389,26 @@ int httpBuildQuery(const char *uid, char *response, size_t maxlen, const char *p
     }
 
     // loop on query arguments
-    for (int idx = 0; query[idx].tag; idx++)
-    {
-        for (int jdx = 0; query[idx].tag[jdx]; jdx++)
+    if (query) {
+        for (int idx = 0; query[idx].tag; idx++)
         {
-            response[index++] = query[idx].tag[jdx];
-            if (index == maxlen)
-                goto OnErrorExit;
+            for (int jdx = 0; query[idx].tag[jdx]; jdx++)
+            {
+                response[index++] = query[idx].tag[jdx];
+                if (index == maxlen)
+                    goto OnErrorExit;
+            }
+            if (query[idx].value) {
+                response[index++] = '=';
+                for (int jdx = 0; query[idx].value[jdx]; jdx++)
+                {
+                    response[index++] = query[idx].value[jdx];
+                    if (index == maxlen)
+                        goto OnErrorExit;
+                }
+            }
+            response[index++] = '&';
         }
-        response[index++] = '=';
-        for (int jdx = 0; query[idx].value[jdx]; jdx++)
-        {
-            response[index++] = query[idx].value[jdx];
-            if (index == maxlen)
-                goto OnErrorExit;
-        }
-        response[index++] = '&';
     }
     response[index] = '\0'; // remove last '&'
     return 0;

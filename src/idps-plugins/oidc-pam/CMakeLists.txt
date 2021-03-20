@@ -5,6 +5,7 @@ PROJECT_TARGET_ADD(pam-auth)
 	file(GLOB CSOURCES [a-z]*.c)
 
 	# Define project Targets
+	find_library (PAM_DEVEL libpam required)
 	add_library(${TARGET_NAME} MODULE ${CSOURCES})
 	target_link_libraries(${TARGET_NAME} pam)
 

@@ -38,6 +38,10 @@
                 "logo": "/sgate/pam/logo-64px.png",
                 "timeout": 600
             },
+            "wellknown": {
+                "identityApiUrl": "/sgate/common",
+                "loginTokenUrl": "/sgate/common"
+            },
             "profils": [
                 {"uid":"login", "loa":1, "scope":"login"}
             ]

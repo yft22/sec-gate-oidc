@@ -27,7 +27,7 @@
 #include "oidc-idp.h"
 #include <fedid-types.h>
 
-int fedidCheck (afb_hreq *hreq, oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser);
+int fedidCheck (oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser, struct afb_req_v4 *request, afb_hreq *hreq);
 
 extern void* oidcFedUserCookie;
 extern void* oidcFedSocialCookie;
