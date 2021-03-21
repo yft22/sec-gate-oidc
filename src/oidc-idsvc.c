@@ -91,8 +91,8 @@ static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_d
     afb_data_t reply[1],  argv[2];
     fedUserRawT *fedUser=NULL;
     oidcProfilsT *profil=NULL;
+    oidcAliasT *alias=NULL;
     json_object *profilJ;
-    oidcCookieT *aliasCookie;
     json_object *aliasJ;
     afb_session *session= (*(struct afb_req_common **)request)->session;
 
@@ -100,9 +100,9 @@ static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_d
     if (status < 0) goto OnErrorExit;
 
     // return destination alias
-    afb_session_get_cookie (session, oidcAliasCookie, (void**)&aliasCookie);
+    afb_session_get_cookie (session, oidcAliasCookie, (void**)&alias);
     wrap_json_pack (&aliasJ, "{ss ss}"
-	    , "url", aliasCookie->url ?: "/"
+	    , "url", alias->url ?: "/"
 		, "state", afb_session_uuid(session)
     );
 
@@ -257,8 +257,8 @@ OnErrorExit:
 static void idpsList (afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
     int err;
     afb_data_t reply;
-    oidcCookieT *aliasCookie;
     json_object *idpsJ, *responseJ, *aliasJ;
+    oidcAliasT *alias;
 
     // retreive OIDC global context from API handle
   	oidcCoreHdlT *oidc= afb_api_get_userdata(afb_req_get_api(request));
@@ -268,15 +268,15 @@ static void idpsList (afb_req_x4_t request, unsigned nparams, afb_data_x4_t cons
     struct afb_req_common *reqcom= *(struct afb_req_common **)request;
 
     AFB_REQ_NOTICE (request, "session uuid=%s (idpsList)", afb_session_uuid(reqcom->session));
-    afb_session_get_cookie (reqcom->session, oidcAliasCookie, (void**)&aliasCookie);
+    afb_session_get_cookie (reqcom->session, oidcAliasCookie, (void**)&alias);
 
     // build IDP list with corresponding scope for requested LOA
-    if (aliasCookie) {
-        idpsJ= idpLoaProfilsGet (oidc, aliasCookie->alias->loa);
+    if (alias) {
+        idpsJ= idpLoaProfilsGet (oidc, alias->loa);
         wrap_json_pack (&aliasJ, "{ss ss si}"
-            , "uid", aliasCookie->alias->uid
-			, "url", aliasCookie->alias->url
-			, "loa", aliasCookie->alias->loa
+            , "uid", alias->uid
+			, "url", alias->url
+			, "loa", alias->loa
         );
 
     } else {

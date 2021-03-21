@@ -80,6 +80,7 @@
         {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "from":"pam", "path":"idps/pam" },
         {"uid": "public" , "url":"/public", "path":"public" },
         {"uid": "private", "url":"/private", "loa":1, "path":"private" },
+        {"uid": "confidential", "url":"/confidential", "loa":2, "path":"confidential" },
         {"uid": "admin"  , "url":"/idp/admin", "loa":2, "prio":1, "role":"admin", "path":"idps/admin" },
       ]
     }

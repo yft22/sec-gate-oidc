@@ -132,14 +132,19 @@ static void githubUserGetByToken (idpRqtCtxT *rqtCtx, const char *accessToken) {
 	char tokenVal [EXT_TOKEN_MAX_LEN];
 	oidcIdpT *idp= rqtCtx->idp;
 
-	snprintf(tokenVal, sizeof(tokenVal), "token %s", accessToken);
+	snprintf(tokenVal, sizeof(tokenVal), "Bearer %s", accessToken);
 	httpKeyValT authToken[]= {
 		{.tag="Authorization", .value=tokenVal},
+		{.tag="per_page", .value="100"},
 		{NULL}  // terminator
 	};
 
 	// asynchronous request to IDP user profil service
-	int err= httpSendGet(idp->oidc->httpPool, idp->wellknown->identityApiUrl, &dfltOpts, authToken, githubUserGetByTokenCB, rqtCtx);
+	//int err= httpSendGet(idp->oidc->httpPool, idp->wellknown->identityApiUrl, &dfltOpts, authToken, githubUserGetByTokenCB, rqtCtx);
+    fprintf (stderr, "**** user request=%s\n", idp->wellknown->identityApiUrl);
+
+	// https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
+	int err= httpSendGet(idp->oidc->httpPool, "https://api.github.com/users/fulup-bzh/orgs", &dfltOpts, authToken, githubUserGetByTokenCB, rqtCtx);
 	if (err) goto OnErrorExit;
 	return;
 
@@ -188,7 +193,6 @@ static int githubAccessToken (afb_hreq *hreq, oidcIdpT *idp, const char *redirec
 		{.tag="code"         , .value=code},
 		{.tag="redirect_uri" , .value=redirectUrl},
 		{.tag="state"        , .value=afb_session_uuid(hreq->comreq.session)},
-
 		{NULL} // terminator
 	};
 
@@ -220,7 +224,7 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 
 	// check if request as a code
 	const char *code = afb_hreq_get_argument(hreq, "code");
-	int requestedLoa =afb_session_get_loa (hreq->comreq.session, "ask");
+	int aliasLoa = afb_session_get_loa (hreq->comreq.session, oidcAliasCookie);
 	const char* session=afb_session_uuid(hreq->comreq.session);
 
 	// add afb-binder endpoint to login redirect alias
@@ -230,18 +234,20 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 	// if no code then set state and redirect to IDP
 	if (!code) {
 		char url[EXT_URL_MAX_LEN];
+		const char *scope = afb_hreq_get_argument(hreq, "scope");
 
 		// search for a scope fiting requesting loa
 		for (int idx=0; idp->profils[idx].uid; idx++) {
-			profil=&idp->profils[idx];
-			if (idp->profils[idx].loa >= requestedLoa) {
+			if (idp->profils[idx].loa >= aliasLoa) {
+				// if no scope take the 1st profile with valid LOA
+				if (scope && (strcmp (scope, idp->profils[idx].scope))) continue;
 				profil=&idp->profils[idx];
 				break;
 			}
 		}
 
 		// if loa requested and no profil fit exit without trying authentication
-		if (requestedLoa && requestedLoa < profil->loa) goto OnErrorExit;
+		if (!profil) goto OnErrorExit;
 
 		httpKeyValT query[]= {
 			{.tag="client_id"    , .value=idp->credentials->clientId},

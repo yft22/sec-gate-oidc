@@ -63,7 +63,7 @@ static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_x4_t
     afb_data_x4_t reply, data;
 	fedUserRawT *fedUser;
 	oidcProfilsT *idpProfil;
-	oidcCookieT *cookie;
+	oidcAliasT *alias;
     afb_session *session;
 	const char* response=NULL;
 	afb_hreq *hreq=NULL;
@@ -127,20 +127,20 @@ static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_x4_t
 		fedUserFreeCB(userInfoHdl->fedUser);
 		fedSocialFreeCB(userInfoHdl->fedSocial);
 		afb_session_get_cookie (session, oidcIdpProfilCookie, (void**) &idpProfil);
-		afb_session_set_loa (session, oidcIdpLoa, idpProfil->loa);
+		afb_session_set_loa (session, oidcSessionCookie, idpProfil->loa);
 
 		// let's store user profil into session cookie (/oidc/profil/get serves it)
    		afb_session_set_cookie (session, oidcFedUserCookie, fedUser, fedUserFreeCB);
 
 		// everyting looks good let's return user to original page
-		afb_session_get_cookie (session, oidcAliasCookie, (void**)&cookie);
+		afb_session_get_cookie (session, oidcAliasCookie, (void**)&alias);
 	    if (hreq) {
             httpKeyValT query[]= {
                 {.tag="state"     , .value=afb_session_uuid(session)},
                 {.tag="language"  , .value=setlocale(LC_CTYPE, "")},
                 {NULL} // terminator
             };
-            err= httpBuildQuery (userInfoHdl->idp->uid, url, sizeof(url), NULL /* prefix */, cookie->alias->url, query);
+            err= httpBuildQuery (userInfoHdl->idp->uid, url, sizeof(url), NULL /* prefix */, alias->url, query);
             if (err) {
                 EXT_ERROR ("[fedid-register-exist] fail to build redirect url");
                 goto OnErrorExit;

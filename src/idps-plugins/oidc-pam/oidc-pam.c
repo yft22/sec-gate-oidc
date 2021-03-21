@@ -102,33 +102,44 @@ int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login
 	status = pam_start(profil->scope, login, &conversion, &pamh);
 	if (status != PAM_SUCCESS) goto OnErrorExit;
 
-	// check passwd
-	status = pam_authenticate(pamh, 0);
-	if (status != PAM_SUCCESS) goto OnErrorExit;
+	// if passwd check passwd and retreive groups when login/passwd match
+	if (passwd) {
+		status = pam_authenticate(pamh, 0);
+		if (status != PAM_SUCCESS) goto OnErrorExit;
 
-	// login/passwd match let's retreive gids
-    struct passwd* pw = getpwnam(login);
-    if (pw == NULL) goto OnErrorExit;
+		// login/passwd match let's retreive gids
+		struct passwd* pw = getpwnam(login);
+		if (pw == NULL) goto OnErrorExit;
 
-	err= getgrouplist(pw->pw_name, pw->pw_gid, groups, &ngroups);
-	if (err < 0) {
-		EXT_CRITICAL ("[pam-auth-gids] opts{'gids':%d} too small", dfltOpts.gidsMax);
-		goto OnErrorExit;
+		// build social fedkey from idp->uid+github->id
+		*fedSocial= calloc (1, sizeof(fedSocialRawT));
+		char *fedId;
+		asprintf (&fedId,"id:%d",pw->pw_uid);
+		(*fedSocial)->fedkey= fedId;
+		(*fedSocial)->idp= strdup(idp->uid);
+
+		*fedUser= calloc (1, sizeof(fedUserRawT));
+		(*fedUser)->pseudo= strdup(pw->pw_name);
+		(*fedUser)->avatar= strdup (dfltOpts.avatarAlias);
+		(*fedUser)->name= strdup(pw->pw_gecos);
+		(*fedUser)->company= NULL;
+		(*fedUser)->email= NULL;
+
+		// retreive groups list and add then to fedSocial labels list
+		err= getgrouplist(pw->pw_name, pw->pw_gid, groups, &ngroups);
+		if (err < 0) {
+			EXT_CRITICAL ("[pam-auth-gids] opts{'gids':%d} too small", dfltOpts.gidsMax);
+			goto OnErrorExit;
+		}
+
+		// map pam group name as security labels attributes
+		(*fedSocial)->attrs= calloc (sizeof (char*), ngroups+1);
+		for (int idx=0; idx < ngroups; idx++) {
+			struct group *gr;
+			gr= getgrgid(groups[idx]);
+			(*fedSocial)->attrs[idx]= gr->gr_name;
+		}
 	}
-
-	// build social fedkey from idp->uid+github->id
-	*fedSocial= calloc (1, sizeof(fedSocialRawT));
-	char *fedId;
-    asprintf (&fedId,"id:%d",pw->pw_uid);
-	(*fedSocial)->fedkey= fedId;
-    (*fedSocial)->idp= strdup(idp->uid);
-
-	*fedUser= calloc (1, sizeof(fedUserRawT));
-	(*fedUser)->pseudo= strdup(pw->pw_name);
-	(*fedUser)->avatar= strdup (dfltOpts.avatarAlias);
-	(*fedUser)->name= strdup(pw->pw_gecos);
-	(*fedUser)->company= NULL;
-	(*fedUser)->email= NULL;
 
 	// close pam transaction
 	pam_end(pamh, status);
@@ -159,22 +170,21 @@ static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct 
 
 	// search for a scope fiting requesting loa
 	afb_session *session= (*(struct afb_req_common **)request)->session;
-	int requestedLoa =afb_session_get_loa (session, "ask");
+	int aliasLoa =afb_session_get_loa (session, oidcAliasCookie);
 
 	// search for a matching profil if scope is selected then scope&loa should match
 	for (int idx=0; idp->profils[idx].uid; idx++) {
 		profil=&idp->profils[idx];
-		if (idp->profils[idx].loa >= requestedLoa) {
+		if (idp->profils[idx].loa >= aliasLoa) {
 			if (scope && strcasecmp (scope, idp->profils[idx].scope)) continue;
 			profil=&idp->profils[idx];
 			break;
 		}
 	}
 	if (!profil) {
-		EXT_NOTICE ("[pam-check-scope] scope=%s does not match requested loa=%d", scope, requestedLoa);
+		EXT_NOTICE ("[pam-check-scope] scope=%s does not match requested loa=%d", scope, aliasLoa);
 		goto OnErrorExit;
 	}
-
 
     // check password
     fedUserRawT *fedUser;
@@ -202,10 +212,11 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 	int err, status;
 
 	// check if request as a code
-	const char *login = afb_hreq_get_argument(hreq, "login");
+	const char *login = afb_hreq_get_argument(hreq,  "login");
 	const char *passwd = afb_hreq_get_argument(hreq, "passwd");
+	const char *scope  = afb_hreq_get_argument(hreq, "scope");
 
-	int requestedLoa =afb_session_get_loa (hreq->comreq.session, "ask");
+	int aliasLoa =afb_session_get_loa (hreq->comreq.session, oidcAliasCookie);
 
 	// add afb-binder endpoint to login redirect alias
     status= afb_hreq_make_here_url(hreq,idp->statics->aliasLogin,redirectUrl,sizeof(redirectUrl));
@@ -218,14 +229,16 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 		// search for a scope fiting requesting loa
 		for (int idx=0; idp->profils[idx].uid; idx++) {
 			profil=&idp->profils[idx];
-			if (idp->profils[idx].loa >= requestedLoa) {
+			if (idp->profils[idx].loa >= aliasLoa) {
+				// if no scope take the 1st profile with valid LOA
+				if (scope && (strcmp (scope, idp->profils[idx].scope))) continue;
 				profil=&idp->profils[idx];
 				break;
 			}
 		}
 
 		// if loa requested and no profil fit exit without trying authentication
-		if (requestedLoa && requestedLoa < profil->loa) goto OnErrorExit;
+		if (!profil) goto OnErrorExit;
 
 		httpKeyValT query[]= {
 			{.tag="action"       , .value="passwd"},

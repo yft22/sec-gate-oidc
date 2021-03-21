@@ -25,6 +25,7 @@
 
 #include "oidc-core.h"
 #include "oidc-alias.h"
+#include "oidc-fedid.h"
 #include "oidc-idsvc.h"
 #include "http-client.h"
 
@@ -40,29 +41,31 @@
 #include <locale.h>
 
 // dummy unique value for session key
-MAGIC_OIDC_SESSION(oidcIdpLoa);
-MAGIC_OIDC_SESSION(oidcIdpRoles);
+MAGIC_OIDC_SESSION(oidcSessionCookie);
 MAGIC_OIDC_SESSION(oidcAliasCookie);
 
-int aliasCheckRoles (afb_session *session, oidcAliasT *alias) {
-	char **avaliableRoles;
-	int requestCount=0, matchCount=0;
+int aliasCheckAttrs (afb_session *session, oidcAliasT *alias) {
+	fedSocialRawT *fedSocial;
+	int err, requestCount=0, matchCount=0;
 
 	// search within profile if we have the right role
-	int err= afb_session_get_cookie(session, oidcIdpRoles, (void**)&avaliableRoles);
+	err= afb_session_get_cookie (session, oidcFedSocialCookie, (void **) &fedSocial);
 	if (err) goto OnErrorExit;
 
 	// this should be replaced by Cynagora request
 	for (int idx=0; alias->roles[idx]; idx++) {
 		requestCount++;
-		for (int jdx=0; avaliableRoles[jdx]; idx++) {
-			if (!strcasecmp (alias->roles[idx], avaliableRoles[jdx])) {
+		for (int jdx=0; fedSocial->attrs[jdx]; idx++) {
+			if (!strcasecmp (alias->roles[idx], fedSocial->attrs[jdx])) {
 				matchCount++;
 				break;
 			}
 		}
+		// we're done
+		if (requestCount == matchCount) break;
 	}
-	// check roles match
+
+	// check alias roles match idp security attributes
 	if (requestCount != matchCount) goto OnErrorExit;
 	return 0;
 
@@ -70,21 +73,12 @@ OnErrorExit:
 	return 1;
 };
 
-static void aliasFreeCookie (void* ctx) {
-	oidcCookieT *cookie= (oidcCookieT*)ctx;
-	free (cookie->url);
-	free (cookie);
-}
-
 // create aliasFrom cookie and redirect to login page
 static void aliasRedirectLogin (afb_hreq *hreq, oidcAliasT *alias) {
-	oidcCookieT *cookie= malloc (sizeof(oidcCookieT));
     int err;
 
-	cookie->url= strdup (hreq->url);
-	cookie->alias=alias;
-	afb_session_set_cookie (hreq->comreq.session, oidcAliasCookie, cookie, aliasFreeCookie);
-	afb_req_common_set_token (&hreq->comreq, NULL);
+	afb_session_set_loa (hreq->comreq.session, oidcAliasCookie, alias->loa);
+	afb_session_set_cookie (hreq->comreq.session, oidcAliasCookie, alias, NULL);
 
 	char url[EXT_URL_MAX_LEN];
 	httpKeyValT query[]= {
@@ -111,7 +105,7 @@ OnErrorExit:
 
 static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 	oidcAliasT *alias= (oidcAliasT*)ctx;
-	int currentLoa;
+	int sessionLoa;
 
 	// in case session create failed
 	if (!hreq->comreq.session) {
@@ -123,8 +117,8 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 	EXT_NOTICE ("session uuid=%s (aliasCheckLoaCB)", afb_session_uuid(hreq->comreq.session));
 
 	// if LOA too weak redirect to authentication  //afb_session_close ()
-	currentLoa=  afb_session_get_loa (hreq->comreq.session, oidcIdpLoa);
-	if (alias->loa > currentLoa) {
+	sessionLoa=  afb_session_get_loa (hreq->comreq.session, oidcSessionCookie);
+	if (alias->loa > sessionLoa) {
 		json_object *eventJ;
 
 		wrap_json_pack (&eventJ, "{si ss ss si si}"
@@ -132,7 +126,7 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 			, "uid", alias->uid
 			, "url", alias->url
 			, "loa-target", alias->loa
-			, "loa-session", currentLoa
+			, "loa-session", sessionLoa
 		);
 
 		// try to push event to notify the access deny and replay with redirect to login
@@ -142,7 +136,7 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 	}
 
 	if (alias->roles) {
-		int err= aliasCheckRoles (hreq->comreq.session, alias);
+		int err= aliasCheckAttrs (hreq->comreq.session, alias);
 		if (err) {
 			aliasRedirectLogin (hreq, alias);
 			goto OnRedirectExit;
@@ -151,10 +145,10 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 
 	// change hreq bearer
 	afb_req_common_set_token (&hreq->comreq, NULL);
-	return 0;
+	return 0; // move forward and continue parsing lower priority alias
 
 OnRedirectExit:
-	return 1;
+	return 1; // we're done stop scanning alias callback
 }
 
 int aliasRegisterOne (oidcCoreHdlT *oidc, oidcAliasT *alias, afb_hsrv *hsrv) {

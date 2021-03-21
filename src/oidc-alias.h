@@ -26,8 +26,7 @@
 #include "oidc-core.h"
 
 // MAGIC_OIDC_SESSION() used as session key
-extern void* oidcIdpLoa;
-extern void* oidcIdpRoles;
+extern void* oidcSessionCookie;
 extern void* oidcAliasCookie;
 
 
@@ -41,11 +40,6 @@ typedef struct oidcAliasesS {
   const char **roles;
   oidcCoreHdlT *oidc;
 } oidcAliasT;
-
-typedef struct {
-  char *url;
-  oidcAliasT *alias;
-} oidcCookieT;
 
 oidcAliasT *aliasParseConfig (oidcCoreHdlT *oidc, json_object *aliasesJ);
 int aliasRegisterOne (oidcCoreHdlT *oidc, oidcAliasT *alias, afb_hsrv *hsrv);

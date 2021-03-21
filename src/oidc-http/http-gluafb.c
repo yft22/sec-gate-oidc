@@ -54,7 +54,6 @@ static int glueSetSocketCB (httpPoolT *httpPool, CURL *easy, int sock, int actio
     // map CURL events with system events
     switch (action) {
       case CURL_POLL_REMOVE:
-	    EXT_NOTICE("[curl-remove-fd] curl finished with sock=%d (glueSetSocketCB)", sock);
         goto OnErrorExit;
       case CURL_POLL_IN:
         events= EPOLLIN;

@@ -1,2 +1,7 @@
-- Finir fedid check
-- passer en Json les call de rodrigo
+Integrer les groups (pam + github)
+ - verifier que Rodrigo me retourne bien le scope
+ - traiter le scope dans la selection loa/scope de github
+
+Ajouter un cache sur les authen des alias
+
+Scope verifier a mettant user+org dans le scope.
