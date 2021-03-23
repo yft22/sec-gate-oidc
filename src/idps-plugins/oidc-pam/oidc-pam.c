@@ -98,18 +98,18 @@ int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login
         .appdata_ptr= (void*) passwd,
     };
 
-	// init pam transaction using scope as pam application
-	status = pam_start(profil->scope, login, &conversion, &pamh);
-	if (status != PAM_SUCCESS) goto OnErrorExit;
+    // login/passwd match let's retreive gids
+	struct passwd* pw = getpwnam(login);
+	if (pw == NULL) goto OnErrorExit;
 
 	// if passwd check passwd and retreive groups when login/passwd match
 	if (passwd) {
+        // init pam transaction using scope as pam application
+        status = pam_start(profil->scope, login, &conversion, &pamh);
+        if (status != PAM_SUCCESS) goto OnErrorExit;
+
 		status = pam_authenticate(pamh, 0);
 		if (status != PAM_SUCCESS) goto OnErrorExit;
-
-		// login/passwd match let's retreive gids
-		struct passwd* pw = getpwnam(login);
-		if (pw == NULL) goto OnErrorExit;
 
 		// build social fedkey from idp->uid+github->id
 		*fedSocial= calloc (1, sizeof(fedSocialRawT));
@@ -191,13 +191,18 @@ static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct 
 	}
 
     // check password
-    fedUserRawT *fedUser;
-    fedSocialRawT *fedSocial;
+    fedUserRawT *fedUser=NULL;
+    fedSocialRawT *fedSocial=NULL;
     err= pamAccessToken (idp, profil, login, passwd, &fedSocial, &fedUser);
     if (err) goto OnErrorExit;
 
-    err= idpCallbacks->fedidCheck (idp, fedSocial, fedUser, request, NULL);
-    if (err) goto OnErrorExit;
+    // do no check federation when only login
+    if (fedUser) {
+        err= idpCallbacks->fedidCheck (idp, fedSocial, fedUser, request, NULL);
+        if (err) goto OnErrorExit;
+    } else {
+       afb_req_v4_reply_hookable (request, 0, 0, NULL); // login exist
+    }
 
 	// when OK api response is handle by fedidCheck
     return;
