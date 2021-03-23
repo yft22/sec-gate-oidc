@@ -57,11 +57,12 @@ static oidGlobalsT* globalConfig (json_object *globalJ) {
     oidGlobalsT *global= (oidGlobalsT*) calloc (1, sizeof(oidGlobalsT));
 
     if (globalJ) {
-        err= wrap_json_unpack (globalJ, "{s?o s?s s?s s?s}"
+        err= wrap_json_unpack (globalJ, "{s?o s?s s?s s?s s?i}"
             , "info", &commentJ
             , "login", &global->loginUrl
             , "error", &global->errorUrl
             , "register", &global->registerUrl
+            , "cache", &global->tCache
         );
         if (err < 0) goto OnErrorExit;
     }
@@ -69,6 +70,7 @@ static oidGlobalsT* globalConfig (json_object *globalJ) {
     if (!global->loginUrl) global->loginUrl= URL_OIDC_USR_LOGIN;
     if (!global->registerUrl) global->loginUrl= URL_OIDC_USR_REGISTER;
     if (!global->errorUrl) global->errorUrl= URL_OIDC_USR_ERROR;
+    if (!global->tCache) global->tCache= URL_OIDC_AUTH_CACHE;
 
     return (global);
 
@@ -107,10 +109,10 @@ int AfbExtensionConfigV1(void **ctx, struct json_object *oidcJ, char const *uid)
 	}
 
     if (!oidc->api) oidc->api= oidc->uid;
+    oidc->globals= globalConfig(globalJ);
 	oidc->idps= (oidcIdpT*)idpParseConfig (oidc, idpsJ);
 	oidc->aliases= (oidcAliasT*)aliasParseConfig(oidc, aliasJ);
 	oidc->apis= (oidcApisT*)apisParseConfig(oidc, apisJ);
-    oidc->globals= globalConfig(globalJ);
 	if (!oidc->idps || !oidc->aliases || !oidc->apis || !oidc->globals)  goto OnErrorExit;
 
 	*ctx= oidc;

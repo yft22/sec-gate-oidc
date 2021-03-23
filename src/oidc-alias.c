@@ -39,6 +39,7 @@
 #include <string.h>
 #include <microhttpd.h>
 #include <locale.h>
+#include <time.h>
 
 // dummy unique value for session key
 MAGIC_OIDC_SESSION(oidcSessionCookie);
@@ -77,15 +78,12 @@ OnErrorExit:
 static void aliasRedirectLogin (afb_hreq *hreq, oidcAliasT *alias) {
     int err;
 
-	afb_session_set_loa (hreq->comreq.session, oidcAliasCookie, alias->loa);
 	afb_session_set_cookie (hreq->comreq.session, oidcAliasCookie, alias, NULL);
 
 	char url[EXT_URL_MAX_LEN];
 	httpKeyValT query[]= {
 			{.tag="action"    , .value="login"},
-			{.tag="state"     , .value=afb_session_uuid(hreq->comreq.session)},
 			{.tag="language"  , .value=setlocale(LC_CTYPE, "")},
-
 			{NULL} // terminator
 	};
 
@@ -105,43 +103,57 @@ OnErrorExit:
 
 static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 	oidcAliasT *alias= (oidcAliasT*)ctx;
-	int sessionLoa;
+    struct timespec tCurrent;
+	int sessionLoa, tStamp, tNow;
 
-	// in case session create failed
-	if (!hreq->comreq.session) {
-		EXT_ERROR ("[fail-hreq-session] fail to initialise hreq session (aliasCheckLoaCB)");
-		afb_hreq_reply_error (hreq, EXT_HTTP_CONFLICT);
-		goto OnRedirectExit;
-	}
+    if (alias->loa) {
 
-	EXT_NOTICE ("session uuid=%s (aliasCheckLoaCB)", afb_session_uuid(hreq->comreq.session));
+        // in case session create failed
+        if (!hreq->comreq.session) {
+            EXT_ERROR ("[fail-hreq-session] fail to initialise hreq session (aliasCheckLoaCB)");
+            afb_hreq_reply_error (hreq, EXT_HTTP_CONFLICT);
+            goto OnRedirectExit;
+        }
 
-	// if LOA too weak redirect to authentication  //afb_session_close ()
-	sessionLoa=  afb_session_get_loa (hreq->comreq.session, oidcSessionCookie);
-	if (alias->loa > sessionLoa) {
-		json_object *eventJ;
+        // if tCache not expired use jump authent check
+        clock_gettime(CLOCK_MONOTONIC, &tCurrent);
+        tNow = (int) ((tCurrent.tv_nsec) / 1000000 + (tCurrent.tv_sec) * 1000)/100;
+        if (tNow > alias->tCache) {
 
-		wrap_json_pack (&eventJ, "{si ss ss si si}"
-			, "status", STATUS_OIDC_AUTH_DENY
-			, "uid", alias->uid
-			, "url", alias->url
-			, "loa-target", alias->loa
-			, "loa-session", sessionLoa
-		);
+            EXT_NOTICE ("session uuid=%s (aliasCheckLoaCB)", afb_session_uuid(hreq->comreq.session));
 
-		// try to push event to notify the access deny and replay with redirect to login
-		idscvPushEvent (hreq, eventJ);
-		aliasRedirectLogin (hreq, alias);
-		goto OnRedirectExit;
-	}
+            // if LOA too weak redirect to authentication  //afb_session_close ()
+            sessionLoa=  afb_session_get_loa (hreq->comreq.session, oidcSessionCookie);
+            if (alias->loa > sessionLoa) {
+                json_object *eventJ;
 
-	if (alias->roles) {
-		int err= aliasCheckAttrs (hreq->comreq.session, alias);
-		if (err) {
-			aliasRedirectLogin (hreq, alias);
-			goto OnRedirectExit;
-		}
-	}
+                wrap_json_pack (&eventJ, "{si ss ss si si}"
+                    , "status", STATUS_OIDC_AUTH_DENY
+                    , "uid", alias->uid
+                    , "url", alias->url
+                    , "loa-target", alias->loa
+                    , "loa-session", sessionLoa
+                );
+
+                // try to push event to notify the access deny and replay with redirect to login
+                idscvPushEvent (hreq, eventJ);
+                aliasRedirectLogin (hreq, alias);
+                goto OnRedirectExit;
+            }
+
+            if (alias->roles) {
+                int err= aliasCheckAttrs (hreq->comreq.session, alias);
+                if (err) {
+                    aliasRedirectLogin (hreq, alias);
+                    goto OnRedirectExit;
+                }
+            }
+
+            // store a sampstamp to cache authentication validation
+            tStamp = tNow + alias->tCache/100;
+            afb_session_set_loa (hreq->comreq.session, oidcAliasCookie, tStamp);
+        }    
+    }
 
 	// change hreq bearer
 	afb_req_common_set_token (&hreq->comreq, NULL);
@@ -155,8 +167,10 @@ int aliasRegisterOne (oidcCoreHdlT *oidc, oidcAliasT *alias, afb_hsrv *hsrv) {
 	const char* rootdir;
 	int status;
 
-	status= afb_hsrv_add_handler(hsrv, alias->url, aliasCheckLoaCB, alias, alias->priority);
-	if (status != AFB_HSRV_OK) goto OnErrorExit;
+    if (alias->loa) {
+        status= afb_hsrv_add_handler(hsrv, alias->url, aliasCheckLoaCB, alias, alias->priority);
+        if (status != AFB_HSRV_OK) goto OnErrorExit;
+    }
 
 	// if alias full path does not start with '/' then prefix it with http_root_dir
 	if (alias->path[0] == '/') rootdir="";
@@ -176,13 +190,17 @@ OnErrorExit:
 static int idpParseOneAlias (oidcCoreHdlT *oidc, json_object *aliasJ, oidcAliasT *alias) {
 	json_object *rolesJ=NULL;
 
-	int err= wrap_json_unpack (aliasJ, "{ss,s?s,s?s,s?s,s?i,s?i,s?o}"
+    // set tCache default
+    alias->tCache = oidc->globals->tCache;
+
+	int err= wrap_json_unpack (aliasJ, "{ss,s?s,s?s,s?s,s?i,s?i,s?i,s?o}"
 		, "uid", &alias->uid
 		, "info", &alias->info
 		, "url", &alias->url
 		, "path", &alias->path
 		, "prio", &alias->priority
 		, "loa", &alias->loa
+		, "cache", &alias->tCache
 		, "role", rolesJ
 		);
 	if (err) {

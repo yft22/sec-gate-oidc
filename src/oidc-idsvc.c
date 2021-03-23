@@ -41,7 +41,7 @@
 MAGIC_OIDC_SESSION(idsvcEvtCookie);
 static const char unauthorizedMsg[]="[unauthorized-api-call] authenticate to upgrade session/loa (idpsList)";
 
-static void idsvcPing (afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
+static void idsvcPing (afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
     static int count=0;
     char *response;
     afb_data_t reply;
@@ -58,7 +58,7 @@ static void idsvcPing (afb_req_x4_t request, unsigned nparams, afb_data_x4_t con
 // get result from /fedid/create-user
 static void userCheckAttrCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], afb_req_x4_t request) {
     char *errorMsg= "[user-attr-fail]  (userCheckAttrCB)";
-    afb_data_t reply[1],  argv[2];
+    afb_data_t reply[1],  argd[2];
     fedUserRawT *fedUser=NULL;
     oidcProfilsT *profil=NULL;
     json_object *profilJ;
@@ -75,11 +75,11 @@ OnErrorExit:
 }
 
 // check user email/pseudo attribute
-static void userCheckAttr(afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
+static void userCheckAttr(afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
     int err;
 
-    if (nparams != 1) goto OnErrorExit;
-    afb_req_subcall (request, API_OIDC_USR_SVC, "attr-check", nparams, params, afb_req_subcall_on_behalf, userCheckAttrCB, NULL);
+    if (args != 1) goto OnErrorExit;
+    afb_req_subcall (request, API_OIDC_USR_SVC, "attr-check", args, argv, afb_req_subcall_on_behalf, userCheckAttrCB, NULL);
 
 OnErrorExit:
     afb_req_reply (request, -100, 0, NULL);
@@ -88,7 +88,7 @@ OnErrorExit:
 // get result from /fedid/create-user
 static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], afb_req_x4_t request) {
     char *errorMsg= "[user-create-fail]  (idsvcuserRegisterCB)";
-    afb_data_t reply[1],  argv[2];
+    afb_data_t reply[1],  argd[2];
     fedUserRawT *fedUser=NULL;
     oidcProfilsT *profil=NULL;
     oidcAliasT *alias=NULL;
@@ -105,8 +105,8 @@ static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_d
 	    , "url", alias->url ?: "/"
 		, "state", afb_session_uuid(session)
     );
-
-    afb_req_reply(request, status, 0, NULL);
+    afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_JSON_C, aliasJ, 0, (void*) json_object_put, aliasJ);
+    afb_req_reply(request, status, 1, reply);
     return;
 
 OnErrorExit:
@@ -116,18 +116,27 @@ OnErrorExit:
 }
 
 // Try to store fedsocial and feduser into local store
-static void userRegister(afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
+static void userRegister(afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
     char *errorMsg= "[user-register-fail] invalid request";
-    afb_data_t reply[1], argv[1];
-    afb_data_t args[nparams];
+    afb_data_t reply[1], argd[2];
     afb_event_t evtCookie=NULL;
     const oidcProfilsT *profil=NULL;
-   	fedUserRawT *fedUser;
 	const fedSocialRawT *fedSocial;
+   	fedUserRawT *fedUser;
     json_object *profilJ;
     int err;
 
-    if (nparams != 1) goto OnErrorExit;
+    if (args != 1) goto OnErrorExit;
+
+    const afb_type_t argt[]= {fedUserObjType, NULL};
+    err= afb_data_array_convert (args, argv, argt, argd);
+   if (err < 0) {
+        argd[0]=NULL;
+        goto OnErrorExit;
+    };
+
+    afb_data_set_not_constant(argd[0]);  // TDB Jose should be bindle within afb_data_rw_pointer
+    fedUser= (void*) afb_data_rw_pointer(argd[0]);
 
     // retrieve current request LOA from session (to be fixed by Jose)
     struct afb_req_common *reqcom= *(struct afb_req_common **)request;
@@ -136,31 +145,28 @@ static void userRegister(afb_req_x4_t request, unsigned nparams, afb_data_x4_t c
 
     // retreive fedsocial from session
 	afb_session_get_cookie (reqcom->session, oidcFedSocialCookie, (void **) &fedSocial);
+    if (!fedSocial) goto OnErrorExit;
 
-    // retreive feduser from API argv[0]
-    err = afb_data_convert(params[0], fedUserObjType, &args[0]);
-    if (err < 0) goto OnErrorExit;
-
-    // update feduser session cookie
-    fedUser= (void*) afb_data_ro_pointer(args[0]);
-    fedUser->ucount++; // protect feduser as it us used both as a cookie and a param
+    fedUser->ucount++; // protect feduser as it us used both as a cookie and a param (TBD Jose)
     afb_session_set_cookie (reqcom->session, oidcFedUserCookie, fedUser, fedUserFreeCB);
 
     // user is new let's register it within fedid DB
-    afb_create_data_raw(&argv[0], fedUserObjType, fedUser, 0, fedUserFreeCB, fedUser);
-    afb_create_data_raw(&argv[1], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, (void*)fedSocial);
-    afb_req_subcall (request, API_OIDC_USR_SVC, "user-create", 2, argv, afb_req_subcall_on_behalf, userRegisterCB, NULL);
+    afb_data_addref(argd[0]);
+    err= afb_create_data_raw(&argd[1], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, (void*)fedSocial);
+    if (err < 0) goto OnErrorExit;
 
+    afb_req_subcall (request, API_OIDC_USR_SVC, "user-create", 2, argd, afb_req_subcall_on_behalf, userRegisterCB, NULL);
     return;
 
 OnErrorExit:
     AFB_REQ_ERROR (request, errorMsg);
     afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, strlen(errorMsg)+1, NULL, NULL);
     afb_req_reply (request, -1, 1, reply);
+    if (argd[0]) afb_data_array_unref(args, argd);
 }
 
 // Return all information we have on current session (profil, loa, idp, ...)
-static void sessionGet (afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
+static void sessionGet (afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
     char *errorMsg= "[fail-get-session] no session running anonymous mode";
     afb_data_t reply[3];
     afb_event_t evtCookie=NULL;
@@ -199,7 +205,7 @@ OnErrorExit:
 
 
 // if not already done create and register a session event
-static void subscribeEvent (afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
+static void subscribeEvent (afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
     const char *errorMsg = "[fail-event-create] hoops internal error (idsvcSubscribe)";
     int err;
     char *response;
@@ -254,7 +260,7 @@ OnErrorExit:
 }
 
 // return the list of autorities matching requested LOA
-static void idpsList (afb_req_x4_t request, unsigned nparams, afb_data_x4_t const params[]) {
+static void idpsList (afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
     int err;
     afb_data_t reply;
     json_object *idpsJ, *responseJ, *aliasJ;
@@ -305,12 +311,12 @@ OnErrorExit:
 // Static verb not depending on shell json config file
 static afb_verb_t idsvcVerbs[] = {
     /* VERB'S NAME         FUNCTION TO CALL         SHORT DESCRIPTION */
-    { .verb = "ping",     .callback = idsvcPing    , .info = "ping test"},
-    { .verb = "idp-list",  .callback = idpsList    , .info = "request idp list/scope for a given LOA level"},
-    { .verb = "evt-subs", .callback = subscribeEvent, .info = "subscribe to sgate private client session events"},
+    { .verb = "ping",         .callback = idsvcPing    , .info = "ping test"},
+    { .verb = "idp-list",     .callback = idpsList    , .info = "request idp list/scope for a given LOA level"},
+    { .verb = "evt-subs",     .callback = subscribeEvent, .info = "subscribe to sgate private client session events"},
     { .verb = "get-session",  .callback = sessionGet, .info = "retreive current client session [profil, user, social]"},
     { .verb = "usr-register", .callback = userRegister, .info = "register federated user profile into local fedid store"},
-    { .verb = "chk-attribute", .callback = userCheckAttr, .info = "check user attribute within local store"},
+    { .verb = "chk-attribute",.callback = userCheckAttr, .info = "check user attribute within local store"},
 
     { NULL} // terminator
 };

@@ -56,11 +56,11 @@ typedef struct {
 } oidcFedidHdlT;
 
 // if fedkey exists callback receive local store user profil otherwise we should create it
-static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_x4_t const replies[], struct afb_api_v4 *api) {
+static void fedidCheckCB(void *ctx, int status, unsigned args, afb_data_x4_t const argv[], struct afb_api_v4 *api) {
     char *errorMsg = "[invalid-profil] Fail to process user profile (fedidCheckCB)";
 	oidcFedidHdlT *userInfoHdl= (oidcFedidHdlT*)ctx;
    	char url[EXT_URL_MAX_LEN];
-    afb_data_x4_t reply, data;
+    afb_data_x4_t reply[1], argd[args];
 	fedUserRawT *fedUser;
 	oidcProfilsT *idpProfil;
 	oidcAliasT *alias;
@@ -89,11 +89,9 @@ static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_x4_t
 		goto OnErrorExit;
 	}
 
-    switch (status) {
-	case FEDID_USER_UNKNOWN:
+    if (args != 1) { // feduser was not created
+
 		// fedkey not fount let's store social authority profil into session and redirect user on userprofil creation
-        userInfoHdl->fedUser->ucount++;
-        userInfoHdl->fedSocial->ucount++;
 		afb_session_set_cookie (session, oidcFedUserCookie, userInfoHdl->fedUser, fedUserFreeCB);
 		afb_session_set_cookie (session, oidcFedSocialCookie, userInfoHdl->fedSocial, fedSocialFreeCB);
 
@@ -111,17 +109,13 @@ static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_x4_t
             }
             response= url;
         } else {
-			response= "FEDID_USER_UNKNOWN";
+			response= "FEDID_USER_REFUSED";
 		}
-        break;
+    } else { // feduser is avaliable
 
-	case FEDID_USER_EXIST:
-        if (nreplies != 1) goto OnErrorExit;
-
-		// fed key found let's push data with user-profil into session cookie
-		err= afb_data_convert (replies[0], fedUserObjType, &data);
+		err= afb_data_convert (argv[0], fedUserObjType, &argd[0]);
 		if (err < 0) goto OnErrorExit;
-		fedUser= (fedUserRawT*)afb_data_ro_pointer(replies[0]);
+		fedUser= (fedUserRawT*)afb_data_ro_pointer(argd[0]);
 
 		// free idp social federated profil, and set current session loa+profil to fedid service values
 		fedUserFreeCB(userInfoHdl->fedUser);
@@ -130,13 +124,13 @@ static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_x4_t
 		afb_session_set_loa (session, oidcSessionCookie, idpProfil->loa);
 
 		// let's store user profil into session cookie (/oidc/profil/get serves it)
+        fedUser->ucount++;
    		afb_session_set_cookie (session, oidcFedUserCookie, fedUser, fedUserFreeCB);
 
 		// everyting looks good let's return user to original page
 		afb_session_get_cookie (session, oidcAliasCookie, (void**)&alias);
 	    if (hreq) {
             httpKeyValT query[]= {
-                {.tag="state"     , .value=afb_session_uuid(session)},
                 {.tag="language"  , .value=setlocale(LC_CTYPE, "")},
                 {NULL} // terminator
             };
@@ -147,12 +141,9 @@ static void fedidCheckCB(void *ctx, int status, unsigned nreplies, afb_data_x4_t
             }
 			response= url;
 		}
-		else response= "FEDID_USER_EXIST";
-        break;
-
-        default:
-            goto OnErrorExit;
+		else response= "FEDID_USER_CREATED";
     }
+
 	// free user info handle and redirect to initial targeted url
     if (hreq) {
         EXT_DEBUG ("[fedid-check-redirect] redirect to %s", response);
@@ -176,21 +167,22 @@ OnErrorExit:
 // try to request user profile from its federation key
 int fedidCheck (oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser, struct afb_req_v4 *request, afb_hreq *hreq) {
     int err;
-    afb_data_x4_t argv[1];
+    afb_data_x4_t params[1];
 
-	oidcFedidHdlT *userInfoHdl= malloc(sizeof(oidcFedidHdlT));
+	oidcFedidHdlT *userInfoHdl= calloc(1,sizeof(oidcFedidHdlT));
 	userInfoHdl->hreq=hreq;
     userInfoHdl->request=request;
 	userInfoHdl->idp=idp;
 	userInfoHdl->fedUser=fedUser;
 	userInfoHdl->fedSocial=fedSocial;
+	fedSocial->ucount++;
+    fedUser->ucount++;
 
 	// increase fedSocial usagecount and checl social fedkey
-	fedSocial->ucount++;
-    err= afb_data_create_raw(&argv[0], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, fedSocial);
+    err= afb_data_create_raw(&params[0], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, fedSocial);
 	if (err) goto OnErrorExit;
 
-	afb_api_v4_call_hookable(idp->oidc->apiv4, "fedid", "social-check", 1, argv, fedidCheckCB, userInfoHdl);
+	afb_api_v4_call_hookable(idp->oidc->apiv4, "fedid", "social-check", 1, params, fedidCheckCB, userInfoHdl);
 	return 0;
 
 OnErrorExit:

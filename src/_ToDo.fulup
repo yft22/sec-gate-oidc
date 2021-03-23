@@ -2,6 +2,6 @@ Integrer les groups (pam + github)
  - verifier que Rodrigo me retourne bien le scope
  - traiter le scope dans la selection loa/scope de github
 
-Ajouter un cache sur les authen des alias
+Scope verifier en mettant user+org dans le scope.
 
-Scope verifier a mettant user+org dans le scope.
+Ajouter un timeout par profil (dérivé du idp timeout) avec reauthen automatique

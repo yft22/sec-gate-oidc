@@ -156,6 +156,8 @@ static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct 
     struct afb_data *args[nparams];
     const char *login, *passwd=NULL, *scope=NULL;
 	const oidcProfilsT *profil=NULL;
+    const oidcAliasT *alias=NULL;
+    int aliasLoa;
 
     int err;
 
@@ -170,7 +172,9 @@ static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct 
 
 	// search for a scope fiting requesting loa
 	afb_session *session= (*(struct afb_req_common **)request)->session;
-	int aliasLoa =afb_session_get_loa (session, oidcAliasCookie);
+	afb_session_get_cookie (session, oidcAliasCookie, (void**) &alias);
+    if (alias) aliasLoa= alias->loa;
+    else aliasLoa=0;
 
 	// search for a matching profil if scope is selected then scope&loa should match
 	for (int idx=0; idp->profils[idx].uid; idx++) {
@@ -209,14 +213,17 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 	assert (idp->magic == MAGIC_OIDC_IDP);
 	char redirectUrl [EXT_HEADER_MAX_LEN];
 	const oidcProfilsT *profil=NULL;
-	int err, status;
+    const oidcAliasT *alias=NULL;
+	int err, status, aliasLoa;
 
 	// check if request as a code
 	const char *login = afb_hreq_get_argument(hreq,  "login");
 	const char *passwd = afb_hreq_get_argument(hreq, "passwd");
 	const char *scope  = afb_hreq_get_argument(hreq, "scope");
 
-	int aliasLoa =afb_session_get_loa (hreq->comreq.session, oidcAliasCookie);
+	afb_session_get_cookie (hreq->comreq.session, oidcAliasCookie, (void**)&alias);
+    if (alias) aliasLoa= alias->loa;
+    else aliasLoa=0;
 
 	// add afb-binder endpoint to login redirect alias
     status= afb_hreq_make_here_url(hreq,idp->statics->aliasLogin,redirectUrl,sizeof(redirectUrl));

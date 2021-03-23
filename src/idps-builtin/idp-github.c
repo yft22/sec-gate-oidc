@@ -91,11 +91,64 @@ static char * json_object_dup_key_value (json_object *objJ, const char *key) {
 
 // call when IDP respond to user profil request
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
-static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
+static httpRqtActionT githubAttrsGetByTokenCB (httpRqtT *httpRqt) {
+	idpRqtCtxT *rqtCtx= (idpRqtCtxT*) httpRqt->userData;
+
+    // something when wrong
 	if (httpRqt->status != 200) goto OnErrorExit;
+
+	// unwrap user profil
+	json_object *orgsJ= json_tokener_parse(httpRqt->body);
+	if (!orgsJ || !json_object_is_type (orgsJ, json_type_array)) goto OnErrorExit;
+    fprintf (stderr, "**** user organisation=%s\n", json_object_get_string (orgsJ));
+    size_t count = json_object_array_length(orgsJ);
+    rqtCtx->fedSocial->attrs= calloc(count+1, sizeof(char*));
+    for (int idx=0; idx < count; idx++) {
+        json_object *orgJ = json_object_array_get_idx(orgsJ, idx);
+        rqtCtx->fedSocial->attrs[idx]= json_object_dup_key_value(orgJ,"login");
+    }
+    free (rqtCtx->token);
+    free (rqtCtx);
+	return HTTP_HANDLE_FREE;
+
+OnErrorExit:
+	EXT_CRITICAL ("[github-fail-orgs] Fail to get user organisation status=%ld body='%s'", httpRqt->status, httpRqt->body);
+	afb_hreq_reply_error(rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
+    free (rqtCtx->token);
+    free (rqtCtx);
+	return HTTP_HANDLE_FREE;
+}
+
+// reference https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
+static void githubGetAttrsByToken (idpRqtCtxT *rqtCtx, const char *orgApiUrl) {
+	char tokenVal [EXT_TOKEN_MAX_LEN];
+	oidcIdpT *idp= rqtCtx->idp;
+
+	snprintf(tokenVal, sizeof(tokenVal), "token %s", rqtCtx->token);
+	httpKeyValT authToken[]= {
+		{.tag="Authorization", .value=tokenVal},
+		{NULL}  // terminator
+	};
+
+	// asynchronous request to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
+    EXT_DEBUG ("[github-api-get] curl -H 'Authorization: %s' %s\n", rqtCtx->token, orgApiUrl);
+	int err= httpSendGet(idp->oidc->httpPool, orgApiUrl, &dfltOpts, authToken, githubAttrsGetByTokenCB, rqtCtx);
+	if (err) goto OnErrorExit;
+	return;
+
+OnErrorExit:
+	afb_hreq_reply_error(rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
+}
+
+// call when IDP respond to user profil request
+// reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
+static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
 	idpRqtCtxT *rqtCtx= (idpRqtCtxT*) httpRqt->userData;
 	oidcIdpT *idp= rqtCtx->idp;
 	int err;
+
+    // something when wrong
+	if (httpRqt->status != 200) goto OnErrorExit;
 
 	// unwrap user profil
 	json_object *profilJ= json_tokener_parse(httpRqt->body);
@@ -103,9 +156,9 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
     fprintf (stderr, "**** user profil=%s\n", json_object_get_string (profilJ));
 
 	// build social fedkey from idp->uid+github->id
-	fedSocialRawT *fedKey= calloc (1, sizeof(fedSocialRawT));
-    fedKey->fedkey= strdup (json_object_get_string (json_object_object_get (profilJ,"id")));
-    fedKey->idp= strdup(idp->uid);
+	fedSocialRawT *fedSocial= calloc (1, sizeof(fedSocialRawT));
+    fedSocial->fedkey= strdup (json_object_get_string (json_object_object_get (profilJ,"id")));
+    fedSocial->idp= strdup(idp->uid);
 
 	fedUserRawT *fedUser= calloc (1, sizeof(fedUserRawT));
 	fedUser->pseudo= json_object_dup_key_value (profilJ, "login");
@@ -114,37 +167,43 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
 	fedUser->company= json_object_dup_key_value (profilJ, "company");
 	fedUser->email= json_object_dup_key_value (profilJ, "email");
 
-	err= fedidCheck (idp, fedKey, fedUser, NULL, rqtCtx->hreq);
+	err= fedidCheck (idp, fedSocial, fedUser, NULL, rqtCtx->hreq);
 	if (err) goto OnErrorExit;
 
-    free (rqtCtx);
+    // user is ok, let's map user organisation onto security attributes
+    const char *organizationsUrl = json_object_get_string (json_object_object_get(profilJ, "organizations_url"));
+    if (organizationsUrl) {
+        rqtCtx->fedSocial= fedSocial;
+        githubGetAttrsByToken (rqtCtx, organizationsUrl);
+    } else {
+        free(rqtCtx->token);
+        free (rqtCtx);
+    }
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
 	EXT_CRITICAL ("[github-fail-user-profil] Fail to get user profil from github status=%ld body='%s'", httpRqt->status, httpRqt->body);
 	afb_hreq_reply_error(rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
+    free(rqtCtx->token);
+    free (rqtCtx);
 	return HTTP_HANDLE_FREE;
 }
 
 // from acces token request user profil
 // reference https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
-static void githubUserGetByToken (idpRqtCtxT *rqtCtx, const char *accessToken) {
+static void githubUserGetByToken (idpRqtCtxT *rqtCtx) {
 	char tokenVal [EXT_TOKEN_MAX_LEN];
 	oidcIdpT *idp= rqtCtx->idp;
 
-	snprintf(tokenVal, sizeof(tokenVal), "Bearer %s", accessToken);
+	snprintf(tokenVal, sizeof(tokenVal), "token %s", rqtCtx->token);
 	httpKeyValT authToken[]= {
 		{.tag="Authorization", .value=tokenVal},
-		{.tag="per_page", .value="100"},
 		{NULL}  // terminator
 	};
 
-	// asynchronous request to IDP user profil service
-	//int err= httpSendGet(idp->oidc->httpPool, idp->wellknown->identityApiUrl, &dfltOpts, authToken, githubUserGetByTokenCB, rqtCtx);
-    fprintf (stderr, "**** user request=%s\n", idp->wellknown->identityApiUrl);
-
-	// https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
-	int err= httpSendGet(idp->oidc->httpPool, "https://api.github.com/users/fulup-bzh/orgs", &dfltOpts, authToken, githubUserGetByTokenCB, rqtCtx);
+	// asynchronous request to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
+    EXT_DEBUG ("[github-api-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->identityApiUrl);
+	int err= httpSendGet(idp->oidc->httpPool, idp->wellknown->identityApiUrl, &dfltOpts, authToken, githubUserGetByTokenCB, rqtCtx);
 	if (err) goto OnErrorExit;
 	return;
 
@@ -156,7 +215,6 @@ OnErrorExit:
 static httpRqtActionT githubAccessTokenCB (httpRqtT *httpRqt) {
 	assert (httpRqt->magic == MAGIC_HTTP_RQT);
 	idpRqtCtxT *rqtCtx= (idpRqtCtxT*) httpRqt->userData;
-	const char *accessToken=NULL;
 
 	// github returns "access_token=ffefd8e2f7b0fbe2de25b54e6a415c92a15491b8&scope=user%3Aemail&token_type=bearer"
 	if (httpRqt->status != 200) goto OnErrorExit;
@@ -164,15 +222,17 @@ static httpRqtActionT githubAccessTokenCB (httpRqtT *httpRqt) {
 	// we should have a valid token or something when wrong
 	json_object *responseJ= json_tokener_parse(httpRqt->body);
 	if (!responseJ) goto OnErrorExit;
-	accessToken= json_object_get_string (json_object_object_get(responseJ, "access_token"));
-	if (!accessToken) goto OnErrorExit;
 
-	EXT_DEBUG ("[github-auth-token] token=%s (githubAccessTokenCB)", accessToken);
+    rqtCtx->token= json_object_dup_key_value(responseJ, "access_token");
+	if (!rqtCtx->token) goto OnErrorExit;
+
+	EXT_DEBUG ("[github-auth-token] token=%s (githubAccessTokenCB)", rqtCtx->token);
 
 	// we have our request token let's try to get user profil
-	githubUserGetByToken (rqtCtx, accessToken);
+	githubUserGetByToken (rqtCtx);
 
 	// callback is responsible to free request & context
+    json_object_put(responseJ);
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
@@ -220,12 +280,15 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 	assert (idp->magic == MAGIC_OIDC_IDP);
 	char redirectUrl [EXT_HEADER_MAX_LEN];
 	const oidcProfilsT *profil=NULL;
-	int err, status;
+    const oidcAliasT *alias=NULL;
+	int err, status, aliasLoa;
 
 	// check if request as a code
 	const char *code = afb_hreq_get_argument(hreq, "code");
-	int aliasLoa = afb_session_get_loa (hreq->comreq.session, oidcAliasCookie);
 	const char* session=afb_session_uuid(hreq->comreq.session);
+	afb_session_get_cookie (hreq->comreq.session, oidcAliasCookie, (void**) &alias);
+    if (alias) aliasLoa= alias->loa;
+    else aliasLoa=0;
 
 	// add afb-binder endpoint to login redirect alias
     status= afb_hreq_make_here_url(hreq,idp->statics->aliasLogin,redirectUrl,sizeof(redirectUrl));
@@ -271,11 +334,8 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 		afb_hreq_redirect_to(hreq, url, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
 
 	} else {
-		// we have a code, nevertheless because of 'same-site' cookie we need to retreive session from state uuid
-		const char *oidcState;
-
 		// use state to retreive original request session uuid and restore original session before requesting token
-		oidcState= afb_hreq_get_argument(hreq, "state");
+		const char *oidcState= afb_hreq_get_argument(hreq, "state");
 		if (strcmp (oidcState, session)) {
 			EXT_DEBUG ("[github-auth-code] missmatch session/state state=%s session=%s (githubLoginCB)", oidcState, session);
 			goto OnErrorExit;

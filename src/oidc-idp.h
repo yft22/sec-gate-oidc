@@ -46,6 +46,7 @@ typedef struct {
   const char *scope;
   const char *label;
   int loa;
+  unsigned long tCache;
 } oidcProfilsT;
 
 typedef struct oidcStaticsS {
@@ -106,6 +107,8 @@ typedef struct {
 	afb_hreq *hreq;
 	oidcIdpT *idp;
 	int loa;
+    char *token;
+    fedSocialRawT * fedSocial;
 } idpRqtCtxT;
 
 // idp callback definition
