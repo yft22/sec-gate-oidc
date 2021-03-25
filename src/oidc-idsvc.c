@@ -100,7 +100,7 @@ static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_d
     if (status < 0) goto OnErrorExit;
 
     // return destination alias
-    afb_session_get_cookie (session, oidcAliasCookie, (void**)&alias);
+    afb_session_cookie_get (session, oidcAliasCookie, (void**)&alias);
     wrap_json_pack (&aliasJ, "{ss ss}"
 	    , "url", alias->url ?: "/"
 		, "state", afb_session_uuid(session)
@@ -140,19 +140,18 @@ static void userRegister(afb_req_x4_t request, unsigned args, afb_data_x4_t cons
 
     // retrieve current request LOA from session (to be fixed by Jose)
     struct afb_req_common *reqcom= *(struct afb_req_common **)request;
-    afb_session_get_cookie (reqcom->session, oidcIdpProfilCookie, (void**)&profil);
+    afb_session_cookie_get (reqcom->session, oidcIdpProfilCookie, (void**)&profil);
     if (!profil) goto OnErrorExit;
 
     // retreive fedsocial from session
-	afb_session_get_cookie (reqcom->session, oidcFedSocialCookie, (void **) &fedSocial);
+	afb_session_cookie_get (reqcom->session, oidcFedSocialCookie, (void **) &fedSocial);
     if (!fedSocial) goto OnErrorExit;
 
-    fedUser->ucount++; // protect feduser as it us used both as a cookie and a param (TBD Jose)
-    afb_session_set_cookie (reqcom->session, oidcFedUserCookie, fedUser, fedUserFreeCB);
+    afb_session_cookie_set (reqcom->session, oidcFedUserCookie, fedUser, (void*)afb_data_unref, argd[0]);
 
     // user is new let's register it within fedid DB
     afb_data_addref(argd[0]);
-    err= afb_create_data_raw(&argd[1], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, (void*)fedSocial);
+    err= afb_create_data_raw(&argd[1], fedSocialObjType, fedSocial, 0, free, (void*)fedSocial);
     if (err < 0) goto OnErrorExit;
 
     afb_req_subcall (request, API_OIDC_USR_SVC, "user-create", 2, argd, afb_req_subcall_on_behalf, userRegisterCB, NULL);
@@ -177,7 +176,7 @@ static void sessionGet (afb_req_x4_t request, unsigned args, afb_data_x4_t const
 
     // retrieve current request LOA from session (to be fixed by Jose)
     struct afb_req_common *reqcom= *(struct afb_req_common **)request;
-    afb_session_get_cookie (reqcom->session, oidcIdpProfilCookie, (void**)&profil);
+    afb_session_cookie_get (reqcom->session, oidcIdpProfilCookie, (void**)&profil);
     if (!profil) goto OnErrorExit;
 
     wrap_json_pack (&profilJ, "{ss ss si}"
@@ -186,10 +185,8 @@ static void sessionGet (afb_req_x4_t request, unsigned args, afb_data_x4_t const
         , "loa", profil->loa
     );
 
-    afb_session_get_cookie (reqcom->session, oidcFedUserCookie, (void**) &fedUser);
-	afb_session_get_cookie (reqcom->session, oidcFedSocialCookie, (void **) &fedSocial);
-    fedUser->ucount++;
-    fedSocial->ucount++;
+    afb_session_cookie_get (reqcom->session, oidcFedUserCookie, (void**) &fedUser);
+	afb_session_cookie_get (reqcom->session, oidcFedSocialCookie, (void **) &fedSocial);
     afb_create_data_raw(&reply[0], fedUserObjType, fedUser, 0, fedUserFreeCB, fedUser);
     afb_create_data_raw(&reply[1], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, fedSocial);
     afb_create_data_raw(&reply[2], AFB_PREDEFINED_TYPE_JSON_C, profilJ, 0, (void*)json_object_put, profilJ);
@@ -214,11 +211,11 @@ static void subscribeEvent (afb_req_x4_t request, unsigned args, afb_data_x4_t c
 
     // retrieve current request LOA from session (to be fixed by Jose)
     struct afb_req_common *reqcom= *(struct afb_req_common **)request;
-    afb_session_get_cookie (reqcom->session, idsvcEvtCookie, (void**)&evtCookie);
+    afb_session_cookie_get (reqcom->session, idsvcEvtCookie, (void**)&evtCookie);
     if (!evtCookie) {
        err= afb_api_new_event(afb_req_get_api(request), afb_session_uuid(reqcom->session), &evtCookie);
        if (err < 0) goto OnErrorExit;
-       afb_session_set_cookie (reqcom->session, idsvcEvtCookie, (void*)evtCookie, NULL);
+       afb_session_cookie_set (reqcom->session, idsvcEvtCookie, (void*)evtCookie, NULL,NULL);
        afb_req_subscribe(request, evtCookie);
     }
 
@@ -239,7 +236,7 @@ int idscvPushEvent (afb_hreq *hreq, json_object *eventJ) {
     afb_event_t evtCookie=NULL;
     afb_data_t reply;
 
-    afb_session_get_cookie (hreq->comreq.session, idsvcEvtCookie, (void**)&evtCookie);
+    afb_session_cookie_get (hreq->comreq.session, idsvcEvtCookie, (void**)&evtCookie);
     if (!evtCookie) goto OnErrorExit;
 
     // create an API-V4 json param
@@ -249,7 +246,7 @@ int idscvPushEvent (afb_hreq *hreq, json_object *eventJ) {
     // no one listening clear event and cookie
     if (count <= 0) {
         afb_event_unref (evtCookie);
-        afb_session_set_cookie (hreq->comreq.session, idsvcEvtCookie, NULL, NULL);
+        afb_session_cookie_set (hreq->comreq.session, idsvcEvtCookie, NULL, NULL,NULL);
     }
 
     return count;
@@ -274,7 +271,7 @@ static void idpsList (afb_req_x4_t request, unsigned args, afb_data_x4_t const a
     struct afb_req_common *reqcom= *(struct afb_req_common **)request;
 
     AFB_REQ_NOTICE (request, "session uuid=%s (idpsList)", afb_session_uuid(reqcom->session));
-    afb_session_get_cookie (reqcom->session, oidcAliasCookie, (void**)&alias);
+    afb_session_cookie_get (reqcom->session, oidcAliasCookie, (void**)&alias);
 
     // build IDP list with corresponding scope for requested LOA
     if (alias) {

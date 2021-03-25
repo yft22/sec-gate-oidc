@@ -286,7 +286,7 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 	// check if request as a code
 	const char *code = afb_hreq_get_argument(hreq, "code");
 	const char* session=afb_session_uuid(hreq->comreq.session);
-	afb_session_get_cookie (hreq->comreq.session, oidcAliasCookie, (void**) &alias);
+	afb_session_cookie_get (hreq->comreq.session, oidcAliasCookie, (void**) &alias);
     if (alias) aliasLoa= alias->loa;
     else aliasLoa=0;
 
@@ -324,7 +324,7 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 		};
 
 		// store requested profil to retreive attached loa and role filter if login succeded
-		afb_session_set_cookie (hreq->comreq.session, oidcIdpProfilCookie, (void*)profil, NULL);
+		afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void*)profil, NULL, NULL);
 
 		// build request and send it
 		err= httpBuildQuery (idp->uid, url, sizeof(url), NULL /* prefix */, idp->wellknown->loginTokenUrl, query);

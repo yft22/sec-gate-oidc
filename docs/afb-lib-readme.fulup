@@ -9,7 +9,7 @@ afb_hreq
 afb_req_common session
 
 afb_session_get_loa
-afb_session_set_cookie
+afb_session_cookie_set
 key void* libre pointer, function, ...
 
 

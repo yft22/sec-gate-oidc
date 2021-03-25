@@ -50,7 +50,7 @@ int aliasCheckAttrs (afb_session *session, oidcAliasT *alias) {
 	int err, requestCount=0, matchCount=0;
 
 	// search within profile if we have the right role
-	err= afb_session_get_cookie (session, oidcFedSocialCookie, (void **) &fedSocial);
+	err= afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
 	if (err) goto OnErrorExit;
 
 	// this should be replaced by Cynagora request
@@ -78,7 +78,7 @@ OnErrorExit:
 static void aliasRedirectLogin (afb_hreq *hreq, oidcAliasT *alias) {
     int err;
 
-	afb_session_set_cookie (hreq->comreq.session, oidcAliasCookie, alias, NULL);
+	afb_session_cookie_set (hreq->comreq.session, oidcAliasCookie, alias, NULL, NULL);
 
 	char url[EXT_URL_MAX_LEN];
 	httpKeyValT query[]= {

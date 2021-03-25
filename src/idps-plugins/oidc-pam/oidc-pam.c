@@ -19,6 +19,7 @@
 
 #include <libafb/afb-core.h>
 #include <libafb/afb-http.h>
+#include <libafb/afb-v4.h> // use standard binding type and prototypes
 
 #include <assert.h>
 #include <string.h>
@@ -100,7 +101,7 @@ int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login
 
     // login/passwd match let's retreive gids
 	struct passwd* pw = getpwnam(login);
-	if (pw == NULL) goto OnErrorExit;
+	if (pw == NULL || pw->pw_uid < 1000) goto OnErrorExit;
 
 	// if passwd check passwd and retreive groups when login/passwd match
 	if (passwd) {
@@ -158,7 +159,6 @@ static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct 
 	const oidcProfilsT *profil=NULL;
     const oidcAliasT *alias=NULL;
     int aliasLoa;
-
     int err;
 
     err = afb_data_convert(params[0], &afb_type_predefined_json_c, &args[0]);
@@ -172,7 +172,7 @@ static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct 
 
 	// search for a scope fiting requesting loa
 	afb_session *session= (*(struct afb_req_common **)request)->session;
-	afb_session_get_cookie (session, oidcAliasCookie, (void**) &alias);
+	afb_session_cookie_get (session, oidcAliasCookie, (void**) &alias);
     if (alias) aliasLoa= alias->loa;
     else aliasLoa=0;
 
@@ -205,6 +205,7 @@ static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct 
     }
 
 	// when OK api response is handle by fedidCheck
+    afb_req_addref (request); // prevent automatic verb response.
     return;
 
 OnErrorExit:
@@ -226,7 +227,7 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 	const char *passwd = afb_hreq_get_argument(hreq, "passwd");
 	const char *scope  = afb_hreq_get_argument(hreq, "scope");
 
-	afb_session_get_cookie (hreq->comreq.session, oidcAliasCookie, (void**)&alias);
+	afb_session_cookie_get (hreq->comreq.session, oidcAliasCookie, (void**)&alias);
     if (alias) aliasLoa= alias->loa;
     else aliasLoa=0;
 
@@ -263,7 +264,7 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 		};
 
 		// store requested profil to retreive attached loa and role filter if login succeded
-		afb_session_set_cookie (hreq->comreq.session, oidcIdpProfilCookie, (void*)profil, NULL);
+		afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void*)profil, NULL, NULL);
 
 		// build request and send it
 		err= httpBuildQuery (idp->uid, url, sizeof(url), NULL /* prefix */, idp->wellknown->loginTokenUrl, query);
@@ -279,7 +280,7 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 		if (!state || strcmp (state, afb_session_uuid(hreq->comreq.session))) goto OnErrorExit;
 
 		EXT_DEBUG ("[pam-auth-code] login=%s (pamLoginCB)", login);
-        afb_session_get_cookie (hreq->comreq.session, oidcIdpProfilCookie, (void**)&profil);
+        afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void**)&profil);
 		if (!profil) goto OnErrorExit;
 
 		// Check received login/passwd
