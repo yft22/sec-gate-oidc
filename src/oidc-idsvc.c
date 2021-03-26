@@ -23,6 +23,12 @@
 
 #define _GNU_SOURCE
 
+#include <string.h>
+
+#include <libafb/afb-v4.h>
+#include <libafb/afb-core.h>
+#include <libafb/afb-http.h>
+
 #include "oidc-core.h"
 #include "oidc-idsvc.h"
 #include "oidc-apis.h"
@@ -30,18 +36,10 @@
 #include "oidc-alias.h"
 #include "oidc-fedid.h"
 
-#define AFB_BINDING_VERSION 4
-#include <afb/afb-binding.h>
-#include <libafb/core/afb-req-v4.h>
-#include <libafb/core/afb-session.h>
-#include <libafb/http/afb-hreq.h>
-
-#include <string.h>
-
 MAGIC_OIDC_SESSION(idsvcEvtCookie);
 static const char unauthorizedMsg[]="[unauthorized-api-call] authenticate to upgrade session/loa (idpsList)";
 
-static void idsvcPing (struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
+static void idsvcPing (afb_req_t request, unsigned args, afb_data_t const argv[]) {
     static int count=0;
     char *response;
     afb_data_t reply;
@@ -56,7 +54,7 @@ static void idsvcPing (struct afb_req_v4 *request, unsigned args, afb_data_x4_t 
 }
 
 // get result from /fedid/create-user
-static void userCheckAttrCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], struct afb_req_v4 *request) {
+static void userCheckAttrCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], afb_req_t request) {
     char *errorMsg= "[user-attr-fail]  (userCheckAttrCB)";
     afb_data_t reply[1],  argd[2];
     fedUserRawT *fedUser=NULL;
@@ -75,7 +73,7 @@ OnErrorExit:
 }
 
 // check user email/pseudo attribute
-static void userCheckAttr(struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
+static void userCheckAttr(afb_req_t request, unsigned args, afb_data_t const argv[]) {
     int err;
 
     if (args != 1) goto OnErrorExit;
@@ -86,7 +84,7 @@ OnErrorExit:
 }
 
 // get result from /fedid/create-user
-static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], struct afb_req_v4 *request) {
+static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], afb_req_t request) {
     char *errorMsg= "[user-create-fail]  (idsvcuserRegisterCB)";
     afb_data_t reply[1],  argd[2];
     fedUserRawT *fedUser=NULL;
@@ -94,7 +92,7 @@ static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_d
     oidcAliasT *alias=NULL;
     json_object *profilJ;
     json_object *aliasJ;
-    afb_session *session= (*(struct afb_req_common **)request)->session;
+    afb_session *session= afb_req_v4_get_common(request)->session;
 
     // return creation status to HTML5
     if (status < 0) goto OnErrorExit;
@@ -116,7 +114,7 @@ OnErrorExit:
 }
 
 // Try to store fedsocial and feduser into local store
-static void userRegister(struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
+static void userRegister(afb_req_t request, unsigned args, afb_data_t const argv[]) {
     char *errorMsg= "[user-register-fail] invalid request";
     afb_data_t reply[1], argd[2];
     afb_event_t evtCookie=NULL;
@@ -165,7 +163,7 @@ OnErrorExit:
 }
 
 // Return all information we have on current session (profil, loa, idp, ...)
-static void sessionGet (struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
+static void sessionGet (afb_req_t request, unsigned args, afb_data_t const argv[]) {
     char *errorMsg= "[fail-get-session] no session running anonymous mode";
     afb_data_t reply[3];
     afb_event_t evtCookie=NULL;
@@ -202,7 +200,7 @@ OnErrorExit:
 
 
 // if not already done create and register a session event
-static void subscribeEvent (struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
+static void subscribeEvent (afb_req_t request, unsigned args, afb_data_t const argv[]) {
     const char *errorMsg = "[fail-event-create] hoops internal error (idsvcSubscribe)";
     int err;
     char *response;
@@ -257,7 +255,7 @@ OnErrorExit:
 }
 
 // return the list of autorities matching requested LOA
-static void idpsList (struct afb_req_v4 * *request, unsigned args, afb_data_x4_t const argv[]) {
+static void idpsList (afb_req_t request, unsigned args, afb_data_t const argv[]) {
     int err;
     afb_data_t reply;
     json_object *idpsJ, *responseJ, *aliasJ;
