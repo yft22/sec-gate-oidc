@@ -168,6 +168,7 @@ int fedidCheck (oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser, s
     err= afb_data_create_raw(&params[0], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, fedSocial);
 	if (err) goto OnErrorExit;
 
+	afb_data_addref(params[0]);  // prevent params to be deleted
 	afb_api_v4_call_hookable(idp->oidc->apiv4, "fedid", "social-check", 1, params, fedidCheckCB, userRqt);
 	return 0;
 

@@ -321,7 +321,6 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 			{.tag="scope"        , .value=profil->scope},
 			{.tag="redirect_uri" , .value=redirectUrl},
 			{.tag="language"     , .value=setlocale(LC_CTYPE, "")},
-
 			{NULL} // terminator
 		};
 
