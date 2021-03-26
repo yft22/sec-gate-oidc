@@ -29,12 +29,9 @@
 #include "oidc-idsvc.h"
 #include "http-client.h"
 
-#define WITH_LIBMICROHTTPD 1
-#include <libafb/extend/afb-extension.h>
-#include <libafb/core/afb-session.h>
-#include <libafb/http/afb-hsrv.h>
-#include <libafb/http/afb-hreq.h>
-#include <libafb/core/afb-common.h>
+#include <libafb/afb-extension.h>
+#include <libafb/afb-core.h>
+#include <libafb/afb-http.h>
 
 #include <string.h>
 #include <microhttpd.h>
