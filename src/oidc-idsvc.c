@@ -32,7 +32,7 @@
 
 #define AFB_BINDING_VERSION 4
 #include <afb/afb-binding.h>
-#include <libafb/core/afb-req-common.h>
+#include <libafb/core/afb-req-v4.h>
 #include <libafb/core/afb-session.h>
 #include <libafb/http/afb-hreq.h>
 
@@ -41,7 +41,7 @@
 MAGIC_OIDC_SESSION(idsvcEvtCookie);
 static const char unauthorizedMsg[]="[unauthorized-api-call] authenticate to upgrade session/loa (idpsList)";
 
-static void idsvcPing (afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
+static void idsvcPing (struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
     static int count=0;
     char *response;
     afb_data_t reply;
@@ -56,7 +56,7 @@ static void idsvcPing (afb_req_x4_t request, unsigned args, afb_data_x4_t const 
 }
 
 // get result from /fedid/create-user
-static void userCheckAttrCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], afb_req_x4_t request) {
+static void userCheckAttrCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], struct afb_req_v4 *request) {
     char *errorMsg= "[user-attr-fail]  (userCheckAttrCB)";
     afb_data_t reply[1],  argd[2];
     fedUserRawT *fedUser=NULL;
@@ -75,7 +75,7 @@ OnErrorExit:
 }
 
 // check user email/pseudo attribute
-static void userCheckAttr(afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
+static void userCheckAttr(struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
     int err;
 
     if (args != 1) goto OnErrorExit;
@@ -86,7 +86,7 @@ OnErrorExit:
 }
 
 // get result from /fedid/create-user
-static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], afb_req_x4_t request) {
+static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], struct afb_req_v4 *request) {
     char *errorMsg= "[user-create-fail]  (idsvcuserRegisterCB)";
     afb_data_t reply[1],  argd[2];
     fedUserRawT *fedUser=NULL;
@@ -116,7 +116,7 @@ OnErrorExit:
 }
 
 // Try to store fedsocial and feduser into local store
-static void userRegister(afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
+static void userRegister(struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
     char *errorMsg= "[user-register-fail] invalid request";
     afb_data_t reply[1], argd[2];
     afb_event_t evtCookie=NULL;
@@ -139,15 +139,15 @@ static void userRegister(afb_req_x4_t request, unsigned args, afb_data_x4_t cons
     fedUser= (void*) afb_data_rw_pointer(argd[0]);
 
     // retrieve current request LOA from session (to be fixed by Jose)
-    struct afb_req_common *reqcom= *(struct afb_req_common **)request;
-    afb_session_cookie_get (reqcom->session, oidcIdpProfilCookie, (void**)&profil);
+    afb_session *session= afb_req_v4_get_common(request)->session;
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void**)&profil);
     if (!profil) goto OnErrorExit;
 
     // retreive fedsocial from session
-	afb_session_cookie_get (reqcom->session, oidcFedSocialCookie, (void **) &fedSocial);
+	afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
     if (!fedSocial) goto OnErrorExit;
 
-    afb_session_cookie_set (reqcom->session, oidcFedUserCookie, fedUser, (void*)afb_data_unref, argd[0]);
+    afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void*)afb_data_unref, argd[0]);
 
     // user is new let's register it within fedid DB
     afb_data_addref(argd[0]);
@@ -165,7 +165,7 @@ OnErrorExit:
 }
 
 // Return all information we have on current session (profil, loa, idp, ...)
-static void sessionGet (afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
+static void sessionGet (struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
     char *errorMsg= "[fail-get-session] no session running anonymous mode";
     afb_data_t reply[3];
     afb_event_t evtCookie=NULL;
@@ -175,8 +175,8 @@ static void sessionGet (afb_req_x4_t request, unsigned args, afb_data_x4_t const
     json_object *profilJ;
 
     // retrieve current request LOA from session (to be fixed by Jose)
-    struct afb_req_common *reqcom= *(struct afb_req_common **)request;
-    afb_session_cookie_get (reqcom->session, oidcIdpProfilCookie, (void**)&profil);
+    afb_session *session= afb_req_v4_get_common(request)->session;
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void**)&profil);
     if (!profil) goto OnErrorExit;
 
     wrap_json_pack (&profilJ, "{ss ss si}"
@@ -185,8 +185,8 @@ static void sessionGet (afb_req_x4_t request, unsigned args, afb_data_x4_t const
         , "loa", profil->loa
     );
 
-    afb_session_cookie_get (reqcom->session, oidcFedUserCookie, (void**) &fedUser);
-	afb_session_cookie_get (reqcom->session, oidcFedSocialCookie, (void **) &fedSocial);
+    afb_session_cookie_get (session, oidcFedUserCookie, (void**) &fedUser);
+	afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
     afb_create_data_raw(&reply[0], fedUserObjType, fedUser, 0, fedUserFreeCB, fedUser);
     afb_create_data_raw(&reply[1], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, fedSocial);
     afb_create_data_raw(&reply[2], AFB_PREDEFINED_TYPE_JSON_C, profilJ, 0, (void*)json_object_put, profilJ);
@@ -202,7 +202,7 @@ OnErrorExit:
 
 
 // if not already done create and register a session event
-static void subscribeEvent (afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
+static void subscribeEvent (struct afb_req_v4 *request, unsigned args, afb_data_x4_t const argv[]) {
     const char *errorMsg = "[fail-event-create] hoops internal error (idsvcSubscribe)";
     int err;
     char *response;
@@ -210,16 +210,16 @@ static void subscribeEvent (afb_req_x4_t request, unsigned args, afb_data_x4_t c
     afb_event_t evtCookie=NULL;
 
     // retrieve current request LOA from session (to be fixed by Jose)
-    struct afb_req_common *reqcom= *(struct afb_req_common **)request;
-    afb_session_cookie_get (reqcom->session, idsvcEvtCookie, (void**)&evtCookie);
+    afb_session *session= afb_req_v4_get_common(request)->session;
+    afb_session_cookie_get (session, idsvcEvtCookie, (void**)&evtCookie);
     if (!evtCookie) {
-       err= afb_api_new_event(afb_req_get_api(request), afb_session_uuid(reqcom->session), &evtCookie);
+       err= afb_api_new_event(afb_req_get_api(request), afb_session_uuid(session), &evtCookie);
        if (err < 0) goto OnErrorExit;
-       afb_session_cookie_set (reqcom->session, idsvcEvtCookie, (void*)evtCookie, NULL,NULL);
+       afb_session_cookie_set (session, idsvcEvtCookie, (void*)evtCookie, NULL,NULL);
        afb_req_subscribe(request, evtCookie);
     }
 
-    asprintf (&response, "session-uuid=%s", afb_session_uuid(reqcom->session));
+    asprintf (&response, "session-uuid=%s", afb_session_uuid(session));
     afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_STRINGZ, response, strlen(response)+1, free, NULL);
     afb_req_reply(request, 0, 1, &reply);
 
@@ -257,7 +257,7 @@ OnErrorExit:
 }
 
 // return the list of autorities matching requested LOA
-static void idpsList (afb_req_x4_t request, unsigned args, afb_data_x4_t const argv[]) {
+static void idpsList (struct afb_req_v4 * *request, unsigned args, afb_data_x4_t const argv[]) {
     int err;
     afb_data_t reply;
     json_object *idpsJ, *responseJ, *aliasJ;
@@ -268,10 +268,10 @@ static void idpsList (afb_req_x4_t request, unsigned args, afb_data_x4_t const a
     if (!oidc || oidc->magic != MAGIC_OIDC_MAIN) goto OnErrorExit;
 
     // retrieve current request LOA from session (to be fixed by Jose)
-    struct afb_req_common *reqcom= *(struct afb_req_common **)request;
+    afb_session *session= afb_req_v4_get_common(request)->session;
 
-    AFB_REQ_NOTICE (request, "session uuid=%s (idpsList)", afb_session_uuid(reqcom->session));
-    afb_session_cookie_get (reqcom->session, oidcAliasCookie, (void**)&alias);
+    AFB_REQ_NOTICE (request, "session uuid=%s (idpsList)", afb_session_uuid(session));
+    afb_session_cookie_get (session, oidcAliasCookie, (void**)&alias);
 
     // build IDP list with corresponding scope for requested LOA
     if (alias) {
