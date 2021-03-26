@@ -23,13 +23,14 @@
 
 #define _GNU_SOURCE
 
+#include <libafb/afb-v4.h>
+#include <libafb/afb-core.h>
+#include <libafb/apis/afb-api-ws.h>
+
 #include "oidc-core.h"
 #include "oidc-apis.h"
 
 #include <assert.h>
-#include <libafb/afb-core.h>
-#include <libafb/apis/afb-api-ws.h>
-
 #include <stdio.h>
 
 int apisCreateSvc (oidcCoreHdlT *oidc, oidcApisT *apiSvc, afb_apiset *declare_set, afb_apiset *call_set, afb_verb_v4 *apiVerbs) {
@@ -75,7 +76,7 @@ int apisRegisterOne (oidcCoreHdlT *oidc, oidcApisT *api, afb_apiset *declare_set
 	    if (err) goto OnErrorExit;
     }
 
-	// Extract API from URI 
+	// Extract API from URI
     for (index=0; api->uri[index]; index ++) {
         if (api->uri[index] == '@' || api->uri[index] == '/') break;
     }
@@ -89,7 +90,7 @@ int apisRegisterOne (oidcCoreHdlT *oidc, oidcApisT *api, afb_apiset *declare_set
     }
 
 	// register api for later loa/roles check
-	HASH_ADD_KEYPTR(hh, oidc->apisHash, api->uid, strlen(api->uid), api);  // **** FULUP TBD still needed 
+	HASH_ADD_KEYPTR(hh, oidc->apisHash, api->uid, strlen(api->uid), api);  // **** FULUP TBD still needed
 
 	return 0;
 

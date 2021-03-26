@@ -21,27 +21,18 @@
  * $RP_END_LICENSE$
 */
 
-#include "oidc-core.h"
-#include "oidc-alias.h"
-#include <http-client.h>
-
+#include <libafb/afb-v4.h>
 #include <libafb/afb-core.h>
 #include <libafb/afb-http.h>
 
-// #undef AFB_BINDING_VERSION
-// #define AFB_BINDING_VERSION 4
-// #include "libafb/core/afb-v4-itf.h"
-// #include <libafb/core/afb-session.h>
-// #include <libafb/http/afb-hreq.h>
-// #include <libafb/core/afb-data.h>
-// #include <libafb/core/afb-api-v4.h>
-
+#include "oidc-core.h"
+#include "oidc-alias.h"
+#include <http-client.h>
 #include "oidc-fedid.h"
 
 #include <assert.h>
 #include <string.h>
 #include <locale.h>
-
 
 MAGIC_OIDC_SESSION(oidcFedUserCookie);
 MAGIC_OIDC_SESSION(oidcFedSocialCookie);

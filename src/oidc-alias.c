@@ -23,15 +23,15 @@
 
 #define _GNU_SOURCE
 
+#include <libafb/afb-v4.h>
+#include <libafb/afb-core.h>
+#include <libafb/afb-http.h>
+
 #include "oidc-core.h"
 #include "oidc-alias.h"
 #include "oidc-fedid.h"
 #include "oidc-idsvc.h"
 #include "http-client.h"
-
-#include <libafb/afb-extension.h>
-#include <libafb/afb-core.h>
-#include <libafb/afb-http.h>
 
 #include <string.h>
 #include <microhttpd.h>
@@ -149,7 +149,7 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
             // store a sampstamp to cache authentication validation
             tStamp = tNow + alias->tCache/100;
             afb_session_set_loa (hreq->comreq.session, oidcAliasCookie, tStamp);
-        }    
+        }
     }
 
 	// change hreq bearer

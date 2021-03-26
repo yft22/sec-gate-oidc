@@ -10,16 +10,14 @@
 
 #define _GNU_SOURCE
 
-#include <fedid-types.h>
+#include <libafb/afb-v4.h>
+#include <libafb/afb-core.h>
+#include <libafb/afb-http.h>
 
 #include "oidc-core.h"
 #include "oidc-idp.h"
 #include "oidc-alias.h"
 #include "oidc-fedid.h"
-
-#include <libafb/afb-core.h>
-#include <libafb/afb-http.h>
-#include <libafb/afb-v4.h> // use standard binding type and prototypes
 
 #include <assert.h>
 #include <string.h>

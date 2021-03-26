@@ -23,9 +23,11 @@
 
 #define _GNU_SOURCE
 
+#include <libafb/afb-v4.h>
+#include <libafb/apis/afb-api-ws.h>
+
 #include "oidc-defaults.h"
 #include "oidc-core.h"
-
 #include "oidc-alias.h"
 #include "oidc-apis.h"
 #include "oidc-idp.h"
@@ -37,11 +39,6 @@
 #include <argp.h>
 #include <json-c/json.h>
 #include <wrap-json.h>
-
-#include <libafb/sys/verbose.h>
-#include <libafb/extend/afb-extension.h>
-#include <libafb/apis/afb-api-ws.h>
-#include <libafb/http/afb-hsrv.h>
 
 AFB_EXTENSION(oidc-sgate)
 

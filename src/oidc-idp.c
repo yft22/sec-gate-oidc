@@ -21,11 +21,14 @@
  * $RP_END_LICENSE$
 */
 
+#include <libafb/afb-v4.h>
+#include <libafb/afb-core.h>
+#include <libafb/afb-http.h>
+
 #include "oidc-core.h"
 #include "oidc-idp.h"
 #include "oidc-fedid.h"
 #include "idps-builtin.h"
-#include <libafb/http/afb-hsrv.h>
 
 #include <string.h>
 #include <dlfcn.h>
@@ -395,19 +398,19 @@ static int idpParseOne (oidcCoreHdlT *oidc, json_object *idpJ, oidcIdpT *idp) {
 			free(tokpath);
 			if (!handle) {
 				EXT_ERROR("[idp-plugin-load] idp=%s plugin=%s error=%s", uid, ldpath, dlerror());
-				goto OnErrorExit; 
+				goto OnErrorExit;
 			}
 
-			oidcPluginInitCbT registerPluginCB= (oidcPluginInitCbT) dlsym(handle, "oidcPluginInit");  
+			oidcPluginInitCbT registerPluginCB= (oidcPluginInitCbT) dlsym(handle, "oidcPluginInit");
 			if (!registerPluginCB) {
 				EXT_ERROR("[idp-plugin-symb] idp=%s plugin=%s initcb='oidcPluginInit' (symbol not found)", uid, filepath);
-				goto OnErrorExit; 
+				goto OnErrorExit;
 			}
 
 			err= registerPluginCB (oidc, &idpGenericCB);
 			if (err) {
 				EXT_ERROR("[idp-plugin-init] idp=%s plugin=%s initcb='oidcPluginInit' (call fail)", uid, filepath);
-				goto OnErrorExit; 
+				goto OnErrorExit;
 			}
 		}
 	}
@@ -502,7 +505,7 @@ int idpRegisterLogin (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv) {
 
 OnErrorExit:
   EXT_ERROR("[idp-register-alias] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
-  return 1;    
+  return 1;
 }
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format

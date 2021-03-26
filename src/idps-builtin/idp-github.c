@@ -25,14 +25,16 @@
 
 #define _GNU_SOURCE
 
+#include <libafb/afb-v4.h>
+#include <libafb/afb-core.h>
+#include <libafb/afb-http.h>
+
 #include "oidc-core.h"
 #include "oidc-idp.h"
 #include "oidc-alias.h"
 #include "oidc-fedid.h"
 #include "http-client.h"
 
-#include <libafb/core/afb-session.h>
-#include <libafb/http/afb-hreq.h>
 #include <assert.h>
 #include <string.h>
 #include <locale.h>
