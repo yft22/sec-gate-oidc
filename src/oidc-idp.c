@@ -58,7 +58,7 @@ void idpRqtCtxFree (idpRqtCtxT *rqtCtx) {
 }
 
 // return the idp list to display corresponding login page.
-json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa) {
+json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa, const char**idps) {
 	json_object *idpsJ= NULL;
 
 	for (int idx=0; oidc->idps[idx].uid; idx++) {
@@ -67,18 +67,28 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa) {
 
 		// search for requested LOA within idp existing profils
 		for (int jdx=0; idp->profils[jdx].uid; jdx++) {
-			// if loa mach return corresponding scope
-			if (idp->profils[jdx].loa >= loa) {
-				json_object *profilJ;
-				if (!profilsJ) profilsJ= json_object_new_array();
-				wrap_json_pack (&profilJ, "{si ss ss* ss}"
-					, "loa", idp->profils[jdx].loa
-					, "uid", idp->profils[jdx].uid
-					, "info", idp->profils[jdx].info
-					, "scope",idp->profils[jdx].scope
-				);
-				json_object_array_add (profilsJ,profilJ);
+
+			// if loa does not fir ignore IDP
+			if (idp->profils[jdx].loa < loa) continue;
+
+			// idp is not within idps list excluse it from list
+			if (idps) {
+				int kdx;
+				for (kdx=0; idps[kdx]; kdx++) {
+					if (!strcasecmp (idps[kdx], idp->uid)) break;
+				}
+				if (!idps[kdx]) continue;
 			}
+
+			json_object *profilJ;
+			if (!profilsJ) profilsJ= json_object_new_array();
+			wrap_json_pack (&profilJ, "{si ss ss* ss}"
+				, "loa", idp->profils[jdx].loa
+				, "uid", idp->profils[jdx].uid
+				, "info", idp->profils[jdx].info
+				, "scope",idp->profils[jdx].scope
+			);
+			json_object_array_add (profilsJ,profilJ);
 		}
 
 		// only return IDP with a corresponding loa/scope
@@ -302,7 +312,6 @@ OnErrorExit:
   free(wellknown);
   return NULL;
 }
-
 
 int idpParseOidcConfig (oidcIdpT *idp, json_object *configJ, oidcDefaultsT *defaults, void*ctx) {
 

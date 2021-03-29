@@ -119,6 +119,11 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
 		// everyting looks good let's return user to original page
 		afb_session_cookie_get (session, oidcAliasCookie, (void**)&alias);
 
+		// Fulup TBD link account is a previous waiting tolink fed account exist linkit now
+		// get fedlinkcookie
+		// subcall for linking account  (social-link fedsocial, pseudo, email);
+		// le call doit fonctionner à tous les coups
+
         err= httpBuildQuery (userRqt->idp->uid, url, sizeof(url), NULL /* prefix */, alias->url, NULL);
         if (err) {
             EXT_ERROR ("[fedid-register-exist] fail to build redirect url");

@@ -54,7 +54,7 @@ static void idsvcPing (afb_req_t request, unsigned argc, afb_data_t const argv[]
 }
 
 // get result from /fedid/create-user
-static void userCheckAttrCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], afb_req_t request) {
+static void userCheckAttrCB(void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t request) {
     char *errorMsg= "[user-attr-fail]  (userCheckAttrCB)";
     afb_data_t reply[1],  argd[2];
     fedUserRawT *fedUser=NULL;
@@ -84,13 +84,76 @@ OnErrorExit:
 }
 
 // get result from /fedid/create-user
-static void userRegisterCB(void *ctx, int status, unsigned nreplies, const afb_data_t replies[], afb_req_t request) {
+static void userGetIdpsCB(void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t request) {
+    char *errorMsg= "[user-link-fail] internal error (userGetIdpsCB)";
+    fedSocialRawT *fedSocial=NULL, *fedToLink;
+    json_object * idpsJ, *responseJ;
+    afb_data_t reply[1];
+    int err;
+
+    // convert and retreive input arguments
+    afb_data_t argd[2];
+    const afb_type_t argt[]= {fedUserIdpsObjType, NULL};
+    err= afb_data_array_convert (argc, argv, argt, argd);
+    if (err < 0) goto OnErrorExit;
+    char ** idps= (void*) afb_data_ro_pointer(argd[0]);
+
+    // retreive oidc config from current alias cookie
+    oidcAliasT *alias=NULL;
+    afb_session *session= afb_req_v4_get_common(request)->session;
+    afb_session_cookie_get (session, oidcAliasCookie, (void**)&alias);
+    if (!alias) goto OnErrorExit;
+
+    // Keep track of current fedsocial authentication to link account
+   	afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
+    if (!fedSocial) goto OnErrorExit;
+    // store fedsocial cookie for further use
+    fedToLink=malloc(sizeof(fedSocialRawT));
+    memcpy (fedToLink, fedSocial, sizeof(fedSocialRawT));
+    // afb_session_cookie_set (session, oidcFedSocialCookie, (void **) &fedSocial, fedSocial, fedSocialFreeCB, fedSocial);
+
+    idpsJ= idpLoaProfilsGet(alias->oidc, 0, NULL);
+
+    err= wrap_json_pack (&responseJ, "{ss so}"
+        , "action", "fedlink"
+        , "idps", idpsJ
+    );
+    if (err) goto OnErrorExit;
+
+fprintf (stderr, "**** userGetIdpsCB responsej=%s\n", json_object_get_string(responseJ));
+    afb_create_data_raw(reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void*)json_object_put, responseJ);
+    afb_req_reply(request, 0, 1, reply);
+
+
+    // return creation status to HTML5
+    if (status < 0) goto OnErrorExit;
+    afb_req_reply(request, status, 0, NULL);
+    return;
+
+OnErrorExit:
+    afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, strlen(errorMsg)+1, NULL, NULL);
+    afb_req_reply (request, -1, 1, reply);
+    return;
+}
+
+// Link two IDP account with a single federated user
+static void userGetIdps(afb_req_t request, unsigned argc, afb_data_t const argv[]) {
+    int err;
+
+    if (argc != 1) goto OnErrorExit;
+    afb_req_subcall (request, API_OIDC_USR_SVC, "social-idps", argc, argv, afb_req_subcall_on_behalf, userGetIdpsCB, NULL);
+
+OnErrorExit:
+    afb_req_reply (request, -100, 0, NULL);
+}
+
+// get result from /fedid/create-user
+static void userRegisterCB(void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t request) {
     char *errorMsg= "[user-create-fail]  (idsvcuserRegisterCB)";
     afb_data_t reply[1],  argd[2];
     fedUserRawT *fedUser=NULL;
     oidcProfilsT *profil=NULL;
     oidcAliasT *alias=NULL;
-    json_object *profilJ;
     json_object *aliasJ;
     afb_session *session= afb_req_v4_get_common(request)->session;
 
@@ -116,22 +179,19 @@ OnErrorExit:
 // Try to store fedsocial and feduser into local store
 static void userRegister(afb_req_t request, unsigned argc, afb_data_t const argv[]) {
     char *errorMsg= "[user-register-fail] invalid request";
-    afb_data_t reply[1], argd[2];
     afb_event_t evtCookie=NULL;
     const oidcProfilsT *profil=NULL;
 	const fedSocialRawT *fedSocial;
-   	fedUserRawT *fedUser;
-    json_object *profilJ;
     int err;
 
     if (argc != 1) goto OnErrorExit;
 
+    // convert input arguments
+    afb_data_t reply[1], argd[2];
     const afb_type_t argt[]= {fedUserObjType, NULL};
     err= afb_data_array_convert (argc, argv, argt, argd);
-   if (err < 0) {
-        argd[0]=NULL;
-        goto OnErrorExit;
-    };
+    if (err < 0) goto OnErrorExit;
+    fedUserRawT *fedUser= (void*) afb_data_ro_pointer(argd[0]);
 
     // retrieve current request LOA from session (to be fixed by Jose)
     afb_session *session= afb_req_v4_get_common(request)->session;
@@ -140,12 +200,11 @@ static void userRegister(afb_req_t request, unsigned argc, afb_data_t const argv
 
 fprintf (stderr, "*** userRegister session uid=%s\n", afb_session_uuid(session));
 
-
     // retreive fedsocial from session
    	afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
     if (!fedSocial) goto OnErrorExit;
 
-    fedUser= (void*) afb_data_ro_pointer(argd[0]);
+
     afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void*)afb_data_unref, argd[0]);
 
     // user is new let's register it within fedid DB
@@ -183,8 +242,6 @@ static void sessionGet (afb_req_t request, unsigned argc, afb_data_t const argv[
         , "scope", profil->scope
         , "loa", profil->loa
     );
-
-fprintf (stderr, "*** sessionGet session uid=%s\n", afb_session_uuid(session));
 
     afb_session_cookie_get (session, oidcFedUserCookie, (void**) &fedUser);
 	afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
@@ -257,6 +314,7 @@ OnErrorExit:
     return -1;
 }
 
+
 // return the list of autorities matching requested LOA
 static void idpsList (afb_req_t request, unsigned argc, afb_data_t const argv[]) {
     int err;
@@ -276,7 +334,7 @@ static void idpsList (afb_req_t request, unsigned argc, afb_data_t const argv[])
 
     // build IDP list with corresponding scope for requested LOA
     if (alias) {
-        idpsJ= idpLoaProfilsGet (oidc, alias->loa);
+        idpsJ= idpLoaProfilsGet (oidc, alias->loa, NULL);
         wrap_json_pack (&aliasJ, "{ss ss si}"
             , "uid", alias->uid
 			, "url", alias->url
@@ -284,7 +342,7 @@ static void idpsList (afb_req_t request, unsigned argc, afb_data_t const argv[])
         );
 
     } else {
-        idpsJ= idpLoaProfilsGet(oidc, 0);
+        idpsJ= idpLoaProfilsGet(oidc, 0, NULL);
         aliasJ=NULL;
     }
 
@@ -309,11 +367,12 @@ OnErrorExit:
 // Static verb not depending on shell json config file
 static afb_verb_t idsvcVerbs[] = {
     /* VERB'S NAME         FUNCTION TO CALL         SHORT DESCRIPTION */
-    { .verb = "ping",         .callback = idsvcPing    , .info = "ping test"},
-    { .verb = "idp-list",     .callback = idpsList    , .info = "request idp list/scope for a given LOA level"},
-    { .verb = "evt-subs",     .callback = subscribeEvent, .info = "subscribe to sgate private client session events"},
-    { .verb = "get-session",  .callback = sessionGet, .info = "retreive current client session [profil, user, social]"},
-    { .verb = "usr-register", .callback = userRegister, .info = "register federated user profile into local fedid store"},
+    { .verb = "ping",         .callback = idsvcPing,     .info = "ping test"},
+    { .verb = "idp-list",     .callback = idpsList,      .info = "request idp list/scope for a given LOA level"},
+    { .verb = "evt-subs",     .callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
+    { .verb = "get-session",  .callback = sessionGet,    .info = "retreive current client session [profil, user, social]"},
+    { .verb = "usr-register", .callback = userRegister,  .info = "register federated user profile into local fedid store"},
+    { .verb = "usr-idps-link",.callback = userGetIdps,   .info = "return pseudo/email idps list before linking user multiple IDPs"},
     { .verb = "chk-attribute",.callback = userCheckAttr, .info = "check user attribute within local store"},
     { NULL} // terminator
 };

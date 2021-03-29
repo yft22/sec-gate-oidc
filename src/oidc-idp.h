@@ -120,6 +120,6 @@ const oidcIdpT *idpParseConfig (oidcCoreHdlT *oidc, json_object *idpsJ);
 int idpParseOidcConfig (oidcIdpT *idp, json_object *configJ, oidcDefaultsT *defaults, void*ctx);
 int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, struct afb_apiset *declare_set, struct afb_apiset *call_set);
 int idpRegisterLogin (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv);
-json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa);
+json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa, const char **idps);
 int idpPLuginRegistryInit(void);
 void idpRqtCtxFree (idpRqtCtxT *rqtCtx);

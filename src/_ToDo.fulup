@@ -1,7 +1,18 @@
-Integrer les groups (pam + github)
- - verifier que Rodrigo me retourne bien le scope
- - traiter le scope dans la selection loa/scope de github
 
-Scope verifier en mettant user+org dans le scope.
+1) Finir le link de 2 idp accounts
 
-Ajouter un timeout par profil (dérivé du idp timeout) avec reauthen automatique
+    - Tester que user-link retourne bien la list des idps du user
+    - Ajouter la fonction pour linked 2 account en base dans fedid-binding
+    - Stoker le fedid courant avant de lancer le link d'idp
+    - Au retour de l'autentification réussi sur le 2eme IDP lancer la fédération.
+    - Revalider l'IDP qui était présent avant le link d'account
+
+2) Ajouter le timeout de session avec redirect sur l'IDP courrant (github ou pam)
+
+3) Ajouter une API dans fedID pour:
+
+    - créer des labels de securité.
+    - ajouter un label à un compte.
+
+
+
