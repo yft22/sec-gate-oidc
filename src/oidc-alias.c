@@ -115,7 +115,8 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
         // if tCache not expired use jump authent check
         clock_gettime(CLOCK_MONOTONIC, &tCurrent);
         tNow = (int) ((tCurrent.tv_nsec) / 1000000 + (tCurrent.tv_sec) * 1000)/100;
-        if (tNow > alias->tCache) {
+		tStamp= afb_session_get_loa (hreq->comreq.session, oidcAliasCookie);
+        if (tNow > tStamp) {
 
             EXT_NOTICE ("session uuid=%s (aliasCheckLoaCB)", afb_session_uuid(hreq->comreq.session));
 
