@@ -104,11 +104,12 @@ typedef struct idpPluginS{
 
 // request handle
 typedef struct {
+  int ucount;
 	afb_hreq *hreq;
 	oidcIdpT *idp;
-	int loa;
-    char *token;
-    fedSocialRawT * fedSocial;
+  char *token;
+  fedSocialRawT * fedSocial;  // store fed idp security attributes
+  const oidcProfilsT *profil; // track requested scope
 } idpRqtCtxT;
 
 // idp callback definition
@@ -121,3 +122,4 @@ int idpRegisterOne (oidcCoreHdlT *oidc, oidcIdpT *idp, struct afb_apiset *declar
 int idpRegisterLogin (oidcCoreHdlT *oidc, oidcIdpT *idp, afb_hsrv *hsrv);
 json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa);
 int idpPLuginRegistryInit(void);
+void idpRqtCtxFree (idpRqtCtxT *rqtCtx);

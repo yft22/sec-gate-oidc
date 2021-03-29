@@ -32,6 +32,7 @@
 
 #include <string.h>
 #include <dlfcn.h>
+#include <assert.h>
 
 MAGIC_OIDC_SESSION(oidcIdpProfilCookie);
 
@@ -44,6 +45,17 @@ typedef struct idpRegistryS {
 // registry holds a linked list of core+pugins idps
 idpPluginT idpBuiltin[];
 static idpRegistryT *registryHead= NULL;
+
+
+void idpRqtCtxFree (idpRqtCtxT *rqtCtx) {
+	assert (rqtCtx->ucount >= 0);
+	rqtCtx->ucount--;
+
+	if (rqtCtx->ucount <0) {
+		free(rqtCtx->token);
+		free(rqtCtx);
+	}
+}
 
 // return the idp list to display corresponding login page.
 json_object *idpLoaProfilsGet (oidcCoreHdlT *oidc, int loa) {

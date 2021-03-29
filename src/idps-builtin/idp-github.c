@@ -109,8 +109,7 @@ static httpRqtActionT githubAttrsGetByTokenCB (httpRqtT *httpRqt) {
         json_object *orgJ = json_object_array_get_idx(orgsJ, idx);
         rqtCtx->fedSocial->attrs[idx]= json_object_dup_key_value(orgJ,"login");
     }
-    free (rqtCtx->token);
-    free (rqtCtx);
+    idpRqtCtxFree(rqtCtx);
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
@@ -125,6 +124,7 @@ OnErrorExit:
 static void githubGetAttrsByToken (idpRqtCtxT *rqtCtx, const char *orgApiUrl) {
 	char tokenVal [EXT_TOKEN_MAX_LEN];
 	oidcIdpT *idp= rqtCtx->idp;
+	rqtCtx->ucount++;
 
 	snprintf(tokenVal, sizeof(tokenVal), "token %s", rqtCtx->token);
 	httpKeyValT authToken[]= {
@@ -169,18 +169,19 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT *httpRqt) {
 	fedUser->company= json_object_dup_key_value (profilJ, "company");
 	fedUser->email= json_object_dup_key_value (profilJ, "email");
 
+    // user is ok, let's map user organisation onto security attributes
+	if (rqtCtx->profil->label) {
+    	const char *organizationsUrl = json_object_get_string (json_object_object_get(profilJ, rqtCtx->profil->label));
+    	if (organizationsUrl) {
+       		rqtCtx->fedSocial= fedSocial;
+       		githubGetAttrsByToken (rqtCtx, organizationsUrl);
+		}
+    }
+
 	err= fedidCheck (idp, fedSocial, fedUser, NULL, rqtCtx->hreq);
 	if (err) goto OnErrorExit;
+	idpRqtCtxFree (rqtCtx);
 
-    // user is ok, let's map user organisation onto security attributes
-    const char *organizationsUrl = json_object_get_string (json_object_object_get(profilJ, "organizations_url"));
-    if (organizationsUrl) {
-        rqtCtx->fedSocial= fedSocial;
-        githubGetAttrsByToken (rqtCtx, organizationsUrl);
-    } else {
-        free(rqtCtx->token);
-        free (rqtCtx);
-    }
 	return HTTP_HANDLE_FREE;
 
 OnErrorExit:
@@ -207,6 +208,7 @@ static void githubUserGetByToken (idpRqtCtxT *rqtCtx) {
     EXT_DEBUG ("[github-api-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->identityApiUrl);
 	int err= httpSendGet(idp->oidc->httpPool, idp->wellknown->identityApiUrl, &dfltOpts, authToken, githubUserGetByTokenCB, rqtCtx);
 	if (err) goto OnErrorExit;
+	afb_hreq_addref(rqtCtx->hreq) ; // prevent automatic verb response.
 	return;
 
 OnErrorExit:
@@ -261,6 +263,8 @@ static int githubAccessToken (afb_hreq *hreq, oidcIdpT *idp, const char *redirec
 	idpRqtCtxT *rqtCtx = calloc (1, sizeof(idpRqtCtxT));
 	rqtCtx->hreq= hreq;
 	rqtCtx->idp= idp;
+	err= afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void**)&rqtCtx->profil);
+	if (err) goto OnErrorExit;
 
 	// send asynchronous post request with params in query // https://gist.github.com/technoweenie/419219
 	err= httpBuildQuery (idp->uid, url, sizeof(url), NULL /* prefix */, idp->wellknown->accessTokenUrl, params);
@@ -314,6 +318,9 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 		// if loa requested and no profil fit exit without trying authentication
 		if (!profil) goto OnErrorExit;
 
+		// store requested profil to retreive attached loa and role filter if login succeded
+		afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void*)profil, NULL, NULL);
+
 		httpKeyValT query[]= {
 			{.tag="client_id"    , .value=idp->credentials->clientId},
 			{.tag="response_type", .value="code"},
@@ -323,9 +330,6 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 			{.tag="language"     , .value=setlocale(LC_CTYPE, "")},
 			{NULL} // terminator
 		};
-
-		// store requested profil to retreive attached loa and role filter if login succeded
-		afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void*)profil, NULL, NULL);
 
 		// build request and send it
 		err= httpBuildQuery (idp->uid, url, sizeof(url), NULL /* prefix */, idp->wellknown->loginTokenUrl, query);
