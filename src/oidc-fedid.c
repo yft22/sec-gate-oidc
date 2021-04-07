@@ -50,6 +50,7 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
     char *errorMsg = "[invalid-profil] Fail to process user profile (fedidCheckCB)";
 	oidcFedidHdlT *userRqt= (oidcFedidHdlT*)ctx;
    	char url[EXT_URL_MAX_LEN];
+    const char *target;
     afb_data_x4_t reply[1], argd[argc];
 	fedUserRawT *fedUser;
 	oidcProfilsT *idpProfil;
@@ -99,6 +100,7 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
             	goto OnErrorExit;
         	}
 		} else {
+            target= userRqt->idp->oidc->globals->registerUrl;
         	action= "register";
 		}
     } else { // feduser is avaliable
@@ -138,6 +140,7 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
             	goto OnErrorExit;
         	}
 		} else {
+            target= alias->url;
 			action= "redirect";
 		}
     }
@@ -152,10 +155,10 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
 
         wrap_json_pack (&responseJ, "{ss ss}"
             ,"action", action
-            ,"url", url
+            ,"url", target
         );
 
-        EXT_DEBUG ("[fedid-check-reply] {'action':%s, 'url':'%s'", action, url);
+        EXT_DEBUG ("[fedid-check-reply] {'action':%s, 'target':'%s'}", action, target);
 		afb_data_create_raw(&reply, &afb_type_predefined_json_c, responseJ, 0, (void*)json_object_put, responseJ);
 	    afb_req_v4_reply_hookable(wreq, status, 1, &reply);
 	}
