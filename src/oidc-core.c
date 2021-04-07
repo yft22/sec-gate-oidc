@@ -54,20 +54,26 @@ static oidGlobalsT* globalConfig (json_object *globalJ) {
     oidGlobalsT *global= (oidGlobalsT*) calloc (1, sizeof(oidGlobalsT));
 
     if (globalJ) {
-        err= wrap_json_unpack (globalJ, "{s?o s?s s?s s?s s?i}"
+        err= wrap_json_unpack (globalJ, "{s?o s?s s?s s?s s?s s?s s?i s?i}"
             , "info", &commentJ
             , "login", &global->loginUrl
             , "error", &global->errorUrl
             , "register", &global->registerUrl
+            , "fedlink", &global->fedlinkUrl
+            , "remove", &global->removeUrl
             , "cache", &global->tCache
+            , "timeout", &global->sTimeout
         );
         if (err < 0) goto OnErrorExit;
     }
 
     if (!global->loginUrl) global->loginUrl= URL_OIDC_USR_LOGIN;
     if (!global->registerUrl) global->loginUrl= URL_OIDC_USR_REGISTER;
+    if (!global->fedlinkUrl) global->loginUrl= URL_OIDC_USR_FEDLINK;
+    if (!global->removeUrl) global->loginUrl= URL_OIDC_USR_REMOVE;
     if (!global->errorUrl) global->errorUrl= URL_OIDC_USR_ERROR;
     if (!global->tCache) global->tCache= URL_OIDC_AUTH_CACHE;
+    if (!global->sTimeout) global->sTimeout= EXT_SESSION_TIMEOUT;
 
     return (global);
 

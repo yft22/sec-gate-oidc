@@ -27,6 +27,10 @@
 #include "oidc-idp.h"
 #include <fedid-types.h>
 
+typedef struct {
+    int timerId;
+} fedidSessionT;
+
 int fedidCheck (oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser, struct afb_req_v4 *request, afb_hreq *hreq);
 
 extern void* oidcFedUserCookie;

@@ -115,7 +115,7 @@ static void userGetIdpsCB(void *ctx, int status, unsigned argc, const afb_data_t
     idpsJ= idpLoaProfilsGet(alias->oidc, 0, NULL);
 
     err= wrap_json_pack (&responseJ, "{ss so}"
-        , "action", "fedlink"
+        , "target", alias->oidc->globals->fedlinkUrl
         , "idps", idpsJ
     );
     if (err) goto OnErrorExit;
@@ -123,7 +123,6 @@ static void userGetIdpsCB(void *ctx, int status, unsigned argc, const afb_data_t
 fprintf (stderr, "**** userGetIdpsCB responsej=%s\n", json_object_get_string(responseJ));
     afb_create_data_raw(reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void*)json_object_put, responseJ);
     afb_req_reply(request, 0, 1, reply);
-
 
     // return creation status to HTML5
     if (status < 0) goto OnErrorExit;

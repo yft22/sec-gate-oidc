@@ -45,6 +45,17 @@ typedef struct {
 	fedSocialRawT *fedSocial;
 } oidcFedidHdlT;
 
+// session timeout, reset LOA
+static void fedidTimeoutSession (int signal, void *ctx) {
+    afb_session *session = (afb_session*) ctx;
+
+    // signal should be null
+    if (signal) return;
+
+    // reset session LOA (this will force authentication)
+    afb_session_set_loa (session, oidcSessionCookie, 0);
+}
+
 // if fedkey exists callback receive local store user profil otherwise we should create it
 static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], struct afb_api_v4 *api) {
     char *errorMsg = "[invalid-profil] Fail to process user profile (fedidCheckCB)";
@@ -56,7 +67,7 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
 	oidcProfilsT *idpProfil;
 	oidcAliasT *alias;
     afb_session *session;
-	const char *redirect, *action=NULL;
+	const char *redirect;
 	afb_hreq *hreq=NULL;
 	struct afb_req_v4 *wreq=NULL;
 	int err;
@@ -88,7 +99,6 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
 		afb_session_set_loa (session, oidcSessionCookie, 0); // user not register reset session loa
 
         httpKeyValT query[]= {
-            {.tag="action"    , .value="register"},
             {.tag="language"  , .value=setlocale(LC_CTYPE, "")},
             {NULL} // terminator
         };
@@ -101,7 +111,6 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
         	}
 		} else {
             target= userRqt->idp->oidc->globals->registerUrl;
-        	action= "register";
 		}
     } else { // feduser is avaliable
 
@@ -141,8 +150,27 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
         	}
 		} else {
             target= alias->url;
-			action= "redirect";
 		}
+
+        // if idp session as a timeout start a rtimer
+        if (idpProfil->sTimeout) {
+            fedidSessionT *fedSession=NULL;
+            afb_session_cookie_get (session, oidcSessionCookie, (void**) &fedSession);
+            if (fedSession && fedSession->timerId) {
+                afb_jobs_abort(fedSession->timerId);
+                fedSession->timerId=0;
+            }
+            else {
+                fedSession= calloc (1, sizeof(fedSession));
+                afb_session_cookie_set (session, oidcSessionCookie, (void*)fedSession, NULL, NULL);
+            }
+
+            fedSession->timerId= afb_sched_post_job (NULL /*group*/, idpProfil->sTimeout,  0 /*exec-timeout*/,fedidTimeoutSession, session);
+            if (fedSession->timerId < 0) {
+        	    EXT_ERROR ("[fedid-register-timeout] fail to set idp profil session loa");
+                goto OnErrorExit;
+            }
+        }
     }
 
 	// free user info handle and redirect to initial targeted url
@@ -153,15 +181,15 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
 		struct afb_data *reply;
         json_object *responseJ;
 
-        wrap_json_pack (&responseJ, "{ss ss}"
-            ,"action", action
-            ,"url", target
+        wrap_json_pack (&responseJ, "{ss}"
+            ,"target", target
         );
 
-        EXT_DEBUG ("[fedid-check-reply] {'action':%s, 'target':'%s'}", action, target);
+        EXT_DEBUG ("[fedid-check-reply] {'target':'%s'}", target);
 		afb_data_create_raw(&reply, &afb_type_predefined_json_c, responseJ, 0, (void*)json_object_put, responseJ);
 	    afb_req_v4_reply_hookable(wreq, status, 1, &reply);
 	}
+
 	free (userRqt);
 	return;
 

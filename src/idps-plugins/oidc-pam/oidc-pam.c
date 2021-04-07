@@ -60,12 +60,12 @@ static const oidcProfilsT dfltProfils[]= {
 static const oidcStaticsT dfltstatics= {
   .aliasLogin="/sgate/pam/login",
   .aliasLogo="/sgate/pam/logo-64px.png",
-  .timeout=600
+  .sTimeout=600
 };
 
 static const oidcWellknownT dfltWellknown= {
 	 .loginTokenUrl  = "/sgate/pam/login.html",
-	 .identityApiUrl = "pam-check",
+	 .identityApiUrl = NULL,
      .accessTokenUrl = NULL,
 };
 
@@ -252,12 +252,10 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 		if (!profil) goto OnErrorExit;
 
 		httpKeyValT query[]= {
-			{.tag="action"       , .value="passwd"},
 			{.tag="state"        , .value=afb_session_uuid(hreq->comreq.session)},
 			{.tag="scope"        , .value=profil->scope},
 			{.tag="redirect_uri" , .value=redirectUrl},
 			{.tag="language"     , .value=setlocale(LC_CTYPE, "")},
-
 			{NULL} // terminator
 		};
 

@@ -71,7 +71,46 @@ OnErrorExit:
 	return 1;
 };
 
-// create aliasFrom cookie and redirect to login page
+// create aliasFrom cookie and redirect to idp profil page
+static void aliasRedirectTimeout (afb_hreq *hreq, oidcAliasT *alias) {
+    oidcProfilsT *profil=NULL;
+    int err;
+
+	afb_session_cookie_set (hreq->comreq.session, oidcAliasCookie, alias, NULL, NULL);
+    afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void**) &profil);
+
+	// add afb-binder endpoint to login redirect alias
+  	char redirectUrl [EXT_HEADER_MAX_LEN];
+    err= afb_hreq_make_here_url(hreq,profil->idp->statics->aliasLogin,redirectUrl,sizeof(redirectUrl));
+    if (err < 0) goto OnErrorExit;
+
+	char url[EXT_URL_MAX_LEN];
+    httpKeyValT query[]= {
+        {.tag="client_id"    , .value=profil->idp->credentials->clientId},
+        {.tag="response_type", .value="code"},
+        {.tag="state"        , .value=afb_session_uuid(hreq->comreq.session)},
+        {.tag="scope"        , .value=profil->scope},
+        {.tag="redirect_uri" , .value=redirectUrl},
+        {.tag="language"     , .value=setlocale(LC_CTYPE, "")},
+        {NULL} // terminator
+    };
+
+    err= httpBuildQuery (alias->uid, url, sizeof(url), NULL /* prefix */, profil->idp->statics->aliasLogin, query);
+	if (err) {
+        EXT_ERROR ("[fail-login-redirect] fail to build redirect url (aliasRedirectLogin)");
+        goto OnErrorExit;
+    }
+
+	EXT_DEBUG ("[alias-redirect-login] %s (aliasRedirectLogin)", url);
+	afb_hreq_redirect_to(hreq, url, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
+    return;
+
+OnErrorExit:
+	afb_hreq_redirect_to(hreq, alias->oidc->globals->loginUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+}
+
+
+// create aliasFrom cookie and redirect to common login page
 static void aliasRedirectLogin (afb_hreq *hreq, oidcAliasT *alias) {
     int err;
 
@@ -79,7 +118,6 @@ static void aliasRedirectLogin (afb_hreq *hreq, oidcAliasT *alias) {
 
 	char url[EXT_URL_MAX_LEN];
 	httpKeyValT query[]= {
-			{.tag="action"    , .value="login"},
 			{.tag="language"  , .value=setlocale(LC_CTYPE, "")},
 			{NULL} // terminator
 	};
@@ -101,7 +139,7 @@ OnErrorExit:
 static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 	oidcAliasT *alias= (oidcAliasT*)ctx;
     struct timespec tCurrent;
-	int sessionLoa, tStamp, tNow;
+	int sessionLoa, profilLoa, tStamp, tNow;
 
     if (alias->loa) {
 
@@ -135,7 +173,14 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 
                 // try to push event to notify the access deny and replay with redirect to login
                 idscvPushEvent (hreq, eventJ);
-                aliasRedirectLogin (hreq, alias);
+
+                // if current profil LOA is enough then fire same idp/profil authen
+                profilLoa= afb_session_get_loa (hreq->comreq.session, oidcIdpProfilCookie);
+                if (profilLoa >= alias->loa) {
+                    aliasRedirectTimeout (hreq, alias);
+                } else {
+                    aliasRedirectLogin (hreq, alias);
+                }
                 goto OnRedirectExit;
             }
 
@@ -148,7 +193,7 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
             }
 
             // store a sampstamp to cache authentication validation
-            tStamp = tNow + alias->tCache/100;
+            tStamp = (int) (tNow + alias->tCache/100);
             afb_session_set_loa (hreq->comreq.session, oidcAliasCookie, tStamp);
         }
     }

@@ -385,11 +385,13 @@ int httpBuildQuery(const char *uid, char *response, size_t maxlen, const char *p
             if (index == maxlen)
                 goto OnErrorExit;
         }
-        response[index++] = '?';
     }
 
     // loop on query arguments
     if (query) {
+        // if no static query params initialize params list
+        if (response[index-1] != '&') response[index++] = '?';
+
         for (int idx = 0; query[idx].tag; idx++)
         {
             for (int jdx = 0; query[idx].tag[jdx]; jdx++)

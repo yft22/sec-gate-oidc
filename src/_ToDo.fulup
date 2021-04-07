@@ -7,12 +7,7 @@
     - Au retour de l'autentification réussi sur le 2eme IDP lancer la fédération.
     - Revalider l'IDP qui était présent avant le link d'account
 
-2) Ajouter le timeout de session avec redirect sur l'IDP courrant (github ou pam)
-
-3) Ajouter une API dans fedID pour:
+3) Créer un binding d'admin de la feddb:
 
     - créer des labels de securité.
     - ajouter un label à un compte.
-
-
-

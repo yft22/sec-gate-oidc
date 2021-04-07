@@ -39,6 +39,8 @@ typedef struct idpPluginS idpPluginT;
 #define URL_OIDC_USR_ERROR "/sgate/common/error.html"
 #define URL_OIDC_USR_LOGIN "/sgate/common/login.html"
 #define URL_OIDC_USR_REGISTER "/sgate/common/register.html"
+#define URL_OIDC_USR_FEDLINK "/sgate/common/fedlink.html"
+#define URL_OIDC_USR_REMOVE "/sgate/common/remove.html"
 #define URL_OIDC_AUTH_CACHE  5000 // 5sec alias authen cache
 
 #define STATUS_OIDC_AUTH_DENY 403
@@ -47,7 +49,10 @@ typedef struct {
     const char *loginUrl;
     const char *errorUrl;
     const char *registerUrl;
-    int tCache;
+    const char *fedlinkUrl;
+    const char *removeUrl;
+    unsigned long tCache;
+    unsigned long sTimeout;
 } oidGlobalsT;
 
 // this structure is returned by plugin registration callback

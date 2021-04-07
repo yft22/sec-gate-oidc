@@ -29,6 +29,8 @@
 
 extern void* oidcIdpProfilCookie;
 
+typedef struct oidcIdpS oidcIdpT;
+
 typedef struct {
   const char *loginTokenUrl;
   const char *accessTokenUrl;
@@ -47,11 +49,13 @@ typedef struct {
   const char *label;
   int loa;
   unsigned long tCache;
+  unsigned long sTimeout;
+  oidcIdpT *idp;
 } oidcProfilsT;
 
 typedef struct oidcStaticsS {
   int loa;
-  int timeout;
+  unsigned long sTimeout;
   const char *aliasLogo;
   const char *aliasLogin;
 } oidcStaticsT;

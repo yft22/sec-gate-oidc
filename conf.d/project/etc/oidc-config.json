@@ -19,9 +19,12 @@
       "info": "oidc secure gateway demo config",
       "globals": {
           "info" : "Rodrigo demo uses a 'one-page' app",
-          "login": "/sgate/common",
-          "register": "/sgate/common",
-          "error": "/sgate/common"
+          "login": "/sgate/common#login",
+          "register": "/sgate/common#register",
+          "fedlink": "/sgate/common#fedlink",
+          "remove": "/sgate/common#remove",
+          "error": "/sgate/common#error",
+          "timeout": 600
       },
       "idps": [
         {
@@ -36,11 +39,10 @@
             "statics": {
                 "login": "/sgate/pam/login",
                 "logo": "/sgate/pam/logo-64px.png",
-                "timeout": 600
+                "timeout": 900
             },
             "wellknown": {
-                "identityApiUrl": "/sgate/common",
-                "loginTokenUrl": "/sgate/common"
+                "loginTokenUrl": "/sgate/common#passwd"
             },
             "profils": [
                 {"uid":"login", "loa":1, "scope":"login"}
@@ -75,7 +77,7 @@
         {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "role": ["user","admin"], "lazy":1}
       ],
       "alias": [
-        {"uid": "idp-common"  , "url":"/sgate/common", "path":"/home/fulup/Workspace/AFB-binder/afb-oidc-rodrigo" },
+        {"uid": "idp-common"  , "url":"/sgate/common", "path":"${HOME}/Workspace/AFB-binder/afb-oidc-rodrigo" },
         {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "from":"github", "path":"idps/github" },
         {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "from":"pam", "path":"idps/pam" },
         {"uid": "public" , "url":"/public", "path":"public" },

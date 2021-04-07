@@ -73,7 +73,7 @@ static const oidcWellknownT dfltWellknown= {
 static const oidcStaticsT dfltstatics= {
   .aliasLogin="/sgate/github/login",
   .aliasLogo="/sgate/github/logo-64px.png",
-  .timeout=600
+  .sTimeout=600
 };
 
 static const httpOptsT dfltOpts= {

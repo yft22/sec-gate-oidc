@@ -207,12 +207,15 @@ OnErrorExit:
 }
 
 static int idpParseOneProfil (oidcIdpT *idp, json_object *profileJ, oidcProfilsT *profil) {
-		int err= wrap_json_unpack (profileJ, "{ss,s?s,si,ss,s?s}"
+        profil->sTimeout= idp->statics->sTimeout;
+        profil->idp = idp;
+		int err= wrap_json_unpack (profileJ, "{ss,s?s,si,ss,s?s, s?i}"
 			, "uid", &profil->uid
 			, "info", &profil->info
 			, "loa", &profil->loa
 			, "scope", &profil->scope
 			, "label", &profil->label
+            , "timeout", &profil->sTimeout
 			);
 		if (err) {
 			EXT_CRITICAL ("[idp-profile-error] idp=%s parsing fail profil expect: loa,scope (idpParseOneProfil)", idp->uid);
@@ -269,19 +272,17 @@ static const oidcStaticsT *idpParsestatic (oidcIdpT *idp, json_object *staticJ, 
 
 	oidcStaticsT *statics=calloc(1, sizeof(oidcStaticsT));
 	if (defaults) memcpy(statics, defaults, sizeof(oidcStaticsT));
+    if (!statics->sTimeout) statics->sTimeout= idp->oidc->globals->sTimeout;
 
 	int err= wrap_json_unpack (staticJ, "{s?s,s?s,s?i}"
 		, "login", &statics->aliasLogin
 		, "logo",  &statics->aliasLogo
-		, "timeout", &statics->timeout
+		, "timeout", &statics->sTimeout
 		);
 	if (err) {
 		EXT_CRITICAL ("[idp-static-error] idp=%s parsing fail statics expect: login,logo,plugin,timeout (idpParsestatic)", idp->uid);
 		goto OnErrorExit;
 	}
-
-	// if session timeout null use default (600s)
-	if (statics->timeout <0) statics->timeout= EXT_SESSION_TIMEOUT;
 
     return(statics);
 
