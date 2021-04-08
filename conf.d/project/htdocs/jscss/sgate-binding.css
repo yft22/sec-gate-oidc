@@ -7,7 +7,17 @@ body.page-content {
 	background-position: center;
 }
 
-img {
+.left {
+	float: left;
+}
+
+.center {
+  margin: auto;
+  width: 50%;
+  padding: 10px;
+}
+
+.right {
 	float: right;
 }
 

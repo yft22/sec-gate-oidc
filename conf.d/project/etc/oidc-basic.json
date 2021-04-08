@@ -1,0 +1,91 @@
+{
+  "name": "afb-oidc",
+  "tracereq": "none",
+  "verbose": 2,
+  "port": 1234,
+  "https": false,
+  "https-cert": "../conf.d/project/ssl/devel-cert.pem",
+  "https-key": "../conf.d/project/ssl/devel-key.pem",
+  "extension": "./package/lib/afb-oidc-sgate.extso",
+  "roothttp": ".",
+  "rootdir":  "../conf.d/project/htdocs",
+  "alias": [
+      "/devtools:/usr/share/afb-ui-devtools/binder",
+    ],
+  //"binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
+  "@extconfig": {
+    "oidc-sgate": {
+      "api": "sgate",
+      "info": "oidc secure gateway demo config",
+      "globals": {
+          "info" : "Rodrigo demo uses a 'one-page' app",
+          "login": "/sgate/common/login.html",
+          "register": "/sgate/common/register.html",
+          "fedlink": "/sgate/common/fedlink.html",
+          "remove": "/sgate/common/remove.html",
+          "error": "/sgate/common/error.html",
+          "timeout": 600
+      },
+      "idps": [
+        {
+            "uid": "pam-login",
+            "info": "Linux local account authentication",
+            "plugin": {
+              "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
+              "ldpath": "./package/lib/plugins/pam-auth.idpso:/usr/local/afb-oidc/lib/pam-auth.idpso",
+              "avatar":"/sgate/pam/tux-iot.png",
+              "gids":10
+            },
+            "statics": {
+                "login": "/sgate/pam/login",
+                "logo": "/sgate/pam/logo-64px.png",
+                "timeout": 900
+            },
+            "wellknown": {
+                "loginTokenUrl": "/sgate/pam/passwd"
+            },
+            "profils": [
+                {"uid":"login", "loa":1, "scope":"login"}
+            ]
+        }, {
+            "uid": "github",
+            "info": "Demo Client for afb-binder test",
+            "credentials": {
+            "clientid": "7899e605a7c15ae42f07",
+            "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
+            },
+            "wellknown": {
+                "loginTokenUrl": "https://github.com/login/oauth/authorize",
+                "accessTokenUrl": "https://github.com/login/oauth/access_token",
+                "identityApiUrl": "https://api.github.com/user",
+            },
+            "statics": {
+                "login": "/sgate/github/login",
+                "logo": "/sgate/github/logo-64px.png",
+                "timeout": 600
+            },
+            "profils": [
+                {"uid":"basic", "loa":1, "scope":"user:email"},
+                {"uid":"teams", "loa":2, "scope":"read:org", "label":"organizations_url"}
+            ]
+        }
+      ],
+      "apis": [
+        {"uid": "fedid","info":"embedded social federated user identity svc","loa":0,"uri":"@fedid"},
+        {"uid": "test1","lazy":1},
+        {"uid": "test2","uri":"unix:@test2", "loa":1, "role": ["user"], "lazy":1},
+        {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "role": ["user","admin"], "lazy":1}
+      ],
+      "alias": [
+        {"uid": "idp-common"  , "url":"/sgate/common", "path":"idps/common" },
+        {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "from":"github", "path":"idps/github" },
+        {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "from":"pam", "path":"idps/pam" },
+        {"uid": "public" , "url":"/public", "path":"public" },
+        {"uid": "private", "url":"/private", "loa":1, "path":"private" },
+        {"uid": "confidential", "url":"/confidential", "loa":2, "path":"confidential" },
+        {"uid": "admin"  , "url":"/idp/admin", "loa":2, "prio":1, "role":"admin", "path":"idps/admin" },
+      ]
+    }
+  }
+}
+

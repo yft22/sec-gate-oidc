@@ -351,7 +351,6 @@ static void idpsList (afb_req_t request, unsigned argc, afb_data_t const argv[])
         );
     if (err) goto OnErrorExit;
 
-fprintf (stderr, "**** responsej=%s\n", json_object_get_string(responseJ));
     afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void*)json_object_put, responseJ);
     afb_req_reply(request, 0, 1, &reply);
 
@@ -363,10 +362,43 @@ OnErrorExit:
     afb_req_reply (request, -1, 1, &reply);
 }
 
+// return the list of autorities matching requested LOA
+static void urlsList (afb_req_t request, unsigned argc, afb_data_t const argv[]) {
+    int err;
+    afb_data_t reply;
+    json_object *responseJ;
+
+    // retreive OIDC global context from API handle
+  	oidcCoreHdlT *oidc= afb_api_get_userdata(afb_req_get_api(request));
+    if (!oidc || oidc->magic != MAGIC_OIDC_MAIN) goto OnErrorExit;
+
+    err=wrap_json_pack (&responseJ, "{ss ss ss ss ss}"
+        , "login",      oidc->globals->loginUrl
+        , "fedlink",    oidc->globals->loginUrl
+        , "register",   oidc->globals->loginUrl
+        , "remove",     oidc->globals->loginUrl
+        , "error",      oidc->globals->errorUrl
+    );
+    if (err) goto OnErrorExit;
+
+    afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void*)json_object_put, responseJ);
+    afb_req_reply(request, 0, 1, &reply);
+
+    return;
+
+OnErrorExit:
+    AFB_REQ_ERROR (request, unauthorizedMsg
+    );
+    afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_STRINGZ, unauthorizedMsg, sizeof(unauthorizedMsg), NULL, NULL);
+    afb_req_reply (request, -1, 1, &reply);
+}
+
+
 // Static verb not depending on shell json config file
 static afb_verb_t idsvcVerbs[] = {
     /* VERB'S NAME         FUNCTION TO CALL         SHORT DESCRIPTION */
     { .verb = "ping",         .callback = idsvcPing,     .info = "ping test"},
+    { .verb = "url-list",     .callback = urlsList,      .info = "request wellknown url list"},
     { .verb = "idp-list",     .callback = idpsList,      .info = "request idp list/scope for a given LOA level"},
     { .verb = "evt-subs",     .callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
     { .verb = "get-session",  .callback = sessionGet,    .info = "retreive current client session [profil, user, social]"},
