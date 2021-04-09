@@ -7,24 +7,20 @@
 	<link rel="stylesheet" href="/jscss/sgate-binding.css">
 	<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
 	<script type="text/javascript" src="/jscss/afb-websock.js"></script>
-	<script type="text/javascript" src="/jscss/afb-binding.js"></script>
+    <script type="text/javascript" src="/jscss/sgate-binding.js"></script>
+    <script type="text/javascript" src="/jscss/sgate-common.js"></script>
 </head>
 
-<body class="page-content" onload="init()">
+<body class="page-content" onload="init(getIdps);">
 	<img src="/assets/iot-bzh-logo-small.png">
 
-	<h1>OpenId Connect Login Page</h1>
-	<button id="connected" onclick="init()">Binder WS Fail</button></html><br><br>
+	<h1>oidc/sgate login</h1>
+    <button id="connected"  onclick="init(getIdps)">Binder WS Fail</button>
+    <button id="ping" onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
+    <br>
+    <div id="api_div"></div>
 
-
-	<button id="login" onclick="window.open('/sgate/github/login','_login_ctl')">github-auth</a></button><br><br>
-
-	<div>
-		<button onclick="callbinder('oidc-sgate','ping' ,{});">oidc ping</button>	</li>
-		<button onclick="callbinder('oidc-sgate','list' ,{});">idp-list</button>	</li>
-	</div>
-
-	<div id="main" style="visibility:hidden">
+    <div id="main" style="visibility:hidden">
 		<ol>
 			<li>Question
 				<pre id="question"></pre>
@@ -32,9 +28,7 @@
 			<li>Response
 				<pre id="output"></pre>
 			</li>
-			<li>Events:
-				<pre id="outevt"></pre>
-			</li>
 		</ol>
 	</div>
+
 </body>

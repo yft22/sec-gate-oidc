@@ -64,7 +64,7 @@ static const oidcStaticsT dfltstatics= {
 };
 
 static const oidcWellknownT dfltWellknown= {
-	 .loginTokenUrl  = "/sgate/pam/login.html",
+	 .loginTokenUrl  = "/sgate/pam/passwd.html",
 	 .identityApiUrl = NULL,
      .accessTokenUrl = NULL,
 };
@@ -267,7 +267,7 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 		if (err) goto OnErrorExit;
 
 		EXT_DEBUG ("[pam-redirect-url] %s (pamLoginCB)", url);
-		afb_hreq_redirect_to(hreq, url, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
+		afb_hreq_redirect_to(hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 
 	} else {
 
@@ -293,7 +293,7 @@ int pamLoginCB(afb_hreq *hreq, void *ctx) {
 	return 1; // we're done
 
 OnErrorExit:
-	afb_hreq_reply_error(hreq, EXT_HTTP_UNAUTHORIZED);
+	afb_hreq_redirect_to(hreq, idp->wellknown->loginTokenUrl, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
 	return 1;
 }
 

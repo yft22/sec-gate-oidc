@@ -85,20 +85,26 @@ function callbinder(api, verb, query) {
 //**********************************************
 // Init - establish Websocket connection
 //**********************************************
-function init(elemid, api, verb, query) {
+function init(callback) {
+    const buttons= document.querySelectorAll(".wsapi");
 
 	function onopen() {
 		document.getElementById("main").style.visibility = "visible";
+		document.getElementById("ping").style.visibility = "visible";
 		document.getElementById("connected").innerHTML = "Binder WS Active";
-		document.getElementById("connected").style.background = "lightgreen";
-		ws.onevent("*", log.event);
+        document.getElementById("connected").style.background = "lightgreen";
+        callback();
 	}
 
 	function onabort() {
 		document.getElementById("main").style.visibility = "hidden";
+		document.getElementById("ping").style.visibility = "hidden";
 		document.getElementById("connected").innerHTML = "Connected Closed";
-		document.getElementById("connected").style.background = "red";
+        document.getElementById("connected").style.background = "red";
+        var api_box= document.getElementById("api_box");
+        if (api_box) {
+            api_box.remove();
+        }
 	}
-
 	ws = new afb.ws(onopen, onabort);
 }

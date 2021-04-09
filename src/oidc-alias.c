@@ -102,7 +102,7 @@ static void aliasRedirectTimeout (afb_hreq *hreq, oidcAliasT *alias) {
     }
 
 	EXT_DEBUG ("[alias-redirect-login] %s (aliasRedirectLogin)", url);
-	afb_hreq_redirect_to(hreq, url, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
+	afb_hreq_redirect_to(hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
     return;
 
 OnErrorExit:
@@ -129,7 +129,7 @@ static void aliasRedirectLogin (afb_hreq *hreq, oidcAliasT *alias) {
     }
 
 	EXT_DEBUG ("[alias-redirect-login] %s (aliasRedirectLogin)", url);
-	afb_hreq_redirect_to(hreq, url, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
+	afb_hreq_redirect_to(hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
     return;
 
 OnErrorExit:

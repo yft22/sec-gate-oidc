@@ -161,9 +161,8 @@ static void userRegisterCB(void *ctx, int status, unsigned argc, const afb_data_
 
     // return destination alias
     afb_session_cookie_get (session, oidcAliasCookie, (void**)&alias);
-    wrap_json_pack (&aliasJ, "{ss ss}"
-	    , "url", alias->url ?: "/"
-		, "state", afb_session_uuid(session)
+    wrap_json_pack (&aliasJ, "{ss}"
+	    , "target", alias->url ?: "/"
     );
     afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_JSON_C, aliasJ, 0, (void*) json_object_put, aliasJ);
     afb_req_reply(request, status, 1, reply);

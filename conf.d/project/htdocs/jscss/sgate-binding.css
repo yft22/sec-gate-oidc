@@ -30,7 +30,44 @@ body.page-content {
 button {
 	margin-right: 10px;
 	padding: 6px 8px;
-	font-size: large;
+    font-size: large;
+}
+
+#ping {
+    background-color: lightyellow;
+}
+
+#register_form label {
+    display: block;
+    padding-left:26px;
+    width:125px;
+    text-transform: capitalize;
+    display:inline-block
+}
+
+.idp_logo {
+    width: 50px;
+    height: 50px;
+}
+
+.idp_button {
+    opacity: 1.0;
+    width: 250px;
+    margin-left: 10px;
+    margin-top: 0;
+}
+
+.idp_div {
+}
+
+#api_div {
+    background-color: grey;
+    opacity: 0.8;
+    vertical-align:middle; 
+    margin:10px;
+    border-radius: 25px;
+    border: 2px solid #73AD21;
+    padding: 20px; 
 }
 
 pre {

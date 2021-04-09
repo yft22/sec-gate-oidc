@@ -125,7 +125,6 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
 		fedUserFreeCB(userRqt->fedUser);
 		fedSocialFreeCB(userRqt->fedSocial);
 		afb_session_cookie_get (session, oidcIdpProfilCookie, (void**) &idpProfil);
-		afb_session_set_loa (session, oidcSessionCookie, idpProfil->loa);
 
 		// everyting looks good let's return user to original page
 		afb_session_cookie_get (session, oidcAliasCookie, (void**)&alias);
@@ -171,12 +170,14 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
                 goto OnErrorExit;
             }
         }
+   		afb_session_set_loa (session, oidcSessionCookie, idpProfil->loa);
+
     }
 
 	// free user info handle and redirect to initial targeted url
     if (hreq) {
         EXT_DEBUG ("[fedid-check-redirect] redirect to %s", url);
-	    afb_hreq_redirect_to(hreq, url, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
+	    afb_hreq_redirect_to(hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
     } else {
 		struct afb_data *reply;
         json_object *responseJ;

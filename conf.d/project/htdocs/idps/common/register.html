@@ -1,0 +1,53 @@
+<html>
+
+<meta charset="utf-8" />
+
+<head>
+	<title>oidc-sgate-pseudo</title>
+	<link rel="stylesheet" href="/jscss/sgate-binding.css">
+	<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
+	<script type="text/javascript" src="/jscss/afb-websock.js"></script>
+    <script type="text/javascript" src="/jscss/sgate-binding.js"></script>
+    <script type="text/javascript" src="/jscss/sgate-common.js"></script>
+</head>
+
+<body class="page-content" onload="init(getSession);">
+	<img src="/assets/iot-bzh-logo-small.png">
+
+	<h1>oidc/sgate register</h1>
+    <button id="connected"  onclick="init(getSession)">Binder WS Fail</button>
+    <button id="ping"  onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
+    <br>
+
+    <div id="api_div">
+        <br>
+        <form id="register_user" action="JavaScript:registerUser()">
+            <label class="register_label" for="pseudo">pseudo  :</label>
+            <input type="text" id="pseudo" name="pseudo" required><br><br>
+
+            <label class="register_label" for="email">email  :</label>
+            <input type="text" id="email" name="email" required><br><br>
+
+            <label class="register_label"for="name">name  :</label>
+            <input type="text" id="name" name="name"><br><br>
+
+            <label class="register_label"for="company">pseudo  :</label>
+            <input type="text" id="company" name="company" required><br><br>
+
+            <input type="submit" value="Done" >
+        </form>
+        <span id="register_info"></span>
+    </div>
+
+    <div id="main" style="visibility:hidden">
+		<ol>
+			<li>Question
+				<pre id="question"></pre>
+			</li>
+			<li>Response
+				<pre id="output"></pre>
+			</li>
+		</ol>
+	</div>
+
+</body>

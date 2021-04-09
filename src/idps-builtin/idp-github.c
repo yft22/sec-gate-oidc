@@ -336,7 +336,7 @@ int githubLoginCB(afb_hreq *hreq, void *ctx) {
 		if (err) goto OnErrorExit;
 
 		EXT_DEBUG ("[github-redirect-url] %s (githubLoginCB)", url);
-		afb_hreq_redirect_to(hreq, url, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
+		afb_hreq_redirect_to(hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 
 	} else {
 		// use state to retreive original request session uuid and restore original session before requesting token

@@ -42,14 +42,14 @@
                 "timeout": 900
             },
             "wellknown": {
-                "loginTokenUrl": "/sgate/pam/passwd"
+                "loginTokenUrl": "/sgate/pam/passwd.html"
             },
             "profils": [
                 {"uid":"login", "loa":1, "scope":"login"}
             ]
         }, {
             "uid": "github",
-            "info": "Demo Client for afb-binder test",
+            "info": "OpenIdC Social Authentication",
             "credentials": {
             "clientid": "7899e605a7c15ae42f07",
             "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
