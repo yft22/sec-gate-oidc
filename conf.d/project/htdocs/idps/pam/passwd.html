@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>PAM minimalist login (!!! passwd in clear text !!!)</title>
-</head>
-
-<head>
-	<title>sgate-pam-login</title>
+    <meta charset="utf-8" />
+	<title>oidc-sgate-login</title>
 	<link rel="stylesheet" href="/jscss/sgate-binding.css">
 	<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
-	<script type="text/javascript" src="/jscss/parse-query.js"></script>
+	<script type="text/javascript" src="/jscss/afb-websock.js"></script>
+    <script type="text/javascript" src="/jscss/sgate-binding.js"></script>
+    <script type="text/javascript" src="/jscss/sgate-glue.js"></script>
+    <script type="text/javascript" src="/jscss/sgate-query.js"></script>
 </head>
-
 <body>
+
 <img src="/sgate/pam/logo-64px.png" style="float:left;" alt="'logo'">
 <h1>PAM simple login</h1>
 
@@ -19,18 +19,32 @@
     requested alias= <script>urlQuery["alias"];</script>
 </p>
 
-<form id="loginForm" accept-charset="UTF-8" action="/sgate/pam/login" method="get">
-    <label for="login">Login  :</label>
-    <input type="text" id="login" name="login" required><br><br>
-    <label for="passwd">Passwd:</label>
-    <input type="password" id="passwd" name="passwd" required><br><br>
-    <input type="hidden" id="state" name="state">
-    <input type="submit" value="Done">
-    <script>
-        document.getElementById("state").value = urlQuery["state"];
-        document.getElementById("loginForm").action = urlQuery["redirect_uri"];
-    </script>
-</form>
+
+<div id="sgate_div">
+    <br>
+    <form id="register_user" action="JavaScript:registerUser()">
+        <label class="register_label" for="login">login  :</label>
+        <input type="text" id="login" name="login" required><br><br>
+
+        <label class="register_label" for="password">password  :</label>
+        <input type="password" id="password" name="password" required><br><br>
+
+        <input type="hidden" id="state" name="state">
+        <input type="submit" value="Done">
+    </form>
+    <span id="register_info"></span>
+</div>
+
+<div id="afb_api" style="visibility:hidden">
+    <ol>
+        <li>Question
+            <pre id="question"></pre>
+        </li>
+        <li>Response
+            <pre id="output"></pre>
+        </li>
+    </ol>
+</div>
 
 </body>
 </html>

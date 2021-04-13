@@ -8,7 +8,7 @@
 	<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
 	<script type="text/javascript" src="/jscss/afb-websock.js"></script>
     <script type="text/javascript" src="/jscss/sgate-binding.js"></script>
-    <script type="text/javascript" src="/jscss/sgate-common.js"></script>
+    <script type="text/javascript" src="/jscss/sgate-glue.js"></script>
 </head>
 
 <body class="page-content" onload="init(getSession);">
@@ -19,7 +19,7 @@
     <button id="ping"  onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
     <br>
 
-    <div id="api_div">
+    <div id="sgate_div">
         <br>
         <form id="register_user" action="JavaScript:registerUser()">
             <label class="register_label" for="pseudo">pseudo  :</label>

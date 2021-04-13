@@ -1,23 +1,23 @@
 var idpsdiv;
 
-function addOneIdp (api_box, idp) {
+function addOneIdp (div_box, idp) {
 
     // create a new dic for this IDP
     var idp_box= document.createElement("div");
-    api_box.appendChild(idp_box);
+    div_box.appendChild(idp_box);
     idp_box.setAttribute("id", idp.uid);
-    idp_box.className= "idp_div";
+    div_box.className="sgate_idp";
 
     // add icon
     var logo= document.createElement('img');
     idp_box.appendChild(logo)
     logo.src= idp.logo;
-    logo.className= "idp_logo";
+    logo.className= "sgate_logo";
 
     // add login button
     var button = document.createElement("button");
     idp_box.appendChild(button)
-    button.className= "idp_button";
+    button.className= "sgate_button";
     button.innerText= idp.uid;
     button.onclick= function() {
         location.href= idp["login-url"];
@@ -25,7 +25,7 @@ function addOneIdp (api_box, idp) {
 
     // add idp info text
     var info= document.createElement('span');
-    info.className= "idp_info";
+    info.className= "sgate_info";
     idp_box.appendChild(info)
     info.innerHTML = idp.info;
 }
@@ -41,14 +41,32 @@ function getIdps() {
     ws.call(api + "/" + verb, query)
     .then(function (res) {
         log.reply(res);
+        var div_box;
+        var sgate_div= document.getElementById("sgate_div");
+        sgate_div.className="sgate_box";
+
+        if (sgate_div === null) {
+            window.alert("getIdps() requirer <div id='sgate_div'> in page");
+            return; 
+        }
+
+        // when exit add alias info data
+        if (res.response.alias) {
+            div_box= document.createElement("div");
+            div_box.id="alias_json";
+            div_box.className="sgate_extra";
+            div_box.innerText= "Request: " + JSON.stringify(res.response.alias);
+            sgate_div.appendChild(div_box); 
+        }        
 
         // add all IDP in a share div
-        api_box= document.createElement("div");
-        api_box.id="api_box";
+        div_box= document.createElement("div");
+        div_box.id="idps_box";
         for (const idp of res.response.idps) {
-            addOneIdp(api_box, idp);
+            addOneIdp(div_box, idp);
         }
-        document.getElementById("api_div").appendChild(api_box);
+        sgate_div.appendChild(div_box);
+
     })
     .catch(function (err) {
         log.reply(err);

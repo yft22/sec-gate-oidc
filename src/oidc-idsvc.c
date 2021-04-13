@@ -333,8 +333,9 @@ static void idpsList (afb_req_t request, unsigned argc, afb_data_t const argv[])
     // build IDP list with corresponding scope for requested LOA
     if (alias) {
         idpsJ= idpLoaProfilsGet (oidc, alias->loa, NULL);
-        wrap_json_pack (&aliasJ, "{ss ss si}"
+        wrap_json_pack (&aliasJ, "{ss ss* ss si}"
             , "uid", alias->uid
+            , "info", alias->info
 			, "url", alias->url
 			, "loa", alias->loa
         );

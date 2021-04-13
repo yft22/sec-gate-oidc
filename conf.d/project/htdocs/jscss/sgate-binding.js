@@ -89,18 +89,18 @@ function init(callback) {
     const buttons= document.querySelectorAll(".wsapi");
 
 	function onopen() {
-		document.getElementById("main").style.visibility = "visible";
-		document.getElementById("ping").style.visibility = "visible";
-		document.getElementById("connected").innerHTML = "Binder WS Active";
-        document.getElementById("connected").style.background = "lightgreen";
+		document.getElementById("afb_api").style.visibility = "visible";
+		document.getElementById("afb_ping").style.visibility = "visible";
+		document.getElementById("afb_link").innerHTML = "Binder WS Active";
+        document.getElementById("afb_link").style.background = "lightgreen";
         callback();
 	}
 
 	function onabort() {
-		document.getElementById("main").style.visibility = "hidden";
-		document.getElementById("ping").style.visibility = "hidden";
-		document.getElementById("connected").innerHTML = "Connected Closed";
-        document.getElementById("connected").style.background = "red";
+		document.getElementById("afb_api").style.visibility = "hidden";
+		document.getElementById("afb_ping").style.visibility = "hidden";
+		document.getElementById("afb_link").innerHTML = "Connected Closed";
+        document.getElementById("afb_link").style.background = "red";
         var api_box= document.getElementById("api_box");
         if (api_box) {
             api_box.remove();

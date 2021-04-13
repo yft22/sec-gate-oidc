@@ -80,9 +80,9 @@
         {"uid": "idp-common"  , "url":"/sgate/common", "path":"idps/common" },
         {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "from":"github", "path":"idps/github" },
         {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "from":"pam", "path":"idps/pam" },
-        {"uid": "public" , "url":"/public", "path":"public" },
-        {"uid": "private", "url":"/private", "loa":1, "path":"private" },
-        {"uid": "confidential", "url":"/confidential", "loa":2, "path":"confidential" },
+        {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },
+        {"uid": "private", "info": "Required basic authentication", "url":"/private",  "loa":1, "path":"private" },
+        {"uid": "confidential", "info": "Required teams authentication", "url":"/confidential", "loa":2, "path":"confidential" },
       ]
     }
   }

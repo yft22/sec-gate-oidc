@@ -45,22 +45,29 @@ button {
     display:inline-block
 }
 
-.idp_logo {
+.sgate_logo {
     width: 50px;
     height: 50px;
 }
 
-.idp_button {
+.sgate_button {
     opacity: 1.0;
     width: 250px;
     margin-left: 10px;
     margin-top: 0;
 }
 
-.idp_div {
+.sgate_info {
+    color: whitesmoke;
 }
 
-#api_div {
+.sgate_extra {
+    text-align: right;
+    color: lightgray;
+    font-size: small;
+}
+
+.sgate_box {
     background-color: grey;
     opacity: 0.8;
     vertical-align:middle; 
