@@ -1,9 +1,8 @@
+<!DOCTYPE html>
 <html>
-
-<meta charset="utf-8" />
-
 <head>
-	<title>oidc-sgate-pseudo</title>
+    <meta charset="utf-8" />
+	<title>oidc-sgate-login</title>
 	<link rel="stylesheet" href="/jscss/sgate-binding.css">
 	<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
 	<script type="text/javascript" src="/jscss/afb-websock.js"></script>
@@ -14,32 +13,32 @@
 <body class="page-content" onload="init(getSession);">
 	<img src="/assets/iot-bzh-logo-small.png">
 
-	<h1>oidc/sgate register</h1>
-    <button id="connected"  onclick="init(getSession)">Binder WS Fail</button>
-    <button id="ping"  onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
+	<h1>oidc/sgate login</h1>
+    <button id="afb_link"  class="sgate_button" onclick="init(getIdps)">Binder WS Fail</button>
+    <button id="afb_ping" class="sgate_button"onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
     <br>
 
-    <div id="sgate_div">
+    <div id="sgate_div" class="sgate_box">
+        <div id=sgate_info class="sgate_info"></div>
         <br>
         <form id="register_user" action="JavaScript:registerUser()">
-            <label class="register_label" for="pseudo">pseudo  :</label>
-            <input type="text" id="pseudo" name="pseudo" required><br><br>
+            <label class="sgate_label" for="pseudo">pseudo  :</label>
+            <input class="sgate_input" type="text" id="pseudo" name="pseudo" required><br><br>
 
-            <label class="register_label" for="email">email  :</label>
-            <input type="text" id="email" name="email" required><br><br>
+            <label class="sgate_label" for="email">email  :</label>
+            <input class="sgate_input" type="text" id="email" name="email" required><br><br>
 
-            <label class="register_label"for="name">name  :</label>
-            <input type="text" id="name" name="name"><br><br>
+            <label class="sgate_label"for="name">name  :</label>
+            <input class="sgate_input" type="text" id="name" name="name"><br><br>
 
-            <label class="register_label"for="company">pseudo  :</label>
-            <input type="text" id="company" name="company" required><br><br>
+            <label class="sgate_label"for="company">pseudo  :</label>
+            <input class="sgate_input" type="text" id="company" name="company" required><br><br>
 
-            <input type="submit" value="Done" >
+            <input type="submit" class="sgate_button" value="Done" >
         </form>
-        <span id="register_info"></span>
     </div>
 
-    <div id="main" style="visibility:hidden">
+    <div id="afb_api">
 		<ol>
 			<li>Question
 				<pre id="question"></pre>

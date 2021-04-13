@@ -14,12 +14,15 @@
 	<img src="/assets/iot-bzh-logo-small.png">
 
 	<h1>oidc/sgate login</h1>
-    <button id="connected"  onclick="init(getIdps)">Binder WS Fail</button>
-    <button id="ping" onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
+    <button id="afb_link"  class="sgate_button" onclick="init(getIdps)">Binder WS Fail</button>
+    <button id="afb_ping" class="sgate_button" onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
     <br>
-    <div id="sgate_div"></div>
+    <div id="sgate_div">
+		<div id=sgate_info class="sgate_info"></div>
+		<div id=sgate_data class="sgate_data"></div>
+	</div>
 
-    <div id="afb_api" style="visibility:hidden">
+    <div id="afb_api" class="sgate_debug">
 		<ol>
 			<li>Question
 				<pre id="question"></pre>

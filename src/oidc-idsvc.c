@@ -150,7 +150,6 @@ OnErrorExit:
 static void userRegisterCB(void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t request) {
     char *errorMsg= "[user-create-fail]  (idsvcuserRegisterCB)";
     afb_data_t reply[1],  argd[2];
-    fedUserRawT *fedUser=NULL;
     oidcProfilsT *profil=NULL;
     oidcAliasT *alias=NULL;
     json_object *aliasJ;
@@ -160,6 +159,8 @@ static void userRegisterCB(void *ctx, int status, unsigned argc, const afb_data_
     if (status < 0) goto OnErrorExit;
 
     // return destination alias
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void**) &profil);
+    afb_session_set_loa (session, oidcSessionCookie, profil->loa);
     afb_session_cookie_get (session, oidcAliasCookie, (void**)&alias);
     wrap_json_pack (&aliasJ, "{ss}"
 	    , "target", alias->url ?: "/"
@@ -176,7 +177,7 @@ OnErrorExit:
 
 // Try to store fedsocial and feduser into local store
 static void userRegister(afb_req_t request, unsigned argc, afb_data_t const argv[]) {
-    char *errorMsg= "[user-register-fail] invalid request";
+    char *errorMsg= "[user-register-fail] invalid session/request";
     afb_event_t evtCookie=NULL;
     const oidcProfilsT *profil=NULL;
 	const fedSocialRawT *fedSocial;
@@ -202,7 +203,6 @@ fprintf (stderr, "*** userRegister session uid=%s\n", afb_session_uuid(session))
    	afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
     if (!fedSocial) goto OnErrorExit;
 
-
     afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void*)afb_data_unref, argd[0]);
 
     // user is new let's register it within fedid DB
@@ -214,7 +214,7 @@ fprintf (stderr, "*** userRegister session uid=%s\n", afb_session_uuid(session))
     return;
 
 OnErrorExit:
-    AFB_REQ_ERROR (request, errorMsg);
+    AFB_REQ_ERROR (request, "%s", errorMsg);
     afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, strlen(errorMsg)+1, NULL, NULL);
     afb_req_reply (request, -1, 1, reply);
     if (argd[0]) afb_data_array_unref(argc, argd);
@@ -251,7 +251,7 @@ static void sessionGet (afb_req_t request, unsigned argc, afb_data_t const argv[
     return;
 
 OnErrorExit:
-    AFB_REQ_ERROR (request, errorMsg);
+    AFB_REQ_ERROR (request, "%s", errorMsg);
     afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, strlen(errorMsg)+1, NULL, NULL);
     afb_req_reply (request, -1, 1, reply);
 }

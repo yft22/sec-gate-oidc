@@ -19,11 +19,11 @@
       "info": "oidc secure gateway demo config",
       "globals": {
           "info" : "Rodrigo demo uses a 'one-page' app",
-          "login": "/sgate/common#login",
-          "register": "/sgate/common#register",
-          "fedlink": "/sgate/common#fedlink",
-          "remove": "/sgate/common#remove",
-          "error": "/sgate/common#error",
+          "login": "/sgate/common/oidc#login",
+          "register": "/sgate/common/oidc#register",
+          "fedlink": "/sgate/common/oidc#fedlink",
+          "remove": "/sgate/common/oidc#remove",
+          "error": "/sgate/common/oidc#error",
           "timeout": 600
       },
       "idps": [
@@ -42,7 +42,7 @@
                 "timeout": 900
             },
             "wellknown": {
-                "loginTokenUrl": "/sgate/common#passwd"
+                "loginTokenUrl": "/sgate/common/oidc#passwd"
             },
             "profils": [
                 {"uid":"login", "loa":1, "scope":"login"}

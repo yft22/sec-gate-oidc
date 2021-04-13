@@ -86,25 +86,33 @@ function callbinder(api, verb, query) {
 // Init - establish Websocket connection
 //**********************************************
 function init(callback) {
-    const buttons= document.querySelectorAll(".wsapi");
 
 	function onopen() {
-		document.getElementById("afb_api").style.visibility = "visible";
-		document.getElementById("afb_ping").style.visibility = "visible";
 		document.getElementById("afb_link").innerHTML = "Binder WS Active";
         document.getElementById("afb_link").style.background = "lightgreen";
-        callback();
+		callback();
+
+		var sgate_box= document.getElementById("sgate_info")
+		sgate_box.innerHTML= "";
+
+		var buttons= document.getElementsByClassName("sgate_button");
+		for (var idx=0; idx < buttons.length|0; idx++) {
+			buttons[idx].className = "sgate_button sgate_on";
+		}
 	}
 
 	function onabort() {
-		document.getElementById("afb_api").style.visibility = "hidden";
-		document.getElementById("afb_ping").style.visibility = "hidden";
+		//document.getElementById("afb_api").style.visibility = "hidden";
 		document.getElementById("afb_link").innerHTML = "Connected Closed";
-        document.getElementById("afb_link").style.background = "red";
-        var api_box= document.getElementById("api_box");
-        if (api_box) {
-            api_box.remove();
-        }
+		document.getElementById("afb_link").style.background = "red";
+		
+		var sgate_box= document.getElementById("sgate_info")
+		sgate_box.innerHTML= "sgate connection lost"
+
+		var buttons= document.getElementsByClassName("sgate_button");
+		for (var idx=0; idx < buttons.length|0; idx++) {
+			buttons[idx].className = "sgate_button sgate_off";
+		} 
 	}
 	ws = new afb.ws(onopen, onabort);
 }

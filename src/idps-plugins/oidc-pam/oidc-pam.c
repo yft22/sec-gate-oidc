@@ -81,7 +81,7 @@ static int pamChalengeCB (int num_msg, const struct pam_message **msg, struct pa
 
 // check pam login/passwd using scope as pam application
 int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login, const char *passwd, fedSocialRawT **fedSocial, fedUserRawT **fedUser) {
-	int status, err;
+	int status=0, err;
 	pam_handle_t* pamh = NULL;
 	gid_t groups[dfltOpts.gidsMax];
 	int ngroups= dfltOpts.gidsMax;

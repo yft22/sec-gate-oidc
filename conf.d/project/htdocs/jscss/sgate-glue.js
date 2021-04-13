@@ -42,13 +42,18 @@ function getIdps() {
     .then(function (res) {
         log.reply(res);
         var div_box;
-        var sgate_div= document.getElementById("sgate_div");
+        var sgate_div= document.getElementById("sgate_data");
         sgate_div.className="sgate_box";
 
         if (sgate_div === null) {
-            window.alert("getIdps() requirer <div id='sgate_div'> in page");
+            window.alert("getIdps() requirer <div id='sgate_data'> in page");
             return; 
         }
+
+        // div box is recreated/deleted each time we get/lost binding connection
+        sgate_box= document.createElement("div");
+        sgate_box.id="sgate_box";
+        sgate_div.appendChild(sgate_box); 
 
         // when exit add alias info data
         if (res.response.alias) {
@@ -56,7 +61,7 @@ function getIdps() {
             div_box.id="alias_json";
             div_box.className="sgate_extra";
             div_box.innerText= "Request: " + JSON.stringify(res.response.alias);
-            sgate_div.appendChild(div_box); 
+            sgate_box.appendChild(div_box); 
         }        
 
         // add all IDP in a share div
@@ -65,7 +70,7 @@ function getIdps() {
         for (const idp of res.response.idps) {
             addOneIdp(div_box, idp);
         }
-        sgate_div.appendChild(div_box);
+        sgate_box.appendChild(div_box);
 
     })
     .catch(function (err) {
@@ -102,9 +107,14 @@ function getSession() {
                 input.value= value;
             }
         }
-
     })
     .catch(function (err) {
+        var info= document.getElementById ("sgate_info");
+        if (info === null) {
+            window.alert("getSession() requirer <form id='sgate_info'> in page");
+           return; 
+        }
+        info.innerText=err.response;
         log.reply(err);
     });
 } 
@@ -140,13 +150,13 @@ function registerUser() {
 
     })
     .catch(function (err) {
-        log.reply(err);
-        var info= document.getElementById("register_info");
+        var info= document.getElementById ("sgate_info");
         if (info === null) {
-           window.alert("registerUser() requirer <span id='register_info'> in page");
+            window.alert("getSession() requirer <form id='sgate_info'> in page");
            return; 
         }
-        info.innerHTML= JSON.stringify(err);
+        info.innerText=err.response;
+        log.reply(err);
     });
 
 }

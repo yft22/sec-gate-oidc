@@ -228,7 +228,7 @@ OnErrorExit:
 }
 
 static const oidcProfilsT *idpParseProfils (oidcIdpT *idp, json_object *profilsJ, const oidcProfilsT *defaults) {
-	oidcProfilsT *profils;
+	oidcProfilsT *profils=NULL;
 	int err;
 
     // no config use defaults

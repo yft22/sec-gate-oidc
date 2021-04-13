@@ -21,30 +21,6 @@ body.page-content {
 	float: right;
 }
 
-#question,
-#output,
-#outevt {
-	white-space: pre-wrap;
-}
-
-button {
-	margin-right: 10px;
-	padding: 6px 8px;
-    font-size: large;
-}
-
-#ping {
-    background-color: lightyellow;
-}
-
-#register_form label {
-    display: block;
-    padding-left:26px;
-    width:125px;
-    text-transform: capitalize;
-    display:inline-block
-}
-
 .sgate_logo {
     width: 50px;
     height: 50px;
@@ -55,10 +31,24 @@ button {
     width: 250px;
     margin-left: 10px;
     margin-top: 0;
+    border-radius: 25px;
+    padding: 20px;
+    border: 3px solid #73AD21;
+}
+
+.sgate_on {
+    color: green;     
+    border: 3px solid #73AD21;  
+}
+
+.sgate_off {
+    color: lightgrey;
+    border: 3px solid #e2329e;  
 }
 
 .sgate_info {
     color: whitesmoke;
+    margin-left: 20px;
 }
 
 .sgate_extra {
@@ -67,13 +57,26 @@ button {
     font-size: small;
 }
 
+.sgate_label {
+    width: 100px;
+    margin-left: 20px;
+    display: inline-block;
+    border-radius: 25px;
+}
+
+.sgate_input {
+    margin-left: 10px;
+    width: 250px;
+    display: inline-block;
+}
+
 .sgate_box {
     background-color: grey;
     opacity: 0.8;
     vertical-align:middle; 
     margin:10px;
     border-radius: 25px;
-    border: 2px solid #73AD21;
+    border: 3px solid #73AD21;
     padding: 20px; 
 }
 
