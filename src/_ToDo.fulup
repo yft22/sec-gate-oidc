@@ -1,7 +1,5 @@
 0)
-    - ajouter un champ d'erreur quand le password est FAUX au redirect.
-    - mettre à jours la page login/passwd sur le modèle de login
-    - updater la session avec les info de registration quand le login pam est bon.
+    - Ajouter les info de sessions dans les pages HTML
 
 1) Finir le link de 2 idp accounts
 

@@ -83,16 +83,16 @@ function getSession() {
 
     // ws.call return a Promise
     var api="sgate";
-    var verb="get-session";
+    var verb="session-get";
     var query="{}";
     log.command(api, verb, query);   
     ws.call(api + "/" + verb, query)
     .then(function (res) {
         log.reply(res);
 
-        var form= document.getElementById ("register_user");
+        var form= document.getElementById ("sgate_form");
         if (form === null) {
-            window.alert("getSession() requirer <form id='register_user'> in page");
+            window.alert("getSession() requirer <form id='sgate_form'> in page");
            return; 
         }
 
@@ -122,9 +122,9 @@ function getSession() {
 function registerUser() {
 
     // make sure form id march with html page
-    var form= document.getElementById ("register_user");
+    var form= document.getElementById ("sgate_form");
     if (form === null) {
-        window.alert("registerUser() requirer <form id='register_user'> in page");
+        window.alert("registerUser() requirer <form id='sgate_form'> in page");
         return; 
     }
 
@@ -141,6 +141,48 @@ function registerUser() {
     // call user-registration
     var api="sgate";
     var verb="usr-register";
+    log.command(api, verb, query);   
+    ws.call(api + "/" + verb, query)
+    .then(function (res) {
+        log.reply(res);
+        // redirect to requested URL
+        window.location.replace(res.response.target);
+
+    })
+    .catch(function (err) {
+        var info= document.getElementById ("sgate_info");
+        if (info === null) {
+            window.alert("getSession() requirer <form id='sgate_info'> in page");
+           return; 
+        }
+        info.innerText=err.response;
+        log.reply(err);
+    });
+
+}
+
+function passwordUser() {
+
+    // make sure form id march with html page
+    var form= document.getElementById ("sgate_form");
+    if (form === null) {
+        window.alert("registerUser() requirer <form id='sgate_form'> in page");
+        return; 
+    }
+
+    // retrieve value from HTML form
+    var query={};
+    for (var idx= 0; idx < form.length ;idx++) {
+        var uid= form[idx].id;
+        var value= form[idx].value;
+        if (value) {
+            query[uid]=value;
+        }
+    } 
+
+    // call user-registration
+    var api="sgate";
+    var verb="pam-login";
     log.command(api, verb, query);   
     ws.call(api + "/" + verb, query)
     .then(function (res) {

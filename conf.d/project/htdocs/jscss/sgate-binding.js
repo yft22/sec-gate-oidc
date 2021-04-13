@@ -90,10 +90,7 @@ function init(callback) {
 	function onopen() {
 		document.getElementById("afb_link").innerHTML = "Binder WS Active";
         document.getElementById("afb_link").style.background = "lightgreen";
-		callback();
-
-		var sgate_box= document.getElementById("sgate_info")
-		sgate_box.innerHTML= "";
+		if (callback) callback();
 
 		var buttons= document.getElementsByClassName("sgate_button");
 		for (var idx=0; idx < buttons.length|0; idx++) {

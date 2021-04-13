@@ -220,9 +220,17 @@ OnErrorExit:
     if (argd[0]) afb_data_array_unref(argc, argd);
 }
 
+static void sessionClose (afb_req_t request, unsigned argc, afb_data_t const argv[]) {
+    afb_session *session= afb_req_v4_get_common(request)->session;
+    fedidSessionClose (0, (void*) session);
+    afb_req_reply(request, 0, 0, NULL);
+
+    return;
+}
+
 // Return all information we have on current session (profil, loa, idp, ...)
 static void sessionGet (afb_req_t request, unsigned argc, afb_data_t const argv[]) {
-    char *errorMsg= "[fail-get-session] no session running anonymous mode";
+    char *errorMsg= "[fail-session-get] no session running anonymous mode";
     afb_data_t reply[3];
     afb_event_t evtCookie=NULL;
     const oidcProfilsT *profil=NULL;
@@ -393,7 +401,6 @@ OnErrorExit:
     afb_req_reply (request, -1, 1, &reply);
 }
 
-
 // Static verb not depending on shell json config file
 static afb_verb_t idsvcVerbs[] = {
     /* VERB'S NAME         FUNCTION TO CALL         SHORT DESCRIPTION */
@@ -401,7 +408,8 @@ static afb_verb_t idsvcVerbs[] = {
     { .verb = "url-list",     .callback = urlsList,      .info = "request wellknown url list"},
     { .verb = "idp-list",     .callback = idpsList,      .info = "request idp list/scope for a given LOA level"},
     { .verb = "evt-subs",     .callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
-    { .verb = "get-session",  .callback = sessionGet,    .info = "retreive current client session [profil, user, social]"},
+    { .verb = "session-get",  .callback = sessionGet,    .info = "retreive current client session [profil, user, social]"},
+    { .verb = "session-close",.callback = sessionClose,    .info = "close current session [reset loa to zero]"},
     { .verb = "usr-register", .callback = userRegister,  .info = "register federated user profile into local fedid store"},
     { .verb = "usr-idps-link",.callback = userGetIdps,   .info = "return pseudo/email idps list before linking user multiple IDPs"},
     { .verb = "chk-attribute",.callback = userCheckAttr, .info = "check user attribute within local store"},

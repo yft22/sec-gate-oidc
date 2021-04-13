@@ -80,7 +80,7 @@ static int pamChalengeCB (int num_msg, const struct pam_message **msg, struct pa
 }
 
 // check pam login/passwd using scope as pam application
-int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login, const char *passwd, fedSocialRawT **fedSocial, fedUserRawT **fedUser) {
+int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login, const char *passwd, fedSocialRawT **social, fedUserRawT **user) {
 	int status=0, err;
 	pam_handle_t* pamh = NULL;
 	gid_t groups[dfltOpts.gidsMax];
@@ -111,18 +111,18 @@ int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login
 		if (status != PAM_SUCCESS) goto OnErrorExit;
 
 		// build social fedkey from idp->uid+github->id
-		*fedSocial= calloc (1, sizeof(fedSocialRawT));
+		fedSocialRawT *fedSocial= calloc (1, sizeof(fedSocialRawT));
 		char *fedId;
 		asprintf (&fedId,"id:%d",pw->pw_uid);
-		(*fedSocial)->fedkey= fedId;
-		(*fedSocial)->idp= strdup(idp->uid);
+		fedSocial->fedkey= fedId;
+		fedSocial->idp= strdup(idp->uid);
 
-		*fedUser= calloc (1, sizeof(fedUserRawT));
-		(*fedUser)->pseudo= strdup(pw->pw_name);
-		(*fedUser)->avatar= strdup (dfltOpts.avatarAlias);
-		(*fedUser)->name= strdup(pw->pw_gecos);
-		(*fedUser)->company= NULL;
-		(*fedUser)->email= NULL;
+		fedUserRawT *fedUser= calloc (1, sizeof(fedUserRawT));
+		fedUser->pseudo= strdup(pw->pw_name);
+		fedUser->avatar= strdup (dfltOpts.avatarAlias);
+		fedUser->name= strdup(pw->pw_gecos);
+		fedUser->company= NULL;
+		fedUser->email= NULL;
 
 		// retreive groups list and add then to fedSocial labels list
 		err= getgrouplist(pw->pw_name, pw->pw_gid, groups, &ngroups);
@@ -132,12 +132,15 @@ int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login
 		}
 
 		// map pam group name as security labels attributes
-		(*fedSocial)->attrs= calloc (sizeof (char*), ngroups+1);
+		fedSocial->attrs= calloc (sizeof (char*), ngroups+1);
 		for (int idx=0; idx < ngroups; idx++) {
 			struct group *gr;
 			gr= getgrgid(groups[idx]);
-			(*fedSocial)->attrs[idx]= gr->gr_name;
+			fedSocial->attrs[idx]= strdup(gr->gr_name);
 		}
+
+		*user = fedUser;
+		*social=fedSocial;
 	}
 
 	// close pam transaction
@@ -156,20 +159,25 @@ static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct 
     const char *login, *passwd=NULL, *scope=NULL;
 	const oidcProfilsT *profil=NULL;
     const oidcAliasT *alias=NULL;
+	const char *state;
     int aliasLoa;
     int err;
 
     err = afb_data_convert(params[0], &afb_type_predefined_json_c, &args[0]);
     json_object *queryJ=  afb_data_ro_pointer(args[0]);
-	err= wrap_json_unpack (queryJ, "{ss s?s s?s}"
+	err= wrap_json_unpack (queryJ, "{ss ss s?s s?s s?s}"
 		, "login", &login
+		, "state", &state
 		, "passwd", &passwd
+		, "password", &passwd
 		, "scope", &scope
 	);
 	if (err) goto OnErrorExit;
 
 	// search for a scope fiting requesting loa
-	afb_session *session= (*(struct afb_req_common **)request)->session;
+	afb_session *session= afb_req_v4_get_common(request)->session;
+	if (!state || strcmp (state, afb_session_uuid(session))) goto OnErrorExit;
+
 	afb_session_cookie_get (session, oidcAliasCookie, (void**) &alias);
     if (alias) aliasLoa= alias->loa;
     else aliasLoa=0;

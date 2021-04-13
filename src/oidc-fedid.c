@@ -46,7 +46,7 @@ typedef struct {
 } oidcFedidHdlT;
 
 // session timeout, reset LOA
-static void fedidTimeoutSession (int signal, void *ctx) {
+void fedidSessionClose (int signal, void *ctx) {
     afb_session *session = (afb_session*) ctx;
 
     // signal should be null
@@ -54,6 +54,7 @@ static void fedidTimeoutSession (int signal, void *ctx) {
 
     // reset session LOA (this will force authentication)
     afb_session_set_loa (session, oidcSessionCookie, 0);
+	EXT_NOTICE ("[fedidSessionClose] timeout ?");
 }
 
 // if fedkey exists callback receive local store user profil otherwise we should create it
@@ -94,8 +95,8 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
     if (argc != 1) { // feduser was not created
 
 		// fedkey not fount let's store social authority profil into session and redirect user on userprofil creation
-		afb_session_cookie_set (session, oidcFedUserCookie, userRqt->fedUser, free, userRqt->fedUser);
-		afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, free, userRqt->fedSocial);
+		afb_session_cookie_set (session, oidcFedUserCookie, userRqt->fedUser, fedUserFreeCB, userRqt->fedUser);
+		afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, fedSocialFreeCB, userRqt->fedSocial);
 		afb_session_set_loa (session, oidcSessionCookie, 0); // user not register reset session loa
 
         httpKeyValT query[]= {
@@ -164,7 +165,7 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
                 afb_session_cookie_set (session, oidcSessionCookie, (void*)fedSession, NULL, NULL);
             }
 
-            fedSession->timerId= afb_sched_post_job (NULL /*group*/, idpProfil->sTimeout,  0 /*exec-timeout*/,fedidTimeoutSession, session);
+            fedSession->timerId= afb_sched_post_job (NULL /*group*/,idpProfil->sTimeout*1000, 0/*max-exec-time*/, fedidSessionClose, session);
             if (fedSession->timerId < 0) {
         	    EXT_ERROR ("[fedid-register-timeout] fail to set idp profil session loa");
                 goto OnErrorExit;
