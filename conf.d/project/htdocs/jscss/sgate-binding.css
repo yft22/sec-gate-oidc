@@ -52,14 +52,19 @@ body.page-content {
     margin-left: 20px;
 }
 
+.sgate_error {
+    color: red;
+    margin-left: 20px;
+}
+
 .sgate_extra {
     text-align: right;
-    color: lightgray;
+    color: lightsteelblue;
     font-size: small;
 }
 
 .sgate_label {
-    width: 100px;
+    width: 150px;
     margin-left: 20px;
     display: inline-block;
     border-radius: 25px;

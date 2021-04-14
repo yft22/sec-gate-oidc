@@ -203,8 +203,6 @@ fprintf (stderr, "*** userRegister session uid=%s\n", afb_session_uuid(session))
    	afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
     if (!fedSocial) goto OnErrorExit;
 
-    afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void*)afb_data_unref, argd[0]);
-
     // user is new let's register it within fedid DB
     afb_data_addref(argd[0]);
     err= afb_create_data_raw(&argd[1], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, (void*)fedSocial);

@@ -109,9 +109,9 @@ function getSession() {
         }
     })
     .catch(function (err) {
-        var info= document.getElementById ("sgate_info");
+        var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("getSession() requirer <form id='sgate_info'> in page");
+            window.alert("getSession() requirer <form id='sgate_error'> in page");
            return; 
         }
         info.innerText=err.response;
@@ -150,15 +150,14 @@ function registerUser() {
 
     })
     .catch(function (err) {
-        var info= document.getElementById ("sgate_info");
+        var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("getSession() requirer <form id='sgate_info'> in page");
+            window.alert("getSession() requirer <form id='sgate_error'> in page");
            return; 
         }
         info.innerText=err.response;
         log.reply(err);
     });
-
 }
 
 function passwordUser() {
@@ -192,9 +191,9 @@ function passwordUser() {
 
     })
     .catch(function (err) {
-        var info= document.getElementById ("sgate_info");
+        var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("getSession() requirer <form id='sgate_info'> in page");
+            window.alert("getSession() requirer <form id='sgate_error'> in page");
            return; 
         }
         info.innerText=err.response;

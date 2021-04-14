@@ -154,11 +154,13 @@ int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login
 
 // check user email/pseudo attribute
 static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct afb_data *const params[]) {
+    const char *errmsg= "[pam-login] invalid credentials";
     oidcIdpT *idp =  (oidcIdpT*) afb_req_v4_vcbdata(request);
     struct afb_data *args[nparams];
     const char *login, *passwd=NULL, *scope=NULL;
 	const oidcProfilsT *profil=NULL;
     const oidcAliasT *alias=NULL;
+    afb_data_t reply;
 	const char *state;
     int aliasLoa;
     int err;
@@ -206,16 +208,17 @@ static void checkLoginVerb(struct afb_req_v4 *request, unsigned nparams, struct 
     if (fedUser) {
         err= idpCallbacks->fedidCheck (idp, fedSocial, fedUser, request, NULL);
         if (err) goto OnErrorExit;
+        // when OK api response is handle by fedidCheck
+        afb_req_addref (request); // prevent automatic verb response.
     } else {
        afb_req_v4_reply_hookable (request, 0, 0, NULL); // login exist
     }
-
-	// when OK api response is handle by fedidCheck
-    afb_req_addref (request); // prevent automatic verb response.
     return;
 
 OnErrorExit:
-    afb_req_v4_reply_hookable (request, -100, 0, NULL);
+
+    afb_create_data_raw(&reply, AFB_PREDEFINED_TYPE_STRINGZ, errmsg, strlen(errmsg)+1, NULL, NULL);
+    afb_req_v4_reply_hookable (request, -1, 1, &reply);
 }
 
 
