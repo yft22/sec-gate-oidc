@@ -9,9 +9,6 @@
   "extension": "./package/lib/afb-oidc-sgate.extso",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
-  "alias": [
-      "/devtools:/usr/share/afb-ui-devtools/binder",
-    ],
   //"binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
   "@extconfig": {
     "oidc-sgate": {

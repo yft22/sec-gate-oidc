@@ -409,7 +409,7 @@ static afb_verb_t idsvcVerbs[] = {
     { .verb = "idp-list",     .callback = idpsList,      .info = "request idp list/scope for a given LOA level"},
     { .verb = "evt-subs",     .callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
     { .verb = "session-get",  .callback = sessionGet,    .info = "retreive current client session [profil, user, social]"},
-    { .verb = "session-close",.callback = sessionClose,    .info = "close current session [reset loa to zero]"},
+    { .verb = "session-reset",.callback = sessionClose,    .info = "reset current session [set loa=0]"},
     { .verb = "usr-register", .callback = userRegister,  .info = "register federated user profile into local fedid store"},
     { .verb = "usr-idps-link",.callback = userGetIdps,   .info = "return pseudo/email idps list before linking user multiple IDPs"},
     { .verb = "chk-attribute",.callback = userCheckAttr, .info = "check user attribute within local store"},

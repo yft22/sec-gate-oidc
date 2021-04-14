@@ -71,6 +71,11 @@ body.page-content {
     display: inline-block;
 }
 
+.sgate_table {
+    margin-left: 10px;
+    display: inline-block;
+}
+
 .sgate_box {
     background-color: grey;
     opacity: 0.8;
@@ -83,6 +88,29 @@ body.page-content {
 
 #afb_close {
     float: right;
+}
+
+.table_label{
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.table_info{
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+.table_img{
+    width: 30%;
+}
+
+.table_loa{
+    margin-left: 10px;
+    margin-right: 10px;
+}
+
+table, th, td  {
+    border: 1px solid blueviolet;
 }
 
 pre {
