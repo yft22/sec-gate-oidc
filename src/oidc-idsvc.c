@@ -55,7 +55,9 @@ static void idsvcPing (afb_req_t request, unsigned argc, afb_data_t const argv[]
 
 // get result from /fedid/create-user
 static void userCheckAttrCB(void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t request) {
-    char *errorMsg= "[user-attr-fail]  (userCheckAttrCB)";
+    static char errorMsg[]= "[user-attr-fail]  (userCheckAttrCB)";
+    static char existMsg[]= "locked";
+    static char freeMsg[]= "available";
     afb_data_t reply[1],  argd[2];
     fedUserRawT *fedUser=NULL;
     oidcProfilsT *profil=NULL;
@@ -63,11 +65,25 @@ static void userCheckAttrCB(void *ctx, int status, unsigned argc, const afb_data
 
     // return creation status to HTML5
     if (status < 0) goto OnErrorExit;
-    afb_req_reply(request, status, 0, NULL);
+
+    switch (status) {
+        case FEDID_ATTR_USED:
+            afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, existMsg, sizeof(existMsg), NULL, NULL);
+            break;
+
+        case FEDID_ATTR_FREE:
+            afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, freeMsg, sizeof(freeMsg), NULL, NULL);
+            break;    
+
+        default: 
+            goto OnErrorExit;
+    }
+
+    afb_req_reply(request, status, 1, reply);
     return;
 
 OnErrorExit:
-    afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, strlen(errorMsg)+1, NULL, NULL);
+    afb_create_data_raw(&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, sizeof(errorMsg), NULL, NULL);
     afb_req_reply (request, -1, 1, reply);
     return;
 }
