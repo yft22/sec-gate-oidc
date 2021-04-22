@@ -78,6 +78,7 @@ static void userCheckAttr(afb_req_t request, unsigned argc, afb_data_t const arg
 
     if (argc != 1) goto OnErrorExit;
     afb_req_subcall (request, API_OIDC_USR_SVC, "attr-check", argc, argv, afb_req_subcall_on_behalf, userCheckAttrCB, NULL);
+    return;
 
 OnErrorExit:
     afb_req_reply (request, -100, 0, NULL);
@@ -124,9 +125,6 @@ fprintf (stderr, "**** userGetIdpsCB responsej=%s\n", json_object_get_string(res
     afb_create_data_raw(reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void*)json_object_put, responseJ);
     afb_req_reply(request, 0, 1, reply);
 
-    // return creation status to HTML5
-    if (status < 0) goto OnErrorExit;
-    afb_req_reply(request, status, 0, NULL);
     return;
 
 OnErrorExit:
@@ -196,8 +194,6 @@ static void userRegister(afb_req_t request, unsigned argc, afb_data_t const argv
     afb_session *session= afb_req_v4_get_common(request)->session;
     afb_session_cookie_get (session, oidcIdpProfilCookie, (void**)&profil);
     if (!profil) goto OnErrorExit;
-
-fprintf (stderr, "*** userRegister session uid=%s\n", afb_session_uuid(session));
 
     // retreive fedsocial from session
    	afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
