@@ -44,12 +44,14 @@ static const httpKeyValT noHeaders={};
 typedef struct {
 	int gidsMax;
 	const char *avatarAlias;
+	int uidMin;
 } pamOptsT;
 
 // dflt_xxxx config.json default options
 static pamOptsT dfltOpts = {
 	.gidsMax= 10,
-	.avatarAlias= "/sgate/pam/avatar-dflt.png"
+	.avatarAlias= "/sgate/pam/avatar-dflt.png",
+	.uidMin=1000,
 };
 
 static const oidcProfilsT dfltProfils[]= {
@@ -99,7 +101,7 @@ int pamAccessToken (oidcIdpT *idp, const oidcProfilsT *profil, const char *login
 
     // login/passwd match let's retreive gids
 	struct passwd* pw = getpwnam(login);
-	if (pw == NULL || pw->pw_uid < 1000) goto OnErrorExit;
+	if (pw == NULL || pw->pw_uid < dfltOpts.uidMin) goto OnErrorExit;
 
 	// if passwd check passwd and retreive groups when login/passwd match
 	if (passwd) {
@@ -339,9 +341,10 @@ int pamConfigCB (oidcIdpT *idp, json_object *idpJ) {
 	// check is we have custom options
 	json_object *pluginJ= json_object_object_get (idpJ, "plugin");
 	if (pluginJ) {
-		err= wrap_json_unpack (pluginJ, "{s?i s?s}"
+		err= wrap_json_unpack (pluginJ, "{s?i s?s s?i}"
 			,"gids", &dfltOpts.gidsMax
 			,"avatar", &dfltOpts.avatarAlias
+			,"uidmin", &dfltOpts.uidMin
 		);
 		if (err) {
 			EXT_ERROR ("[pam-config-opts] json parse fail 'plugin':{'gids': %d, 'avatar':'%s'", dfltOpts.gidsMax, dfltOpts.avatarAlias);
