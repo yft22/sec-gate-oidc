@@ -73,15 +73,16 @@
           {"uid": "fedid","info":"embedded social federated user identity svc","loa":0,"uri":"@fedid"},
           {"uid": "test1","lazy":1},
           {"uid": "test2","uri":"unix:@test2", "loa":1, "role": ["user"], "lazy":1},
-          {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "role": ["user","admin"], "lazy":1}
+          {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "requirer": ["user","admin"], "lazy":1}
         ],
         "alias": [
           {"uid": "idp-common"  , "url":"/sgate/common", "path":"${HOME}/Workspace/AFB-binder/afb-oidc-webui" },
-          {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "from":"github", "path":"idps/github" },
-          {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "from":"pam", "path":"idps/pam" },
+          {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "path":"idps/github" },
+          {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "path":"idps/pam" },
           {"uid": "public" , "url":"/public", "path":"public" },
           {"uid": "private", "url":"/private", "loa":1, "path":"private" },
-          {"uid": "confidential", "url":"/confidential", "loa":2, "path":"confidential" }
+          {"uid": "confidential", "url":"/confidential", "loa":2, "path":"confidential" },
+          {"uid": "admin", "info": "Required admin security attribute", "url":"/admin", "loa":1, "path":"admin", "requirer": ["wheel","iotbzh","sudo"]},
         ]
       }
     }

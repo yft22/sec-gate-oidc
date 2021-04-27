@@ -74,7 +74,8 @@ oidc-sgate is not a binding, but a binder-v4 extension. As a result it has acces
           "register": "/sgate/common/register.html",
           "fedlink": "/sgate/common/fedlink.html",
           "error": "/sgate/common/error.html",
-          "timeout": 600
+          "timeout": 600,
+          "cache": 5000,
       },
     }
 }
@@ -83,7 +84,8 @@ oidc-sgate is not a binding, but a binder-v4 extension. As a result it has acces
 * **login**: redirect URL where application are redirected when an authentication is not strong enough. This page should present to end user and IDP selection list.
 * **register**:  redirect URL when on first authentication of a given user from a given authority. This page should request some basic user attributes as pseudo and email.
 * **fedlink**: redirect URL to link two external identities to a unique local identity.
-* **timeout**: global default timeout session in seconds.
+* **timeout**: global default timeout session in seconds. Defined how often an authority authentication token should be rechecked (from last authentication time and not from HTTP/REST request).
+* **cache**: default access control list cache in ms. Defined how often access control should be recheck for a given Alias/API.
 
 ### IDP zone
 A json array defining each authentication authority. Default authority are oAith2/OpenID-connect compliant. Nevertheless is is possible to add custom local/remote authority (check pam plugin as sample)
@@ -113,5 +115,42 @@ A json array defining each authentication authority. Default authority are oAith
 }
 ```
 * **uid**: IDP unique label
-* **credientials**: openid clientid and secret. This information should be provided from your external authority. For github check https://docs.github.com/en/developers/apps/authorizing-oauth-apps
-* **loginTokenUrl**: remote authority URL to redirect to when application should be redirected when an authentication is requirer.
+* **info**: Misc text presented with IDP list page
+* **credientials**: This information should be provided from your external authority. OpenID-Connect typically requirer a ClientID and a Secret, but depending on the IDP you may have other form of credential. You may check OpenID-Connect generic protocol [here](https://openid.net/connect)  and github specifics [here](https://docs.github.com/en/developers/apps/authorizing-oauth-apps)
+
+* **Wellknown**: remote IDP authority URLs, typically one URL to request the initial authentication token, then an other one to request the access token and final as many as needed URL for identity services provided by the authority.
+
+  * **LoginTokenUrl**: HTTP page to redirect to when authentication is requirer. This authority URL should prompt the user for authentication only when needed, in all the other case it should automatically redirect back oidc-sgate in SSO(Single-Sign-On).
+
+  * **AccessTokenURL**: REST exchange authentication end-point. Provided an access-token from the authentication-token received from 'loginTokenUrl' SSO. The request to 'accessTokenURL' does not go through user browser, this avoid to expose IDP application secret to user browser.
+
+  * **IdentityApiUrl**: REST authority identity service. Provide identity attributes matching requesting scope. Note that some authority as Github has multiple identity end point depending requested attributes. 
+
+* **statics**: define the REST/HTTP end point created on oid-sgate for IDPs protocol handshake.
+
+  * **login**: this is where remote IDP should redirect user after a valid HTTP authentication. When this page is called without a valid code from the authority user HTML application is redirect back to corresponding authority.
+  * **logo**: misc information provided to login page when list available IDPs.
+  * **timeout**: default timeout for this specific IDPs. After this timeout IDP LOA is reset to zero which force a token renewal negotiation.
+
+* **profil**: each authority may support multiple [scope](https://auth0.com/docs/scopes/openid-connect-scopes) of authentication. A given scope typically imply a different authentication method (e.g. single vs double factor) and provide access to different user identity attributes. Scopes depend on IDP, most of them propose a, 'email' scope that typically respond to a basic LOA=1 model.
+
+  * **uid**: unique profile label
+  * **loa**: level of assurance attached to this IDP profile
+  * **scope**: scope request when requesting authentication 
+  * **label**: custom and specific to IDP label. It is used to request further identity information from IDP services. In the case of github 'organizations_url' is the json key name within return user attributes to request the list of organizations the user belows to.
+
+* **apis**: list of binding APIs that oidc-sgate should make visible to the external world as with '--ws-client' binder command line attribute. Note that WebSocket does not support redirect, when a request is refused the application only receive an "UNAUTHORIZED" error. User application should subscribe to oidc-sgate events to be notified of refusal/error messages.
+  * **uid**: api name as exported on oidc-sgate external interface.
+  * **info**: misc user info presented to application then an authentication is required.
+  * **loa**: level of assurance requested to access this page. By depend any IDP with equal or greater LOA will let the request go thought. When LOA is negative then the IDP should exactly request LOA. This is a very simple model to force a specific IDP on a give set of resources.
+  * **requirer**: a list of either/or security labels check again identity authority. This list vary from one IDP to an other. Warning: this list is a logical OR, one match is enough to pass the check.
+  * **prio**: access control priority list. The highest number being check first. Priority key might be use to implement complex access control as local AND case for security attributes. 
+  * **uri**: which API to import. The "@api_name is the preferred method to import API from bindings running on the same Linux instance, to import API from binding running on the remote Linux instance use 'tcp:hostname:port/api' as with the --ws-client afb-binding command line option.
+  * **lazy**: when true oidc-sgate will start even if API to import is not present.
+
+* **Alias**: the same model as for apis but to protect HTML resources. The main difference is that with HTML it is possible to use redirect to automatically move the application from requested page to the authentication, when API/Websocket does not offer an equivalent mechanism.
+
+  * **uid**: alias name as exported on oidc-sgate external interface.
+  * **info**: misc user info presented to application then an authentication is required.
+  * **loa**: level of assurance requested to access this page. 
+  * **prio**: access control priority list. 
