@@ -203,7 +203,10 @@ static void userRegister(afb_req_t request, unsigned argc, afb_data_t const argv
     afb_data_t reply[1], argd[2];
     const afb_type_t argt[]= {fedUserObjType, NULL};
     err= afb_data_array_convert (argc, argv, argt, argd);
-    if (err < 0) goto OnErrorExit;
+    if (err < 0) {
+        argd[0]=NULL;
+        goto OnErrorExit;
+    }
     fedUserRawT *fedUser= (void*) afb_data_ro_pointer(argd[0]);
 
     // retrieve current request LOA from session (to be fixed by Jose)

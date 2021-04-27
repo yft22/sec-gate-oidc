@@ -95,6 +95,10 @@ body.page-content {
     float: right;
 }
 
+#sgate_cancel {
+    float: right;
+}
+
 .table_label{
     margin-left: 10px;
     margin-right: 10px;

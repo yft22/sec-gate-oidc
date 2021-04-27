@@ -68,8 +68,6 @@ Copy `localhost:1234/devtools/index.html`in your browser address bar to connect 
 * libcap-ng-devel
 * libseccomp-devel
 * liblua5.3-devel
-* uthash-devel
-* bwrap
 
 >Note: all previous dependencies should be available out-of-the-box within any good Linux distribution. Note that Debian as Ubuntu base distro use '.dev' in place of '.devel' for package name.
 

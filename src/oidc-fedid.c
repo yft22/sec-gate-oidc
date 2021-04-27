@@ -121,19 +121,11 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
 
 		// let's store user profil into session cookie (/oidc/profil/get serves it)
    		afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void*)afb_data_unref, argd[0]);
-
-		// free idp social federated profil, and set current session loa+profil to fedid service values
-		fedUserFreeCB(userRqt->fedUser);
-		fedSocialFreeCB(userRqt->fedSocial);
-		afb_session_cookie_get (session, oidcIdpProfilCookie, (void**) &idpProfil);
+		afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, fedSocialFreeCB, userRqt->fedSocial);
 
 		// everyting looks good let's return user to original page
+		afb_session_cookie_get (session, oidcIdpProfilCookie, (void**) &idpProfil);
 		afb_session_cookie_get (session, oidcAliasCookie, (void**)&alias);
-
-		// Fulup TBD link account is a previous waiting tolink fed account exist linkit now
-		// get fedlinkcookie
-		// subcall for linking account  (social-link fedsocial, pseudo, email);
-		// le call doit fonctionner à tous les coups
 
         err= httpBuildQuery (userRqt->idp->uid, url, sizeof(url), NULL /* prefix */, alias->url, NULL);
         if (err) {
@@ -213,8 +205,8 @@ int fedidCheck (oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser, s
 	userRqt->fedUser=fedUser;
 	userRqt->fedSocial=fedSocial;
 
-	// increase fedSocial usagecount and checl social fedkey
-    err= afb_data_create_raw(&params[0], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, fedSocial);
+	// fedSocial should remain valid after subcall for fedsocial cookie
+    err= afb_data_create_raw(&params[0], fedSocialObjType, fedSocial, 0, NULL, NULL);
 	if (err) goto OnErrorExit;
 
 	afb_data_addref(params[0]);  // prevent params to be deleted

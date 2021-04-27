@@ -42,29 +42,26 @@
 MAGIC_OIDC_SESSION(oidcSessionCookie);
 MAGIC_OIDC_SESSION(oidcAliasCookie);
 
+// check if one of requested role exist within social cookie
 int aliasCheckAttrs (afb_session *session, oidcAliasT *alias) {
 	fedSocialRawT *fedSocial;
 	int err, requestCount=0, matchCount=0;
 
 	// search within profile if we have the right role
 	err= afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
-	if (err) goto OnErrorExit;
+	if (err <0) goto OnErrorExit;
 
 	// this should be replaced by Cynagora request
 	for (int idx=0; alias->roles[idx]; idx++) {
 		requestCount++;
-		for (int jdx=0; fedSocial->attrs[jdx]; idx++) {
+		for (int jdx=0; fedSocial->attrs[jdx]; jdx++) {
 			if (!strcasecmp (alias->roles[idx], fedSocial->attrs[jdx])) {
 				matchCount++;
 				break;
 			}
 		}
-		// we're done
-		if (requestCount == matchCount) break;
+		if (matchCount)  break;
 	}
-
-	// check alias roles match idp security attributes
-	if (requestCount != matchCount) goto OnErrorExit;
 	return 0;
 
 OnErrorExit:
@@ -231,7 +228,7 @@ OnErrorExit:
 }
 
 static int idpParseOneAlias (oidcCoreHdlT *oidc, json_object *aliasJ, oidcAliasT *alias) {
-	json_object *rolesJ=NULL;
+	json_object *requirerJ=NULL;
 
     // set tCache default
     alias->tCache = oidc->globals->tCache;
@@ -244,7 +241,7 @@ static int idpParseOneAlias (oidcCoreHdlT *oidc, json_object *aliasJ, oidcAliasT
 		, "prio", &alias->priority
 		, "loa", &alias->loa
 		, "cache", &alias->tCache
-		, "role", rolesJ
+		, "requirer", &requirerJ
 		);
 	if (err) {
 		EXT_CRITICAL ("[idp-alias-error] oidc=%s parsing fail profil expect: uid,url,fullpath,prio,loa,role (idpParseOneAlias)", oidc->uid);
@@ -255,24 +252,24 @@ static int idpParseOneAlias (oidcCoreHdlT *oidc, json_object *aliasJ, oidcAliasT
 	if (!alias->url) asprintf ((char**)&alias->url,"/%s", alias->uid);
 	if (!alias->path) asprintf ((char**)&alias->path,"$ROOTDIR/%s", alias->uid);
 
-	if (rolesJ) {
+	if (requirerJ) {
 		const char **roles;
 		int count;
-		switch (json_object_get_type (rolesJ)) {
+		switch (json_object_get_type (requirerJ)) {
 
 			case json_type_array:
-				count= (int)json_object_array_length(rolesJ);
+				count= (int)json_object_array_length(requirerJ);
 				roles= calloc(count+1, sizeof(char*));
 
 				for (int idx=0; idx < count; idx ++) {
-					json_object *roleJ= json_object_array_get_idx(rolesJ, idx);
+					json_object *roleJ= json_object_array_get_idx(requirerJ, idx);
 					roles[idx]= json_object_get_string(roleJ);
 				}
 				break;
 
 			case json_type_object:
 				roles = calloc (2, sizeof(char*));
-				roles[0]= json_object_get_string(rolesJ);
+				roles[0]= json_object_get_string(requirerJ);
 				break;
 
 			default:

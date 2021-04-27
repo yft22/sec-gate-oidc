@@ -89,9 +89,6 @@ int apisRegisterOne (oidcCoreHdlT *oidc, oidcApisT *api, afb_apiset *declare_set
         }
     }
 
-	// register api for later loa/roles check
-	HASH_ADD_KEYPTR(hh, oidc->apisHash, api->uid, strlen(api->uid), api);  // **** FULUP TBD still needed
-
 	return 0;
 
 OnErrorExit:
@@ -100,7 +97,7 @@ OnErrorExit:
 }
 
 static int apisParseOne (oidcCoreHdlT *oidc, json_object *apiJ, oidcApisT *api) {
-	json_object *rolesJ=NULL;
+	json_object *requirerJ=NULL;
 
 	int err= wrap_json_unpack (apiJ, "{ss,s?s,s?s,s?i,s?i,s?o}"
 		, "uid", &api->uid
@@ -108,7 +105,7 @@ static int apisParseOne (oidcCoreHdlT *oidc, json_object *apiJ, oidcApisT *api) 
 		, "uri", &api->uri
 		, "loa", &api->loa
 		, "lazy", &api->lazy
-		, "role", &rolesJ
+		, "requirer", &requirerJ
 		);
 	if (err) {
 		EXT_CRITICAL ("[idp-api-error] idpmake=%s parsing fail profil expect: uid,uri,loa,role (apisParseOne)", oidc->uid);
@@ -118,24 +115,24 @@ static int apisParseOne (oidcCoreHdlT *oidc, json_object *apiJ, oidcApisT *api) 
 	// provide some defaults value based on uid
 	if (!api->uri) asprintf ((char**)&api->uri,"unix:@%s", api->uid);
 
-	if (rolesJ) {
+	if (requirerJ) {
 		const char **roles;
-		switch (json_object_get_type (rolesJ)) {
+		switch (json_object_get_type (requirerJ)) {
 			int count;
 
 			case json_type_array:
-				count= (int)json_object_array_length(rolesJ);
+				count= (int)json_object_array_length(requirerJ);
 				roles= calloc(count+1, sizeof(char*));
 
 				for (int idx=0; idx < count; idx ++) {
-					json_object *roleJ= json_object_array_get_idx(rolesJ, idx);
+					json_object *roleJ= json_object_array_get_idx(requirerJ, idx);
 					roles[idx]= json_object_get_string(roleJ);
 				}
 				break;
 
 			case json_type_string:
 				roles = calloc (2, sizeof(char*));
-				roles[0]= json_object_get_string(rolesJ);
+				roles[0]= json_object_get_string(requirerJ);
 				break;
 
 			default:

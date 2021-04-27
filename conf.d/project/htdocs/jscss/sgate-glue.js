@@ -119,7 +119,60 @@ function getSession() {
     });
 } 
 
-function registerUser() {
+function sgateCheckAttr(label) {
+
+    // make sure form id march with html page
+    var form= document.getElementById ("sgate_form");
+    if (form === null) {
+        window.alert("registerUser() requirer <form id='sgate_form'> in page");
+        return; 
+    }
+
+    // retrieve value from HTML form
+    var value=form[label].value; 
+    var query={"label":label};
+    query["value"]=value;
+
+    // call user-registration
+    var api="sgate";
+    var verb="chk-attribute";
+    log.command(api, verb, query);   
+    ws.call(api + "/" + verb, query)
+    .then(function (res) {
+        log.reply(res);
+        var register= document.getElementById ("sgate_register");
+        var federate= document.getElementById ("sgate_federate");
+        if (res.response === "locked") {
+            // ok for register account
+            register.className = "sgate_button sgate_off";
+            federate.className = "sgate_button sgate_on";
+        } else {
+            // ok for register federate
+            register.className = "sgate_button sgate_on";
+            federate.className = "sgate_button sgate_off";
+        }
+    })
+    .catch(function (err) {
+        var info= document.getElementById ("sgate_error");
+        if (info === null) {
+            window.alert("checkAttribute() requirer <form id='sgate_error'> in page");
+           return; 
+        }
+        info.innerText=err.response;
+        log.reply(err);
+    });
+}
+
+function sgateSubmit(action) {
+    var api="sgate";
+    var verb="none";
+
+    // close session and return to home page
+    if (action == "cancel") {
+        callbinder(api,'session-close' ,{});
+        window.location.replace('/')
+        return;
+    }
 
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
@@ -136,11 +189,16 @@ function registerUser() {
         if (value) {
             query[uid]=value;
         }
-    } 
+    }
 
-    // call user-registration
-    var api="sgate";
-    var verb="usr-register";
+    if (action === "federate") {
+        verb="usr-federate";
+    }
+
+    if (action === "register") {
+        verb="usr-register";
+    }
+
     log.command(api, verb, query);   
     ws.call(api + "/" + verb, query)
     .then(function (res) {
@@ -153,7 +211,7 @@ function registerUser() {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
             window.alert("getSession() requirer <form id='sgate_error'> in page");
-           return; 
+        return; 
         }
         info.innerText=err.response;
         log.reply(err);

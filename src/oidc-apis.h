@@ -25,9 +25,6 @@
 #pragma once
 
 #include "oidc-core.h"
-#include <uthash.h>
-
-
 
 typedef struct oidcApisS {
   const char *uid;
@@ -36,7 +33,6 @@ typedef struct oidcApisS {
   int loa;
   int lazy;
   const char **roles;
-  UT_hash_handle hh;
   oidcCoreHdlT *oidc;
 } oidcApisT;
 

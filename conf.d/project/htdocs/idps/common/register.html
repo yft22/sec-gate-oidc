@@ -15,26 +15,27 @@
 
 	<h1>oidc/sgate login</h1>
     <button id="afb_link"  class="sgate_button" onclick="init(getIdps)">Binder WS Fail</button>
-    <button id="afb_ping" class="sgate_button"onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
     <br>
 
     <div id="sgate_div" class="sgate_box">
         <div id=sgate_error class="sgate_error"></div>
         <br>
-        <form id="sgate_form" action="JavaScript:registerUser()">
+        <form id="sgate_form">
             <label class="sgate_label" for="pseudo">pseudo  :</label>
-            <input class="sgate_input" type="text" id="pseudo" name="pseudo" required><br><br>
+            <input class="sgate_input" type="text" id="pseudo" name="pseudo" required onChange="sgateCheckAttr('pseudo');"><br><br>
 
             <label class="sgate_label" for="email">email  :</label>
-            <input class="sgate_input" type="text" id="email" name="email" required><br><br>
+            <input class="sgate_input" type="text" id="email" name="email" required onChange="sgateCheckAttr('email');"><br><br>
 
             <label class="sgate_label"for="name">name  :</label>
             <input class="sgate_input" type="text" id="name" name="name"><br><br>
 
             <label class="sgate_label"for="company">company  :</label>
-            <input class="sgate_input" type="text" id="company" name="company" required><br><br>
+            <input class="sgate_input" type="text" id="company" name="company"><br><br>
 
-            <input type="submit" class="sgate_button" value="Done" >
+            <input type="button" id="sgate_federate" class="sgate_button" value="Federate User" onclick="sgateSubmit('federate');"">
+            <input type="button" id="sgate_register" class="sgate_button" value="Register User" onclick="sgateSubmit('register');">
+            <input type="button" id="sgate_cancel"   class="sgate_button" value="Cancel" onclick="sgateSubmit('cancel');">
         </form>
     </div>
 
