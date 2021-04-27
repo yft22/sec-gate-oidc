@@ -157,7 +157,7 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 
             // if LOA too weak redirect to authentication  //afb_session_close ()
             sessionLoa=  afb_session_get_loa (hreq->comreq.session, oidcSessionCookie);
-            if (alias->loa > sessionLoa) {
+            if (alias->loa > sessionLoa || sessionLoa == abs(alias->loa)) {
                 json_object *eventJ;
 
                 wrap_json_pack (&eventJ, "{si ss ss si si}"

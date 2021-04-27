@@ -2,8 +2,8 @@ type: books
 books:
 -
     id: oidc_binding
-    title: afb-oidc-ext
-    description: afb-oidc-ext binding documentation
+    title: afb-oidc-sgate
+    description: afb-oidc-sgate binding documentation
     keywords:
     chapters:
     - url: 1-architecture_presentation.md

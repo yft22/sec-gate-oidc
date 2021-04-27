@@ -20,7 +20,7 @@ set(CMAKE_INSTALL_SO_NO_EXE 0)
 
 # Project Info
 # ------------------
-set(PROJECT_NAME afb-oidc-ext)
+set(PROJECT_NAME afb-oidc-sgate)
 set(PROJECT_VERSION "1.0")
 set(PROJECT_PRETTY_NAME "OpenID Connect Extention for AFB-binder")
 set(PROJECT_DESCRIPTION "Provide authentication through OpenID")

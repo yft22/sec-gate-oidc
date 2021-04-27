@@ -1,6 +1,6 @@
 ## Running/Testing
 
-afb-oidc-ext implements *afb-libcontroller* and requires a valid afb-controller-config.json to operate. For testing purpose the simplest way
+afb-oidc-sgate implements *afb-libcontroller* and requires a valid afb-controller-config.json to operate. For testing purpose the simplest way
 is to define `AFB_oidc_CONFIG` environment variable with a full or relative path to binder *rootdir*.
 
 ### Requirements
@@ -10,17 +10,17 @@ is to define `AFB_oidc_CONFIG` environment variable with a full or relative path
 * you should known the path to 'afb-oidc.so' binding
 * you need a test client
   * afb-client for testing command line interface
-  * afb-ui-devtools for html5 test with a web-browser (chromium, firefox, ...)
+  * afb-oidc-webui for html5 test with a web-browser (chromium, firefox, ...)
 
-If you run redpesk simply install the package with `dnf install afb-oidc-ext` for other platform check redpesk [developer guide]({% chapter_link host-configuration-doc.setup-your-build-host %})
+If you run redpesk simply install the package with `dnf install afb-oidc-sgate` for other platform check redpesk [developer guide]({% chapter_link host-configuration-doc.setup-your-build-host %})
 
 
 
-## Run afb-oidc-ext samples
+## Run afb-oidc-sgate samples
 
 ``` bash
 # move to default install directory
-export AFB_oidc_INSTALL="/var/local/lib/afm/applications/afb-oidc-ext"
+export AFB_oidc_INSTALL="/var/local/lib/afm/applications/afb-oidc-sgate"
 
 # running without privileged
 AFB_oidc_CONFIG="$AFB_oidc_INSTALL/etc/oidc-nspace-config.json" afb-binder --name=afb-oidc --workdir=$AFB_oidc_INSTALL --binding=./lib/afb-oidc.so --verbose
@@ -46,11 +46,11 @@ Open binding UI with browser at `[host]:[port]/devtools/index.html` in your brow
 
 You should see a page as the one below fitting your configuration. To activate a command simply click, select a sample and sent.
 
-![afb-ui-devtool](assets/afb-oidc-ext-exec.jpg)
+![afb-ui-devtool](assets/afb-oidc-sgate-exec.jpg)
 
 ## Command line test
 
-### Connect *afb-client* to afb-oidc-ext service
+### Connect *afb-client* to afb-oidc-sgate service
 
 ``` bash
 afb-client --human ws://localhost:1234/api
@@ -96,10 +96,10 @@ start:  sleep 180;
 
 Check for conf.d/project/etc for more advance samples.
 
-Note: depending if you start afb-oidc-ext in a privilege mode or not, some behavior may change. For example "user/group" or "capacity" required to start the binder in admin mode with sudo.
+Note: depending if you start afb-oidc-sgate in a privilege mode or not, some behavior may change. For example "user/group" or "capacity" required to start the binder in admin mode with sudo.
 
 ```log
-- NOTICE: [API oidc] sandboxParsestatic: [ignoring user/group static] sandbox='sandbox-demo' no uid/gid privileges ignoring user='"daemon"' group='"dialout"' [/home/fulup/afb-oidc-ext/src/- oidc-sandbox.c:510,sandboxParsestatic]
+- NOTICE: [API oidc] sandboxParsestatic: [ignoring user/group static] sandbox='sandbox-demo' no uid/gid privileges ignoring user='"daemon"' group='"dialout"' [/home/fulup/afb-oidc-sgate/src/- oidc-sandbox.c:510,sandboxParsestatic]
 - NOTICE: [API oidc] [capability ignored] sandbox='sandbox-demo' capability='KILL[set]' (sandboxParseOneCap)
 - NOTICE: [API oidc] [cgroups ignored] sandbox=sandbox-demo user=1000 not privileged (sandboxLoadOne)
 ```
@@ -115,7 +115,7 @@ You may activate all config in one shot by using placing sample config name with
 ```
 
 **Warning** if you load multiple file double-check that they register different APIs name. Your HTML5 interface should reflect
-![oidc-biding-html5](assets/afb-oidc-ext-dualconf.jpg)
+![oidc-biding-html5](assets/afb-oidc-sgate-dualconf.jpg)
 
 ## Testing with GDB
 
@@ -128,7 +128,7 @@ AFB_oidc_CONFIG=../conf.d/project/etc/oidc-simple-config.json gdb --args afb-bin
 
 Namespace allows to create a *fake* root filesystem that only expose the minimal necessary resources. Unfortunately depending on your restriction the process may not even start, with no-log to help debugging the situation.
 
-For a quick namespace test, start afb-oidc-ext with *oidc-sample-nspace.json*. Then use *oidc/admin list* api/verb to explore your namespace.
+For a quick namespace test, start afb-oidc-sgate with *oidc-sample-nspace.json*. Then use *oidc/admin list* api/verb to explore your namespace.
 
 ```bash
 AFB_oidc_CONFIG=./conf.d/project/etc/oidc-sample-nspace.json afb-binder --name=afb-oidc --binding=./package/lib/afb-oidc.so
@@ -138,11 +138,11 @@ Namespace can a tricky to debug. In case of doubt add {"verbose":1} to query arg
 
 ## Testing formatting
 
-afb-oidc-ext support 3 builtin formatting options. Encoder formatting is enforced for each command within config.json. Default encoder is "DOCUMENT" and it cannot not be change at query time. Check *oidc-sample-encoders.json* for example. If you need the same command with multiple formatting, then your config should duplicate the entry with different uid.
+afb-oidc-sgate support 3 builtin formatting options. Encoder formatting is enforced for each command within config.json. Default encoder is "DOCUMENT" and it cannot not be change at query time. Check *oidc-sample-encoders.json* for example. If you need the same command with multiple formatting, then your config should duplicate the entry with different uid.
 
 ## Exposing oidc API as AFB micro-service
 
-In order to make afb-oidc-ext api accessible from other AFB micro-service you simply export the API with *--ws-server=unix:/path/apiname* as you would do for any other AFB micro-service. The exposed API may later be imported with *--ws-client==unix:/path/apiname* by any afb-binder that get corresponding privileges. *Note: when exposing an API locally it is a good practice to remove TCP/IP visibility with --no-httpd*
+In order to make afb-oidc-sgate api accessible from other AFB micro-service you simply export the API with *--ws-server=unix:/path/apiname* as you would do for any other AFB micro-service. The exposed API may later be imported with *--ws-client==unix:/path/apiname* by any afb-binder that get corresponding privileges. *Note: when exposing an API locally it is a good practice to remove TCP/IP visibility with --no-httpd*
 
 ```bash
 # note than --ws-server=unix exported API should match with selected config.json
@@ -159,7 +159,7 @@ afb-client --direct unix:/run/user/$UID/simple
 
 ## Autoload/Autostart
 
-afb-oidc-ext support an 'autoload', any action in this sections will be tried at binding starup time.
+afb-oidc-sgate support an 'autoload', any action in this sections will be tried at binding starup time.
 ```json
   "onload": [
     {
@@ -174,9 +174,9 @@ afb-oidc-ext support an 'autoload', any action in this sections will be tried at
 To run the test.
 
 - Install 'wireguard-tools' to get 'wg-quick' helper.
-- Start 'wireguard-autoconfig.sh' to create a test config into /etc/wireguard/afb-oidc-ext.conf
-- Check with ```sudo wg-quick up afb-oidc-ext``` that your config works.
-- Start 'afb-oidc-ext' in privileged mode with
+- Start 'wireguard-autoconfig.sh' to create a test config into /etc/wireguard/afb-oidc-sgate.conf
+- Check with ```sudo wg-quick up afb-oidc-sgate``` that your config works.
+- Start 'afb-oidc-sgate' in privileged mode with
 ```bash
 sudo AFB_oidc_CONFIG=../conf.d/project/etc/wireguard-autostart.json afb-binder --name=afb-oidc --binding=package/lib/afb-oidc.so --verbose
 
@@ -184,7 +184,7 @@ sudo AFB_oidc_CONFIG=../conf.d/project/etc/wireguard-autostart.json afb-binder -
 
 ## caching events
 
-afb-oidc-ext is an [afb-controller](/docs/en/master/developer-guides/controllerConfig.html) and may on event reception execute internal/external API. For external action you should use *--ws-client=xxx* to import the api within afb-oidc-ext context. Note that to execute an external API you also need corresponding privileges.
+afb-oidc-sgate is an [afb-controller](/docs/en/master/developer-guides/controllerConfig.html) and may on event reception execute internal/external API. For external action you should use *--ws-client=xxx* to import the api within afb-oidc-sgate context. Note that to execute an external API you also need corresponding privileges.
 ```json
   "events": [
     {
