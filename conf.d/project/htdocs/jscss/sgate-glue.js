@@ -169,7 +169,7 @@ function sgateSubmit(action) {
 
     // close session and return to home page
     if (action == "cancel") {
-        callbinder(api,'session-close' ,{});
+        callbinder(api,'session-reset' ,{});
         window.location.replace('/')
         return;
     }

@@ -136,7 +136,8 @@ OnErrorExit:
 static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 	oidcAliasT *alias= (oidcAliasT*)ctx;
     struct timespec tCurrent;
-	int sessionLoa, profilLoa, tStamp, tNow;
+    oidcProfilsT *idpProfil;
+	int sessionLoa, tStamp, tNow, err;
 
     if (alias->loa) {
 
@@ -157,7 +158,7 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
 
             // if LOA too weak redirect to authentication  //afb_session_close ()
             sessionLoa=  afb_session_get_loa (hreq->comreq.session, oidcSessionCookie);
-            if (alias->loa > sessionLoa || sessionLoa == abs(alias->loa)) {
+            if (alias->loa > sessionLoa && sessionLoa != abs(alias->loa)) {
                 json_object *eventJ;
 
                 wrap_json_pack (&eventJ, "{si ss ss si si}"
@@ -172,8 +173,8 @@ static int aliasCheckLoaCB (afb_hreq *hreq, void *ctx) {
                 idscvPushEvent (hreq, eventJ);
 
                 // if current profil LOA is enough then fire same idp/profil authen
-                profilLoa= afb_session_get_loa (hreq->comreq.session, oidcIdpProfilCookie);
-                if (profilLoa >= alias->loa) {
+                err= afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void*)&idpProfil);
+                if (!err && (idpProfil->loa >= alias->loa || idpProfil->loa == abs(idpProfil->loa))) {
                     aliasRedirectTimeout (hreq, alias);
                 } else {
                     aliasRedirectLogin (hreq, alias);

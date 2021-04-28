@@ -32,7 +32,7 @@ typedef struct {
 } fedidSessionT;
 
 int fedidCheck (oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser, struct afb_req_v4 *request, afb_hreq *hreq);
-void fedidSessionClose (int signal, void *ctx);
+void fedidsessionReset (int signal, void *ctx);
 
 extern void* oidcFedUserCookie;
 extern void* oidcFedSocialCookie;

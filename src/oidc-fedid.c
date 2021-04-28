@@ -46,7 +46,7 @@ typedef struct {
 } oidcFedidHdlT;
 
 // session timeout, reset LOA
-void fedidSessionClose (int signal, void *ctx) {
+void fedidsessionReset (int signal, void *ctx) {
     afb_session *session = (afb_session*) ctx;
 
     // signal should be null
@@ -54,7 +54,7 @@ void fedidSessionClose (int signal, void *ctx) {
 
     // reset session LOA (this will force authentication)
     afb_session_set_loa (session, oidcSessionCookie, 0);
-	EXT_NOTICE ("[fedidSessionClose] timeout ?");
+	EXT_NOTICE ("[fedidsessionReset] timeout ?");
 }
 
 // if fedkey exists callback receive local store user profil otherwise we should create it
@@ -157,14 +157,13 @@ static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t con
                 afb_session_cookie_set (session, oidcSessionCookie, (void*)fedSession, NULL, NULL);
             }
 
-            fedSession->timerId= afb_sched_post_job (NULL /*group*/,idpProfil->sTimeout*1000, 0/*max-exec-time*/, fedidSessionClose, session);
+            fedSession->timerId= afb_sched_post_job (NULL /*group*/,idpProfil->sTimeout*1000, 0/*max-exec-time*/, fedidsessionReset, session);
             if (fedSession->timerId < 0) {
         	    EXT_ERROR ("[fedid-register-timeout] fail to set idp profil session loa");
                 goto OnErrorExit;
             }
         }
    		afb_session_set_loa (session, oidcSessionCookie, idpProfil->loa);
-
     }
 
 	// free user info handle and redirect to initial targeted url

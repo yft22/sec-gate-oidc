@@ -233,9 +233,9 @@ OnErrorExit:
     if (argd[0]) afb_data_array_unref(argc, argd);
 }
 
-static void sessionClose (afb_req_t request, unsigned argc, afb_data_t const argv[]) {
+static void sessionReset (afb_req_t request, unsigned argc, afb_data_t const argv[]) {
     afb_session *session= afb_req_v4_get_common(request)->session;
-    fedidSessionClose (0, (void*) session);
+    fedidsessionReset (0, (void*) session);
     afb_req_reply(request, 0, 0, NULL);
 
     return;
@@ -422,7 +422,7 @@ static afb_verb_t idsvcVerbs[] = {
     { .verb = "idp-list",     .callback = idpsList,      .info = "request idp list/scope for a given LOA level"},
     { .verb = "evt-subs",     .callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
     { .verb = "session-get",  .callback = sessionGet,    .info = "retreive current client session [profil, user, social]"},
-    { .verb = "session-reset",.callback = sessionClose,    .info = "reset current session [set loa=0]"},
+    { .verb = "session-reset",.callback = sessionReset,  .info = "reset current session [set loa=0]"},
     { .verb = "usr-register", .callback = userRegister,  .info = "register federated user profile into local fedid store"},
     { .verb = "usr-idps-link",.callback = userGetIdps,   .info = "return pseudo/email idps list before linking user multiple IDPs"},
     { .verb = "chk-attribute",.callback = userCheckAttr, .info = "check user attribute within local store"},
