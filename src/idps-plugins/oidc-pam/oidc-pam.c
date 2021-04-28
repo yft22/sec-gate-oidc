@@ -205,10 +205,12 @@ checkLoginVerb (struct afb_req_v4 *request, unsigned nparams, struct afb_data *c
 
     // do no check federation when only login
     if (fedUser) {
+        afb_req_addref (request);
         err = idpCallbacks->fedidCheck (idp, fedSocial, fedUser, request, NULL);
-        if (err) goto OnErrorExit;
-        // when OK api response is handle by fedidCheck
-        afb_req_addref (request);       // prevent automatic verb response.
+        if (err) {
+            afb_req_unref (request);
+            goto OnErrorExit;
+        }
     } else {
         afb_req_v4_reply_hookable (request, 0, 0, NULL);        // login exist
     }
@@ -302,7 +304,7 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
         if (err) goto OnErrorExit;
     }
 
-    return 1;                   // we're done
+    return 1;   // we're done
 
   OnErrorExit:
     afb_hreq_redirect_to (hreq, idp->wellknown->loginTokenUrl, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);

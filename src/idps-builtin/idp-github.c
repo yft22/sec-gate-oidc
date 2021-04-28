@@ -228,11 +228,11 @@ githubUserGetByToken (idpRqtCtxT * rqtCtx)
                            rqtCtx);
     if (err)
         goto OnErrorExit;
-    afb_hreq_addref (rqtCtx->hreq);     // prevent automatic verb response.
     return;
 
   OnErrorExit:
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
+    afb_hreq_unref (rqtCtx->hreq);
 }
 
 // call when github return a valid access_token
@@ -288,6 +288,7 @@ githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirectUrl, con
     };
 
     idpRqtCtxT *rqtCtx = calloc (1, sizeof (idpRqtCtxT));
+    // afb_hreq_addref (hreq); // prevent automatic href liberation
     rqtCtx->hreq = hreq;
     rqtCtx->idp = idp;
     err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &rqtCtx->profil);
@@ -394,7 +395,7 @@ githubLoginCB (afb_hreq * hreq, void *ctx)
         if (err)
             goto OnErrorExit;
     }
-    return 1;                   // we're done (0 would search for an html page)
+    return 1;  // we're done (0 would search for an html page)
 
   OnErrorExit:
     afb_hreq_reply_error (hreq, EXT_HTTP_UNAUTHORIZED);

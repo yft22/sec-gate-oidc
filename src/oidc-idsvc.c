@@ -99,6 +99,7 @@ userCheckAttr (afb_req_t request, unsigned argc, afb_data_t const argv[])
     int err;
 
     if (argc != 1) goto OnErrorExit;
+    afb_data_array_addref(argc, argv);
     afb_req_subcall (request, API_OIDC_USR_SVC, "attr-check", argc, argv, afb_req_subcall_on_behalf, userCheckAttrCB, NULL);
     return;
 
@@ -161,6 +162,7 @@ userGetIdps (afb_req_t request, unsigned argc, afb_data_t const argv[])
     int err;
 
     if (argc != 1) goto OnErrorExit;
+    afb_data_array_addref(argc, argv);
     afb_req_subcall (request, API_OIDC_USR_SVC, "social-idps", argc, argv, afb_req_subcall_on_behalf, userGetIdpsCB, NULL);
 
   OnErrorExit:
@@ -212,11 +214,7 @@ userRegister (afb_req_t request, unsigned argc, afb_data_t const argv[])
     afb_data_t reply[1], argd[2];
     const afb_type_t argt[] = { fedUserObjType, NULL };
     err = afb_data_array_convert (argc, argv, argt, argd);
-    if (err < 0) {
-        argd[0] = NULL;
-        goto OnErrorExit;
-    }
-    fedUserRawT *fedUser = (void *) afb_data_ro_pointer (argd[0]);
+    if (err < 0) goto OnErrorExit;
 
     // retrieve current request LOA from session (to be fixed by Jose)
     afb_session *session = afb_req_v4_get_common (request)->session;
@@ -228,10 +226,10 @@ userRegister (afb_req_t request, unsigned argc, afb_data_t const argv[])
     if (!fedSocial) goto OnErrorExit;
 
     // user is new let's register it within fedid DB
-    afb_data_addref (argd[0]);
     err = afb_create_data_raw (&argd[1], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, (void *) fedSocial);
     if (err < 0) goto OnErrorExit;
 
+    afb_data_array_addref(argc, argv);
     afb_req_subcall (request, API_OIDC_USR_SVC, "user-create", 2, argd, afb_req_subcall_on_behalf, userRegisterCB, NULL);
     return;
 
@@ -239,7 +237,7 @@ userRegister (afb_req_t request, unsigned argc, afb_data_t const argv[])
     AFB_REQ_ERROR (request, "%s", errorMsg);
     afb_create_data_raw (&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, strlen (errorMsg) + 1, NULL, NULL);
     afb_req_reply (request, -1, 1, reply);
-    if (argd[0]) afb_data_array_unref (argc, argd);
+    if (argc == 1 && argd[0]) afb_data_array_unref (argc, argd);
 }
 
 static void

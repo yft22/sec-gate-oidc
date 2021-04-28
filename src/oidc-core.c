@@ -40,15 +40,13 @@
 #include <json-c/json.h>
 #include <wrap-json.h>
 
-AFB_EXTENSION (oidc - sgate)
+AFB_EXTENSION (oidc-sgate)
     const struct argp_option AfbExtensionOptionsV1[] = {
         {.name = "logo",.key = 'L',.arg = 0,.doc = "requires a logo"},
         {.name = 0,.key = 0,.doc = 0}
     };
 
-
-static oidGlobalsT *
-globalConfig (json_object * globalJ)
+static oidGlobalsT * globalConfig (json_object * globalJ)
 {
     int err;
     json_object *commentJ;
@@ -56,9 +54,14 @@ globalConfig (json_object * globalJ)
 
     if (globalJ) {
         err =
-            wrap_json_unpack (globalJ, "{s?o s?s s?s s?s s?s s?s s?i s?i}", "info", &commentJ, "login", &global->loginUrl, "error", &global->errorUrl,
-                              "register", &global->registerUrl, "fedlink", &global->fedlinkUrl, "remove", &global->removeUrl, "cache", &global->tCache,
-                              "timeout", &global->sTimeout);
+            wrap_json_unpack (globalJ, "{s?o s?s s?s s?s s?s s?s s?i s?i}"
+            , "info", &commentJ, "login", &global->loginUrl
+            , "error", &global->errorUrl
+            , "register", &global->registerUrl
+            , "fedlink", &global->fedlinkUrl
+            , "remove", &global->removeUrl
+            , "cache", &global->tCache
+            , "timeout", &global->sTimeout);
         if (err < 0) goto OnErrorExit;
     }
 
@@ -77,10 +80,8 @@ globalConfig (json_object * globalJ)
     return NULL;
 }
 
-
 // Pase and load config.json info oidc global context
-int
-AfbExtensionConfigV1 (void **ctx, struct json_object *oidcJ, char const *uid)
+int AfbExtensionConfigV1 (void **ctx, struct json_object *oidcJ, char const *uid)
 {
     oidcCoreHdlT *oidc = calloc (1, sizeof (oidcCoreHdlT));
     oidc->magic = MAGIC_OIDC_MAIN;
@@ -94,8 +95,16 @@ AfbExtensionConfigV1 (void **ctx, struct json_object *oidcJ, char const *uid)
 
     json_object *idpsJ = NULL, *aliasJ = NULL, *apisJ = NULL, *globalJ = NULL;
     err =
-        wrap_json_unpack (oidcJ, "{s?s,s?s,s?o,s?o,s?i,s?o,s?o,s?o}", "api", &oidc->api, "info", &oidc->info, "globals", &globalJ, "idp", &idpsJ, "verbose",
-                          &oidc->verbose, "idps", &idpsJ, "alias", &aliasJ, "apis", &apisJ);
+        wrap_json_unpack (oidcJ, "{s?s,s?s,s?o,s?o,s?o,s?o,s?o,s?i}"
+            , "api", &oidc->api
+            , "info", &oidc->info
+            , "globals", &globalJ
+            , "idp", &idpsJ
+            , "idps", &idpsJ
+            , "alias", &aliasJ
+            , "apis", &apisJ
+            , "verbose", &oidc->verbose
+        );
     if (err) {
         EXT_CRITICAL ("[oidc-parsing-error] ext=%s requires: idp(s),alias,apis (AfbExtensionConfigV1)", oidc->uid);
         goto OnErrorExit;
@@ -117,8 +126,7 @@ AfbExtensionConfigV1 (void **ctx, struct json_object *oidcJ, char const *uid)
 }
 
 // import APIs with corresponding callback
-int
-AfbExtensionDeclareV1 (void *ctx, struct afb_apiset *declare_set, struct afb_apiset *call_set)
+int AfbExtensionDeclareV1 (void *ctx, struct afb_apiset *declare_set, struct afb_apiset *call_set)
 {
     oidcCoreHdlT *oidc = (oidcCoreHdlT *) ctx;
     int err;
@@ -151,8 +159,7 @@ AfbExtensionDeclareV1 (void *ctx, struct afb_apiset *declare_set, struct afb_api
     return -1;
 }
 
-int
-AfbExtensionHTTPV1 (void *ctx, afb_hsrv * hsrv)
+int AfbExtensionHTTPV1 (void *ctx, afb_hsrv * hsrv)
 {
     oidcCoreHdlT *oidc = (oidcCoreHdlT *) ctx;
     int err;
@@ -180,8 +187,7 @@ AfbExtensionHTTPV1 (void *ctx, afb_hsrv * hsrv)
     return -1;
 }
 
-int
-AfbExtensionServeV1 (void *ctx, afb_apiset * call_set)
+int AfbExtensionServeV1 (void *ctx, afb_apiset * call_set)
 {
     oidcCoreHdlT *oidc = (oidcCoreHdlT *) ctx;
     if (!oidc) goto OnErrorExit;
@@ -193,8 +199,7 @@ AfbExtensionServeV1 (void *ctx, afb_apiset * call_set)
     return -1;
 }
 
-int
-AfbExtensionExitV1 (void *ctx, afb_apiset * declare_set)
+int AfbExtensionExitV1 (void *ctx, afb_apiset * declare_set)
 {
     oidcCoreHdlT *oidc = (oidcCoreHdlT *) ctx;
 
