@@ -89,7 +89,6 @@ make
 
 ### Run a test from building tree
 
-
 ```bash
 # Customize '../conf.d/project/etc/oidc-basic.json' to patch your environnement
  afb-binder --config=../conf.d/project/etc/my-oidc-config.json -vvv

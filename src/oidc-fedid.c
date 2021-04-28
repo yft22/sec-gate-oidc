@@ -34,184 +34,187 @@
 #include <string.h>
 #include <locale.h>
 
-MAGIC_OIDC_SESSION(oidcFedUserCookie);
-MAGIC_OIDC_SESSION(oidcFedSocialCookie);
+MAGIC_OIDC_SESSION (oidcFedUserCookie);
+MAGIC_OIDC_SESSION (oidcFedSocialCookie);
 
 typedef struct {
-	afb_hreq *hreq;
+    afb_hreq *hreq;
     struct afb_req_v4 *wreq;
-	oidcIdpT *idp;
-	fedUserRawT *fedUser;
-	fedSocialRawT *fedSocial;
+    oidcIdpT *idp;
+    fedUserRawT *fedUser;
+    fedSocialRawT *fedSocial;
 } oidcFedidHdlT;
 
 // session timeout, reset LOA
-void fedidsessionReset (int signal, void *ctx) {
-    afb_session *session = (afb_session*) ctx;
+void
+fedidsessionReset (int signal, void *ctx)
+{
+    afb_session *session = (afb_session *) ctx;
 
     // signal should be null
     if (signal) return;
 
     // reset session LOA (this will force authentication)
     afb_session_set_loa (session, oidcSessionCookie, 0);
-	EXT_NOTICE ("[fedidsessionReset] timeout ?");
+    EXT_NOTICE ("[fedidsessionReset] timeout ?");
 }
 
 // if fedkey exists callback receive local store user profil otherwise we should create it
-static void fedidCheckCB(void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], struct afb_api_v4 *api) {
+static void
+fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], struct afb_api_v4 *api)
+{
     char *errorMsg = "[invalid-profil] Fail to process user profile (fedidCheckCB)";
-	oidcFedidHdlT *userRqt= (oidcFedidHdlT*)ctx;
-   	char url[EXT_URL_MAX_LEN];
+    oidcFedidHdlT *userRqt = (oidcFedidHdlT *) ctx;
+    char url[EXT_URL_MAX_LEN];
     const char *target;
     afb_data_x4_t reply[1], argd[argc];
-	fedUserRawT *fedUser;
-	oidcProfilsT *idpProfil;
-	oidcAliasT *alias;
+    fedUserRawT *fedUser;
+    oidcProfilsT *idpProfil;
+    oidcAliasT *alias;
     afb_session *session;
-	const char *redirect;
-	afb_hreq *hreq=NULL;
-	struct afb_req_v4 *wreq=NULL;
-	int err;
+    const char *redirect;
+    afb_hreq *hreq = NULL;
+    struct afb_req_v4 *wreq = NULL;
+    int err;
 
     // internal API error
     if (status < 0) goto OnErrorExit;
 
     // session is in hreq for REST and in comreq for wbesocket
     if (userRqt->hreq) {
-		hreq= userRqt->hreq;
-		session= userRqt->hreq->comreq.session;
-	}
+        hreq = userRqt->hreq;
+        session = userRqt->hreq->comreq.session;
+    }
 
     if (userRqt->wreq) {
-		wreq= userRqt->wreq;
-        session= afb_req_v4_get_common(wreq)->session;
-	}
+        wreq = userRqt->wreq;
+        session = afb_req_v4_get_common (wreq)->session;
+    }
 
     if (!session) {
-		EXT_DEBUG ("[fedid-register-fail] session missing");
-		goto OnErrorExit;
-	}
+        EXT_DEBUG ("[fedid-register-fail] session missing");
+        goto OnErrorExit;
+    }
 
-    if (argc != 1) { // feduser was not created
+    if (argc != 1) {            // feduser was not created
 
-		// fedkey not fount let's store social authority profil into session and redirect user on userprofil creation
-		afb_session_cookie_set (session, oidcFedUserCookie, userRqt->fedUser, fedUserFreeCB, userRqt->fedUser);
-		afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, fedSocialFreeCB, userRqt->fedSocial);
-		afb_session_set_loa (session, oidcSessionCookie, 0); // user not register reset session loa
+        // fedkey not fount let's store social authority profil into session and redirect user on userprofil creation
+        afb_session_cookie_set (session, oidcFedUserCookie, userRqt->fedUser, fedUserFreeCB, userRqt->fedUser);
+        afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, fedSocialFreeCB, userRqt->fedSocial);
+        afb_session_set_loa (session, oidcSessionCookie, 0);    // user not register reset session loa
 
-        httpKeyValT query[]= {
-            {.tag="language"  , .value=setlocale(LC_CTYPE, "")},
-            {NULL} // terminator
+        httpKeyValT query[] = {
+            {.tag = "language",.value = setlocale (LC_CTYPE, "")},
+            {NULL}              // terminator
         };
 
-		if (hreq) {
-        	err= httpBuildQuery (userRqt->idp->uid, url, sizeof(url), NULL /* prefix */, userRqt->idp->oidc->globals->registerUrl, query);
-        	if (err) {
-            	EXT_ERROR ("[fedid-register-unknown] fail to build redirect url");
-            	goto OnErrorExit;
-        	}
-		} else {
-            target= userRqt->idp->oidc->globals->registerUrl;
-		}
-    } else { // feduser is avaliable
+        if (hreq) {
+            err = httpBuildQuery (userRqt->idp->uid, url, sizeof (url), NULL /* prefix */ , userRqt->idp->oidc->globals->registerUrl, query);
+            if (err) {
+                EXT_ERROR ("[fedid-register-unknown] fail to build redirect url");
+                goto OnErrorExit;
+            }
+        } else {
+            target = userRqt->idp->oidc->globals->registerUrl;
+        }
+    } else {                    // feduser is avaliable
 
-		err= afb_data_convert (argv[0], fedUserObjType, &argd[0]);
-		if (err < 0) goto OnErrorExit;
-		fedUser= (fedUserRawT*)afb_data_ro_pointer(argd[0]);
+        err = afb_data_convert (argv[0], fedUserObjType, &argd[0]);
+        if (err < 0) goto OnErrorExit;
+        fedUser = (fedUserRawT *) afb_data_ro_pointer (argd[0]);
 
-		// let's store user profil into session cookie (/oidc/profil/get serves it)
-   		afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void*)afb_data_unref, argd[0]);
-		afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, fedSocialFreeCB, userRqt->fedSocial);
+        // let's store user profil into session cookie (/oidc/profil/get serves it)
+        afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void *) afb_data_unref, argd[0]);
+        afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, fedSocialFreeCB, userRqt->fedSocial);
 
-		// everyting looks good let's return user to original page
-		afb_session_cookie_get (session, oidcIdpProfilCookie, (void**) &idpProfil);
-		afb_session_cookie_get (session, oidcAliasCookie, (void**)&alias);
+        // everyting looks good let's return user to original page
+        afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfil);
+        afb_session_cookie_get (session, oidcAliasCookie, (void **) &alias);
 
-        err= httpBuildQuery (userRqt->idp->uid, url, sizeof(url), NULL /* prefix */, alias->url, NULL);
+        err = httpBuildQuery (userRqt->idp->uid, url, sizeof (url), NULL /* prefix */ , alias->url, NULL);
         if (err) {
             EXT_ERROR ("[fedid-register-exist] fail to build redirect url");
             goto OnErrorExit;
         }
 
-		if (hreq) {
-			// add afb-binder endpoint to login redirect alias
-	    	err= afb_hreq_make_here_url(hreq, alias->url, url,sizeof(url));
-    	    if (err<0) {
-        	    EXT_ERROR ("[fedid-register-exist] fail to build redirect url");
-            	goto OnErrorExit;
-        	}
-		} else {
-            target= alias->url;
-		}
+        if (hreq) {
+            // add afb-binder endpoint to login redirect alias
+            err = afb_hreq_make_here_url (hreq, alias->url, url, sizeof (url));
+            if (err < 0) {
+                EXT_ERROR ("[fedid-register-exist] fail to build redirect url");
+                goto OnErrorExit;
+            }
+        } else {
+            target = alias->url;
+        }
 
         // if idp session as a timeout start a rtimer
         if (idpProfil->sTimeout) {
-            fedidSessionT *fedSession=NULL;
-            afb_session_cookie_get (session, oidcSessionCookie, (void**) &fedSession);
+            fedidSessionT *fedSession = NULL;
+            afb_session_cookie_get (session, oidcSessionCookie, (void **) &fedSession);
             if (fedSession && fedSession->timerId) {
-                afb_jobs_abort(fedSession->timerId);
-                fedSession->timerId=0;
-            }
-            else {
-                fedSession= calloc (1, sizeof(fedSession));
-                afb_session_cookie_set (session, oidcSessionCookie, (void*)fedSession, NULL, NULL);
+                afb_jobs_abort (fedSession->timerId);
+                fedSession->timerId = 0;
+            } else {
+                fedSession = calloc (1, sizeof (fedSession));
+                afb_session_cookie_set (session, oidcSessionCookie, (void *) fedSession, NULL, NULL);
             }
 
-            fedSession->timerId= afb_sched_post_job (NULL /*group*/,idpProfil->sTimeout*1000, 0/*max-exec-time*/, fedidsessionReset, session);
+            fedSession->timerId = afb_sched_post_job (NULL /*group */ , idpProfil->sTimeout * 1000, 0 /*max-exec-time */ , fedidsessionReset, session);
             if (fedSession->timerId < 0) {
-        	    EXT_ERROR ("[fedid-register-timeout] fail to set idp profil session loa");
+                EXT_ERROR ("[fedid-register-timeout] fail to set idp profil session loa");
                 goto OnErrorExit;
             }
         }
-   		afb_session_set_loa (session, oidcSessionCookie, idpProfil->loa);
+        afb_session_set_loa (session, oidcSessionCookie, idpProfil->loa);
     }
 
-	// free user info handle and redirect to initial targeted url
+    // free user info handle and redirect to initial targeted url
     if (hreq) {
         EXT_DEBUG ("[fedid-check-redirect] redirect to %s", url);
-	    afb_hreq_redirect_to(hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+        afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
     } else {
-		struct afb_data *reply;
+        struct afb_data *reply;
         json_object *responseJ;
 
-        wrap_json_pack (&responseJ, "{ss}"
-            ,"target", target
-        );
+        wrap_json_pack (&responseJ, "{ss}", "target", target);
 
         EXT_DEBUG ("[fedid-check-reply] {'target':'%s'}", target);
-		afb_data_create_raw(&reply, &afb_type_predefined_json_c, responseJ, 0, (void*)json_object_put, responseJ);
-	    afb_req_v4_reply_hookable(wreq, status, 1, &reply);
-	}
+        afb_data_create_raw (&reply, &afb_type_predefined_json_c, responseJ, 0, (void *) json_object_put, responseJ);
+        afb_req_v4_reply_hookable (wreq, status, 1, &reply);
+    }
 
-	free (userRqt);
-	return;
+    free (userRqt);
+    return;
 
-OnErrorExit:
-	EXT_NOTICE ("[fedid-authent-redirect] (hoops!!!) internal error");
-    if (hreq) afb_hreq_redirect_to(hreq, userRqt->idp->oidc->globals->errorUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
-	if (wreq) afb_req_v4_reply_hookable(wreq, -1, 0, NULL);
+  OnErrorExit:
+    EXT_NOTICE ("[fedid-authent-redirect] (hoops!!!) internal error");
+    if (hreq) afb_hreq_redirect_to (hreq, userRqt->idp->oidc->globals->errorUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+    if (wreq) afb_req_v4_reply_hookable (wreq, -1, 0, NULL);
 }
 
 // try to wreq user profile from its federation key
-int fedidCheck (oidcIdpT *idp, fedSocialRawT *fedSocial, fedUserRawT *fedUser, struct afb_req_v4 *wreq, afb_hreq *hreq) {
+int
+fedidCheck (oidcIdpT * idp, fedSocialRawT * fedSocial, fedUserRawT * fedUser, struct afb_req_v4 *wreq, afb_hreq * hreq)
+{
     int err;
     afb_data_x4_t params[1];
 
-	oidcFedidHdlT *userRqt= calloc(1,sizeof(oidcFedidHdlT));
-	userRqt->hreq=hreq;
-    userRqt->wreq=wreq;
-	userRqt->idp=idp;
-	userRqt->fedUser=fedUser;
-	userRqt->fedSocial=fedSocial;
+    oidcFedidHdlT *userRqt = calloc (1, sizeof (oidcFedidHdlT));
+    userRqt->hreq = hreq;
+    userRqt->wreq = wreq;
+    userRqt->idp = idp;
+    userRqt->fedUser = fedUser;
+    userRqt->fedSocial = fedSocial;
 
-	// fedSocial should remain valid after subcall for fedsocial cookie
-    err= afb_data_create_raw(&params[0], fedSocialObjType, fedSocial, 0, NULL, NULL);
-	if (err) goto OnErrorExit;
+    // fedSocial should remain valid after subcall for fedsocial cookie
+    err = afb_data_create_raw (&params[0], fedSocialObjType, fedSocial, 0, NULL, NULL);
+    if (err) goto OnErrorExit;
 
-	afb_data_addref(params[0]);  // prevent params to be deleted
-	afb_api_v4_call_hookable(idp->oidc->apiv4, "fedid", "social-check", 1, params, fedidCheckCB, userRqt);
-	return 0;
+    afb_data_addref (params[0]);        // prevent params to be deleted
+    afb_api_v4_call_hookable (idp->oidc->apiv4, "fedid", "social-check", 1, params, fedidCheckCB, userRqt);
+    return 0;
 
-OnErrorExit:
-	return -1;
+  OnErrorExit:
+    return -1;
 }

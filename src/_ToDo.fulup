@@ -3,8 +3,6 @@
     - Ajouter une page HTML de fédération
     - Ajouter les info de sessions dans les pages HTML
 
-    - regarder pourquoi le reload de register plante en coredump
-
 1) Finir le link de 2 idp accounts
 
     - Tester que user-link retourne bien la list des idps du user

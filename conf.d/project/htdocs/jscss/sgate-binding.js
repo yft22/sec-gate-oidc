@@ -103,8 +103,8 @@ function init(callback) {
 		document.getElementById("afb_link").innerHTML = "Connected Closed";
 		document.getElementById("afb_link").style.background = "red";
 		
-		var sgate_box= document.getElementById("sgate_error")
-		sgate_box.innerHTML= "sgate connection lost"
+        var sgate_box= document.getElementById("sgate_error")
+        if (sgate_box) sgate_box.innerHTML= "sgate connection lost"
 
 		var buttons= document.getElementsByClassName("sgate_button");
 		for (var idx=0; idx < buttons.length|0; idx++) {

@@ -6,6 +6,8 @@ On the external Internet interface is leverage OpenID user profile services to m
 
 oidc-sgate complies with any OpenID-connect identity public authority as github, google, microsoft, facebook, ... it also complies with internal authorities as Dex, Keycloak, Forgerock, ... For local authentication an optionnal PAM plugin is provided as sample local authentication template.
 
+indentation: indent -ppi3 -i4 -nut -l160 -ip4 -as -slc -br -ce -di4 -brs *.c
+
 Dependences
 	afb-libafb
 	pam-devel
