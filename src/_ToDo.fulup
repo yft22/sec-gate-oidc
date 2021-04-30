@@ -1,7 +1,5 @@
 0)
-    - Creer l'API de federation
-    - Ajouter une page HTML de fédération
-    - Ajouter les info de sessions dans les pages HTML
+   finir de modifier en 2 passes les requettes ldap.
 
 1) Finir le link de 2 idp accounts
 

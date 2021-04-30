@@ -563,6 +563,7 @@ idpRegisterLogin (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv)
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 idpPluginT idpBuiltin[] = {
     {.uid = "github",.info = "github public oauth2 idp",.configCB = githubConfigCB,.loginCB = githubLoginCB},
+    {.uid = "ldap"  ,.info = "ldap internal users",.configCB = ldapConfigCB,.loginCB = ldapLoginCB},
     {.uid = NULL}               // must be null terminated
 };
 

@@ -25,6 +25,6 @@
 
 #include "../oidc-idp.h"
 
-// github.c
-int githubLoginCB (struct afb_hreq *hreq, void *ctx);
-int githubConfigCB (oidcIdpT * idp, json_object * idpJ);
+// ldap.c
+int ldapLoginCB (struct afb_hreq *hreq, void *ctx);
+int ldapConfigCB (oidcIdpT * idp, json_object * idpJ);

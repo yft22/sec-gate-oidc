@@ -25,3 +25,4 @@
 
 #include "../oidc-idp.h"
 #include "idp-github.h"
+#include "idp-ldap.h"

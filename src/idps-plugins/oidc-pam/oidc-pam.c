@@ -49,7 +49,7 @@ typedef struct {
 
 // dflt_xxxx config.json default options
 static pamOptsT dfltOpts = {
-    .gidsMax = 10,
+    .gidsMax = 64,
     .avatarAlias = "/sgate/pam/avatar-dflt.png",
     .uidMin = 1000,
 };
@@ -66,7 +66,7 @@ static const oidcStaticsT dfltstatics = {
 };
 
 static const oidcWellknownT dfltWellknown = {
-    .loginTokenUrl = "/sgate/pam/passwd.html",
+    .loginTokenUrl = "/sgate/pam/login.html",
     .identityApiUrl = NULL,
     .accessTokenUrl = NULL,
 };
@@ -84,7 +84,7 @@ pamChalengeCB (int num_msg, const struct pam_message **msg, struct pam_response 
 }
 
 // check pam login/passwd using scope as pam application
-int
+static int
 pamAccessToken (oidcIdpT * idp, const oidcProfilsT * profil, const char *login, const char *passwd, fedSocialRawT ** social, fedUserRawT ** user)
 {
     int status = 0, err;
@@ -158,10 +158,10 @@ pamAccessToken (oidcIdpT * idp, const oidcProfilsT * profil, const char *login, 
 
 // check user email/pseudo attribute
 static void
-checkLoginVerb (struct afb_req_v4 *request, unsigned nparams, struct afb_data *const params[])
+checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct afb_data *const params[])
 {
     const char *errmsg = "[pam-login] invalid credentials";
-    oidcIdpT *idp = (oidcIdpT *) afb_req_v4_vcbdata (request);
+    oidcIdpT *idp = (oidcIdpT *) afb_req_v4_vcbdata (wreq);
     struct afb_data *args[nparams];
     const char *login, *passwd = NULL, *scope = NULL;
     const oidcProfilsT *profil = NULL;
@@ -176,8 +176,8 @@ checkLoginVerb (struct afb_req_v4 *request, unsigned nparams, struct afb_data *c
     err = wrap_json_unpack (queryJ, "{ss ss s?s s?s s?s}", "login", &login, "state", &state, "passwd", &passwd, "password", &passwd, "scope", &scope);
     if (err) goto OnErrorExit;
 
-    // search for a scope fiting requesting loa
-    afb_session *session = afb_req_v4_get_common (request)->session;
+    // search for a scope fiting wreqing loa
+    afb_session *session = afb_req_v4_get_common (wreq)->session;
     if (!state || strcmp (state, afb_session_uuid (session))) goto OnErrorExit;
 
     afb_session_cookie_get (session, oidcAliasCookie, (void **) &alias);
@@ -194,7 +194,7 @@ checkLoginVerb (struct afb_req_v4 *request, unsigned nparams, struct afb_data *c
         }
     }
     if (!profil) {
-        EXT_NOTICE ("[pam-check-scope] scope=%s does not match requested loa=%d", scope, aliasLoa);
+        EXT_NOTICE ("[pam-check-scope] scope=%s does not match wreqed loa=%d", scope, aliasLoa);
         goto OnErrorExit;
     }
     // check password
@@ -205,21 +205,21 @@ checkLoginVerb (struct afb_req_v4 *request, unsigned nparams, struct afb_data *c
 
     // do no check federation when only login
     if (fedUser) {
-        afb_req_addref (request);
-        err = idpCallbacks->fedidCheck (idp, fedSocial, fedUser, request, NULL);
+        afb_req_addref (wreq);
+        err = idpCallbacks->fedidCheck (idp, fedSocial, fedUser, wreq, NULL);
         if (err) {
-            afb_req_unref (request);
+            afb_req_unref (wreq);
             goto OnErrorExit;
         }
     } else {
-        afb_req_v4_reply_hookable (request, 0, 0, NULL);        // login exist
+        afb_req_v4_reply_hookable (wreq, 0, 0, NULL);        // login exist
     }
     return;
 
   OnErrorExit:
 
     afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_STRINGZ, errmsg, strlen (errmsg) + 1, NULL, NULL);
-    afb_req_v4_reply_hookable (request, -1, 1, &reply);
+    afb_req_v4_reply_hookable (wreq, -1, 1, &reply);
 }
 
 
@@ -234,7 +234,7 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
     const oidcAliasT *alias = NULL;
     int err, status, aliasLoa;
 
-    // check if request as a code
+    // check if wreq as a code
     const char *login = afb_hreq_get_argument (hreq, "login");
     const char *passwd = afb_hreq_get_argument (hreq, "passwd");
     const char *scope = afb_hreq_get_argument (hreq, "scope");
@@ -251,7 +251,7 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
     if (!login || !passwd) {
         char url[EXT_URL_MAX_LEN];
 
-        // search for a scope fiting requesting loa
+        // search for a scope fiting wreqing loa
         for (int idx = 0; idp->profils[idx].uid; idx++) {
             profil = &idp->profils[idx];
             if (idp->profils[idx].loa >= aliasLoa) {
@@ -262,7 +262,7 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
             }
         }
 
-        // if loa requested and no profil fit exit without trying authentication
+        // if loa wreqed and no profil fit exit without trying authentication
         if (!profil) goto OnErrorExit;
 
         httpKeyValT query[] = {
@@ -273,10 +273,10 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
             {NULL}              // terminator
         };
 
-        // store requested profil to retreive attached loa and role filter if login succeded
+        // store wreqed profil to retreive attached loa and role filter if login succeded
         afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profil, NULL, NULL);
 
-        // build request and send it
+        // build wreq and send it
         err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->loginTokenUrl, query);
         if (err) goto OnErrorExit;
 
@@ -285,7 +285,7 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
 
     } else {
 
-        // we have a code check state to assert that the response was generated by us then request authentication token
+        // we have a code check state to assert that the response was generated by us then wreq authentication token
         const char *state = afb_hreq_get_argument (hreq, "state");
         if (!state || strcmp (state, afb_session_uuid (hreq->comreq.session))) goto OnErrorExit;
 
@@ -327,7 +327,7 @@ pamRegisterCB (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset
     return 1;
 }
 
-// pam is a fake openif authority as it get everyting locally
+// pam is a fake openid authority as it get everyting locally
 int
 pamConfigCB (oidcIdpT * idp, json_object * idpJ)
 {

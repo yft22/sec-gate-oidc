@@ -51,7 +51,6 @@
 		ptr = strtok(NULL, "&");
 	}
 */
-static MAGIC_OIDC_SESSION (oidcState);
 
 static const httpKeyValT dfltHeaders[] = {
     {.tag = "Content-type",.value = "application/x-www-form-urlencoded"},
@@ -94,7 +93,7 @@ json_object_dup_key_value (json_object * objJ, const char *key)
     return value;
 }
 
-// call when IDP respond to user profil request
+// call when IDP respond to user profil wreq
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
 static httpRqtActionT
 githubAttrsGetByTokenCB (httpRqtT * httpRqt)
@@ -109,7 +108,6 @@ githubAttrsGetByTokenCB (httpRqtT * httpRqt)
     json_object *orgsJ = json_tokener_parse (httpRqt->body);
     if (!orgsJ || !json_object_is_type (orgsJ, json_type_array))
         goto OnErrorExit;
-    fprintf (stderr, "**** user organisation=%s\n", json_object_get_string (orgsJ));
     size_t count = json_object_array_length (orgsJ);
     rqtCtx->fedSocial->attrs = calloc (count + 1, sizeof (char *));
     for (int idx = 0; idx < count; idx++) {
@@ -141,7 +139,7 @@ githubGetAttrsByToken (idpRqtCtxT * rqtCtx, const char *orgApiUrl)
         {NULL}                  // terminator
     };
 
-    // asynchronous request to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
+    // asynchronous wreq to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
     EXT_DEBUG ("[github-api-get] curl -H 'Authorization: %s' %s\n", rqtCtx->token, orgApiUrl);
     int err = httpSendGet (idp->oidc->httpPool, orgApiUrl, &dfltOpts, authToken,
                            githubAttrsGetByTokenCB, rqtCtx);
@@ -153,7 +151,7 @@ githubGetAttrsByToken (idpRqtCtxT * rqtCtx, const char *orgApiUrl)
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
 }
 
-// call when IDP respond to user profil request
+// call when IDP respond to user profil wreq
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
 static httpRqtActionT
 githubUserGetByTokenCB (httpRqtT * httpRqt)
@@ -170,7 +168,6 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
     json_object *profilJ = json_tokener_parse (httpRqt->body);
     if (!profilJ)
         goto OnErrorExit;
-    fprintf (stderr, "**** user profil=%s\n", json_object_get_string (profilJ));
 
     // build social fedkey from idp->uid+github->id
     fedSocialRawT *fedSocial = calloc (1, sizeof (fedSocialRawT));
@@ -193,8 +190,7 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
         }
     }
     err = fedidCheck (idp, fedSocial, fedUser, NULL, rqtCtx->hreq);
-    if (err)
-        goto OnErrorExit;
+    if (err)  goto OnErrorExit;
     idpRqtCtxFree (rqtCtx);
 
     return HTTP_HANDLE_FREE;
@@ -207,7 +203,7 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
     return HTTP_HANDLE_FREE;
 }
 
-// from acces token request user profil
+// from acces token wreq user profil
 // reference https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
 static void
 githubUserGetByToken (idpRqtCtxT * rqtCtx)
@@ -221,13 +217,12 @@ githubUserGetByToken (idpRqtCtxT * rqtCtx)
         {NULL}                  // terminator
     };
 
-    // asynchronous request to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
+    // asynchronous wreq to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
     EXT_DEBUG ("[github-api-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->identityApiUrl);
     int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->identityApiUrl,
                            &dfltOpts, authToken, githubUserGetByTokenCB,
                            rqtCtx);
-    if (err)
-        goto OnErrorExit;
+    if (err) goto OnErrorExit;
     return;
 
   OnErrorExit:
@@ -257,10 +252,10 @@ githubAccessTokenCB (httpRqtT * httpRqt)
 
     EXT_DEBUG ("[github-auth-token] token=%s (githubAccessTokenCB)", rqtCtx->token);
 
-    // we have our request token let's try to get user profil
+    // we have our wreq token let's try to get user profil
     githubUserGetByToken (rqtCtx);
 
-    // callback is responsible to free request & context
+    // callback is responsible to free wreq & context
     json_object_put (responseJ);
     return HTTP_HANDLE_FREE;
 
@@ -295,7 +290,7 @@ githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirectUrl, con
     if (err)
         goto OnErrorExit;
 
-    // send asynchronous post request with params in query // https://gist.github.com/technoweenie/419219
+    // send asynchronous post wreq with params in query // https://gist.github.com/technoweenie/419219
     err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ ,
                           idp->wellknown->accessTokenUrl, params);
     if (err)
@@ -314,8 +309,8 @@ githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirectUrl, con
     return 1;
 }
 
-// this check idp code and either request profil or redirect to idp login page
-int
+// this check idp code and either wreq profil or redirect to idp login page
+static int
 githubLoginCB (afb_hreq * hreq, void *ctx)
 {
     oidcIdpT *idp = (oidcIdpT *) ctx;
@@ -325,7 +320,7 @@ githubLoginCB (afb_hreq * hreq, void *ctx)
     const oidcAliasT *alias = NULL;
     int err, status, aliasLoa;
 
-    // check if request as a code
+    // check if wreq as a code
     const char *code = afb_hreq_get_argument (hreq, "code");
     const char *session = afb_session_uuid (hreq->comreq.session);
     afb_session_cookie_get (hreq->comreq.session, oidcAliasCookie, (void **) &alias);
@@ -344,7 +339,7 @@ githubLoginCB (afb_hreq * hreq, void *ctx)
         char url[EXT_URL_MAX_LEN];
         const char *scope = afb_hreq_get_argument (hreq, "scope");
 
-        // search for a scope fiting requesting loa
+        // search for a scope fiting wreqing loa
         for (int idx = 0; idp->profils[idx].uid; idx++) {
             if (idp->profils[idx].loa >= aliasLoa) {
                 // if no scope take the 1st profile with valid LOA
@@ -355,11 +350,11 @@ githubLoginCB (afb_hreq * hreq, void *ctx)
             }
         }
 
-        // if loa requested and no profil fit exit without trying authentication
+        // if loa wreqed and no profil fit exit without trying authentication
         if (!profil)
             goto OnErrorExit;
 
-        // store requested profil to retreive attached loa and role filter if login succeded
+        // store wreqed profil to retreive attached loa and role filter if login succeded
         afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profil, NULL, NULL);
 
         httpKeyValT query[] = {
@@ -372,7 +367,7 @@ githubLoginCB (afb_hreq * hreq, void *ctx)
             {NULL}              // terminator
         };
 
-        // build request and send it
+        // build wreq and send it
         err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ ,
                               idp->wellknown->loginTokenUrl, query);
         if (err)
@@ -382,7 +377,7 @@ githubLoginCB (afb_hreq * hreq, void *ctx)
         afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 
     } else {
-        // use state to retreive original request session uuid and restore original session before requesting token
+        // use state to retreive original wreq session uuid and restore original session before wreqing token
         const char *oidcState = afb_hreq_get_argument (hreq, "state");
         if (strcmp (oidcState, session)) {
             EXT_DEBUG ("[github-auth-code] missmatch session/state state=%s session=%s (githubLoginCB)", oidcState, session);
@@ -390,7 +385,7 @@ githubLoginCB (afb_hreq * hreq, void *ctx)
         }
 
         EXT_DEBUG ("[github-auth-code] state=%s code=%s (githubLoginCB)", oidcState, code);
-        // request authentication token from tempry code
+        // wreq authentication token from tempry code
         err = githubAccessToken (hreq, idp, redirectUrl, code);
         if (err)
             goto OnErrorExit;

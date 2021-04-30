@@ -30,16 +30,33 @@
             "plugin": {
               "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
               "ldpath": "./package/lib/plugins/pam-auth.idpso:/usr/local/afb-oidc/lib/pam-auth.idpso",
-              "avatar":"/sgate/pam/tux-iot.png",
-              "gids":10
+              "gids":16
             },
             "statics": {
                 "login": "/sgate/pam/login",
                 "logo": "/sgate/pam/logo-64px.png",
                 "timeout": 900
             },
+            "profils": [
+                {"uid":"login", "loa":1, "scope":"login"}
+            ]
+        }, {
+            "uid": "ldap-login",
+            "info": "Iot.bzh internal LDAP",
+            "statics": {
+                "login": "/sgate/pam/login",
+                "logo": "/sgate/pam/logo-64px.png",
+                "timeout": 900
+            },
+            "schema": {
+                "info": "generate a curl -u %userdn% %ldapuri%/%groupdn%?dn?sub?%filter%",
+                "uri": "ldap://ldap.ovh.iot",
+                "login": "uid=%login%,ou=People,dc=vannes,dc=iot",
+                "groups": "ou=groups,dc=vannes,dc=iot?dn?sub?(memberUid=%login%)",
+                "people": "ou=people,dc=vannes,dc=iot??uid,gecos,mail?sub?(cn=%login%))"
+            },
             "wellknown": {
-                "loginTokenUrl": "/sgate/pam/passwd.html"
+                "loginTokenUrl": "/sgate/pam/login.html"
             },
             "profils": [
                 {"uid":"login", "loa":1, "scope":"login"}

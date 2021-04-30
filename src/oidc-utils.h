@@ -21,10 +21,34 @@
  * $RP_END_LICENSE$
 */
 
+
 #pragma once
 
-#include "../oidc-idp.h"
+#include <json-c/json.h>
 
-// github.c
-int githubLoginCB (struct afb_hreq *hreq, void *ctx);
-int githubConfigCB (oidcIdpT * idp, json_object * idpJ);
+#ifndef OIDC_MAX_ARG_LEN
+#define OIDC_MAX_ARG_LEN 1024
+#endif
+
+#ifndef OIDC_MAX_ARG_LABEL
+#define OIDC_MAX_ARG_LABEL 64
+#endif
+
+typedef enum {
+    OIDC_MEM_STATIC=0,
+    OIDC_MEM_DYNAMIC,
+} oidcMemDefaultsE;
+
+typedef char*(*oidcGetDefaultCbT)(const char *label, void *ctx, void *userdata);
+typedef struct {
+    const char *label;
+    oidcGetDefaultCbT callback;
+    oidcMemDefaultsE  allocation;
+    void *ctx;
+} oidcDefaultsT;
+extern oidcDefaultsT oidcVarDefaults[];
+
+const char* utilsExpandString (oidcDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer, void *ctx);
+const char *utilsExpandKeyCtx (const char* src, void *ctx);
+const char* utilsExpandKey (const char* inputString);
+const char* utilsExpandJson (const char* src, json_object *keysJ);
