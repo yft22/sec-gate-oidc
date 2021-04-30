@@ -27,9 +27,13 @@
 #include "oidc-idp.h"
 #include <fedid-types.h>
 
+#define FEDID_LINK_REQUESTED -1
+#define FEDID_LINK_RESET 0
+
 typedef struct {
     int timerId;
 } fedidSessionT;
+
 
 int fedidCheck (oidcIdpT * idp, fedSocialRawT * fedSocial, fedUserRawT * fedUser, struct afb_req_v4 *request, afb_hreq * hreq);
 void fedidsessionReset (int signal, void *ctx);

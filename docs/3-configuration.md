@@ -69,10 +69,11 @@ oidc-sgate is not a binding, but a binder-v4 extension. As a result it has acces
       "api": "sgate",
       "info": "oidc secure gateway demo config",
       "globals": {
-          "info" : "Rodrigo demo uses a 'one-page' app",
+          "info" : "some misc useful info",
           "login": "/sgate/common/login.html",
           "register": "/sgate/common/register.html",
-          "fedlink": "/sgate/common/fedlink.html",
+          "federate": "/sgate/common/fedlink.html",
+          "home": "/",
           "error": "/sgate/common/error.html",
           "timeout": 600,
           "cache": 5000,

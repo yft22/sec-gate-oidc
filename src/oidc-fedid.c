@@ -123,6 +123,33 @@ fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], 
         if (err < 0) goto OnErrorExit;
         fedUser = (fedUserRawT *) afb_data_ro_pointer (argd[0]);
 
+        // check if federation linking is pending
+        fedSocialRawT *fedLinkSocial=NULL;
+        afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedLinkSocial);
+        int fedLoa= afb_session_get_loa (session, oidcFedSocialCookie);
+
+        // if we have to link two accounts do it before cleaning oidcFedSocialCookie
+        if (fedLoa == FEDID_LINK_REQUESTED) {
+            assert(fedLinkSocial);
+            afb_data_x4_t params[2];
+            int status;
+            unsigned int count;
+            afb_data_t data;
+
+            // make sure we do not link account twice
+            afb_session_set_loa (session, oidcFedSocialCookie, FEDID_LINK_RESET);
+
+            // delegate account federation linking to fedid binding
+            params[0]= afb_data_addref(argd[0]);
+            err = afb_create_data_raw (&params[1], fedSocialObjType, fedLinkSocial, 0, NULL, NULL);
+            if (err < 0) goto OnErrorExit;
+            err= afb_api_v4_call_sync_hookable (api, API_OIDC_USR_SVC, "user-federate", 2, params, &status, &count, &data);
+            if (err < 0 || status != 0) {
+                EXT_ERROR ("[fedid-link-account] fail to link account pseudo=%s email=%s", fedUser->pseudo, fedUser->email);
+                goto OnErrorExit;
+            }
+        }
+
         // let's store user profil into session cookie (/oidc/profil/get serves it)
         afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void *) afb_data_unref, argd[0]);
         afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, fedSocialFreeCB, userRqt->fedSocial);
@@ -212,7 +239,7 @@ fedidCheck (oidcIdpT * idp, fedSocialRawT * fedSocial, fedUserRawT * fedUser, st
     if (err) goto OnErrorExit;
 
     afb_data_addref (params[0]);        // prevent params to be deleted
-    afb_api_v4_call_hookable (idp->oidc->apiv4, "fedid", "social-check", 1, params, fedidCheckCB, userRqt);
+    afb_api_v4_call_hookable (idp->oidc->apiv4, API_OIDC_USR_SVC, "social-check", 1, params, fedidCheckCB, userRqt);
     return 0;
 
   OnErrorExit:

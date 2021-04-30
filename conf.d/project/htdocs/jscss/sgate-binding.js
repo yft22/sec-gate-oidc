@@ -9,9 +9,9 @@ var count = 0;
 //**********************************************
 var log = {
 	command: function (api, verb, query) {
-		console.log("subscribe api=" + api + " verb=" + verb + " query=", query);
+		console.log("request api=" + api + " verb=" + verb + " query=", query);
 		var question = urlws + "/" + api + "/" + verb + "?query=" + JSON.stringify(query);
-		log._write("question", count + ": " + log.syntaxHighlight(question));
+		log._write("question", (count++) + ": " + log.syntaxHighlight(question));
 	},
 
 	event: function (obj) {
@@ -72,12 +72,10 @@ function callbinder(api, verb, query) {
 	return ws.call(api + "/" + verb, query)
 		.then(function (res) {
 			log.reply(res);
-			count++;
 			return res;
 		})
 		.catch(function (err) {
 			log.reply(err);
-			count++;
 			throw err;
 		});
 }

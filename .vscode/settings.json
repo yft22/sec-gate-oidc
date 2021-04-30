@@ -13,6 +13,11 @@
         "oidc-core.h": "c",
         "assert.h": "c",
         "afb-core.h": "c",
-        "afb-calls.h": "c"
+        "afb-calls.h": "c",
+        "cmath": "cpp",
+        "functional": "cpp",
+        "random": "cpp",
+        "*.tcc": "cpp",
+        "type_traits": "cpp"
     }
 }

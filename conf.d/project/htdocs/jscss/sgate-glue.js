@@ -31,11 +31,11 @@ function addOneIdp (div_box, idp) {
 }
 
 // get IDPs list from oidc-sgate
-function getIdps() {
+function getConfigIdps() {
 
     // ws.call return a Promise
     var api="sgate";
-    var verb="idp-list";
+    var verb="idp-query-conf";
     var query="{}";
     log.command(api, verb, query);   
     ws.call(api + "/" + verb, query)
@@ -46,7 +46,7 @@ function getIdps() {
         sgate_div.className="sgate_box";
 
         if (sgate_div === null) {
-            window.alert("getIdps() requirer <div id='sgate_data'> in page");
+            window.alert("getConfigIdps() requirer <div id='sgate_data'> in page");
             return; 
         }
 
@@ -79,6 +79,55 @@ function getIdps() {
 } 
 
 // get IDPs list from oidc-sgate
+function getUserIdps() {
+
+    // ws.call return a Promise
+    var api="sgate";
+    var verb="idp-query-user";
+    var query="{}";
+    log.command(api, verb, query);   
+    ws.call(api + "/" + verb, query)
+    .then(function (res) {
+        log.reply(res);
+        var div_box;
+        var sgate_div= document.getElementById("sgate_data");
+        sgate_div.className="sgate_box";
+
+        if (sgate_div === null) {
+            window.alert("getConfigIdps() requirer <div id='sgate_data'> in page");
+            return; 
+        }
+
+        // div box is recreated/deleted each time we get/lost binding connection
+        sgate_box= document.createElement("div");
+        sgate_box.id="sgate_box";
+        sgate_div.appendChild(sgate_box); 
+
+        // when exit add alias info data
+        if (res.response.alias) {
+            div_box= document.createElement("div");
+            div_box.id="alias_json";
+            div_box.className="sgate_extra";
+            div_box.innerText= "Request: " + JSON.stringify(res.response.alias);
+            sgate_box.appendChild(div_box); 
+        }        
+
+        // add all IDP in a share div
+        div_box= document.createElement("div");
+        div_box.id="idps_box";
+        for (const idp of res.response.idps) {
+            addOneIdp(div_box, idp);
+        }
+        sgate_box.appendChild(div_box);
+
+    })
+    .catch(function (err) {
+        log.reply(err);
+    });
+} 
+
+
+// get IDPs list from oidc-sgate
 function getSession() {
 
     // ws.call return a Promise
@@ -107,6 +156,7 @@ function getSession() {
                 input.value= value;
             }
         }
+        document.getElementById("pseudo").focus();
     })
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
@@ -135,7 +185,7 @@ function sgateCheckAttr(label) {
 
     // call user-registration
     var api="sgate";
-    var verb="chk-attribute";
+    var verb="usr-check";
     log.command(api, verb, query);   
     ws.call(api + "/" + verb, query)
     .then(function (res) {
@@ -166,14 +216,28 @@ function sgateCheckAttr(label) {
 function sgateSubmit(action) {
     var api="sgate";
     var verb="none";
+    var query={};
 
     // close session and return to home page
     if (action == "cancel") {
         callbinder(api,'session-reset' ,{});
-        window.location.replace('/')
+
+        verb="url-query-conf";
+        log.command(api, verb, query);   
+        ws.call(api + "/" + verb, query)
+        .then(function (res) {
+            log.reply(res);
+            // redirect to requested URL
+            window.location.replace(res.response.home);
+    
+        })
+        .catch(function (err) {
+            window.location.replace("/sgate/common/error.html")
+        });
         return;
     }
 
+     
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
@@ -182,7 +246,6 @@ function sgateSubmit(action) {
     }
 
     // retrieve value from HTML form
-    var query={};
     for (var idx= 0; idx < form.length ;idx++) {
         var uid= form[idx].id;
         var value= form[idx].value;
@@ -191,7 +254,7 @@ function sgateSubmit(action) {
         }
     }
 
-    if (action === "federate") {
+    if (action == "federate") {
         verb="usr-federate";
     }
 
@@ -210,7 +273,7 @@ function sgateSubmit(action) {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("getSession() requirer <form id='sgate_error'> in page");
+            window.alert("sgateSubmit() requirer <form id='sgate_error'> in page");
         return; 
         }
         info.innerText=err.response;
@@ -219,11 +282,10 @@ function sgateSubmit(action) {
 }
 
 function passwordUser() {
-
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
-        window.alert("registerUser() requirer <form id='sgate_form'> in page");
+        window.alert("passwordUser() requirer <form id='sgate_form'> in page");
         return; 
     }
 
@@ -251,7 +313,7 @@ function passwordUser() {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("getSession() requirer <form id='sgate_error'> in page");
+            window.alert("passwordUser() requirer <form id='sgate_error'> in page");
            return; 
         }
         info.innerText=err.response;

@@ -58,17 +58,17 @@ static oidGlobalsT * globalConfig (json_object * globalJ)
             , "info", &commentJ, "login", &global->loginUrl
             , "error", &global->errorUrl
             , "register", &global->registerUrl
-            , "fedlink", &global->fedlinkUrl
-            , "remove", &global->removeUrl
+            , "federate", &global->fedlinkUrl
+            , "home", &global->homeUrl
             , "cache", &global->tCache
             , "timeout", &global->sTimeout);
         if (err < 0) goto OnErrorExit;
     }
 
     if (!global->loginUrl) global->loginUrl = URL_OIDC_USR_LOGIN;
-    if (!global->registerUrl) global->loginUrl = URL_OIDC_USR_REGISTER;
-    if (!global->fedlinkUrl) global->loginUrl = URL_OIDC_USR_FEDLINK;
-    if (!global->removeUrl) global->loginUrl = URL_OIDC_USR_REMOVE;
+    if (!global->registerUrl) global->registerUrl = URL_OIDC_USR_REGISTER;
+    if (!global->fedlinkUrl) global->fedlinkUrl = URL_OIDC_USR_FEDLINK;
+    if (!global->homeUrl) global->homeUrl = URL_OIDC_USR_HOME;
     if (!global->errorUrl) global->errorUrl = URL_OIDC_USR_ERROR;
     if (!global->tCache) global->tCache = URL_OIDC_AUTH_CACHE;
     if (!global->sTimeout) global->sTimeout = EXT_SESSION_TIMEOUT;
