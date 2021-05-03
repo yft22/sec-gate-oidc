@@ -28,3 +28,4 @@
 // ldap.c
 int ldapLoginCB (struct afb_hreq *hreq, void *ctx);
 int ldapConfigCB (oidcIdpT * idp, json_object * idpJ);
+int ldapRegisterCB (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set);

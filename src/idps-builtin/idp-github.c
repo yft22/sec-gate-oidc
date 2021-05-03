@@ -98,7 +98,7 @@ json_object_dup_key_value (json_object * objJ, const char *key)
 static httpRqtActionT
 githubAttrsGetByTokenCB (httpRqtT * httpRqt)
 {
-    idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
+    fedSocialRawT *fedSocial= httpRqt->userData;
 
     // something when wrong
     if (httpRqt->status != 200)
@@ -106,22 +106,17 @@ githubAttrsGetByTokenCB (httpRqtT * httpRqt)
 
     // unwrap user profil
     json_object *orgsJ = json_tokener_parse (httpRqt->body);
-    if (!orgsJ || !json_object_is_type (orgsJ, json_type_array))
-        goto OnErrorExit;
+    if (!orgsJ || !json_object_is_type (orgsJ, json_type_array)) goto OnErrorExit;
     size_t count = json_object_array_length (orgsJ);
-    rqtCtx->fedSocial->attrs = calloc (count + 1, sizeof (char *));
+    fedSocial->attrs = calloc (count + 1, sizeof (char *));
     for (int idx = 0; idx < count; idx++) {
         json_object *orgJ = json_object_array_get_idx (orgsJ, idx);
-        rqtCtx->fedSocial->attrs[idx] = json_object_dup_key_value (orgJ, "login");
+        fedSocial->attrs[idx] = json_object_dup_key_value (orgJ, "login");
     }
-    idpRqtCtxFree (rqtCtx);
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
     EXT_CRITICAL ("[github-fail-orgs] Fail to get user organisation status=%ld body='%s'", httpRqt->status, httpRqt->body);
-    afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
-    free (rqtCtx->token);
-    free (rqtCtx);
     return HTTP_HANDLE_FREE;
 }
 
@@ -136,13 +131,12 @@ githubGetAttrsByToken (idpRqtCtxT * rqtCtx, const char *orgApiUrl)
     snprintf (tokenVal, sizeof (tokenVal), "token %s", rqtCtx->token);
     httpKeyValT authToken[] = {
         {.tag = "Authorization",.value = tokenVal},
-        {NULL}                  // terminator
+        {NULL} // terminator
     };
 
     // asynchronous wreq to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
     EXT_DEBUG ("[github-api-get] curl -H 'Authorization: %s' %s\n", rqtCtx->token, orgApiUrl);
-    int err = httpSendGet (idp->oidc->httpPool, orgApiUrl, &dfltOpts, authToken,
-                           githubAttrsGetByTokenCB, rqtCtx);
+    int err = httpSendGet (idp->oidc->httpPool, orgApiUrl, &dfltOpts, authToken, githubAttrsGetByTokenCB, rqtCtx->fedSocial);
     if (err)
         goto OnErrorExit;
     return;
@@ -181,6 +175,10 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
     fedUser->company = json_object_dup_key_value (profilJ, "company");
     fedUser->email = json_object_dup_key_value (profilJ, "email");
 
+    // check federation now groups are handle asynchronously
+    err = fedidCheck (idp, fedSocial, fedUser, NULL, rqtCtx->hreq);
+    if (err)  goto OnErrorExit;
+
     // user is ok, let's map user organisation onto security attributes
     if (rqtCtx->profil->label) {
         const char *organizationsUrl = json_object_get_string (json_object_object_get (profilJ, rqtCtx->profil->label));
@@ -189,8 +187,7 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
             githubGetAttrsByToken (rqtCtx, organizationsUrl);
         }
     }
-    err = fedidCheck (idp, fedSocial, fedUser, NULL, rqtCtx->hreq);
-    if (err)  goto OnErrorExit;
+    free (rqtCtx->token);
     idpRqtCtxFree (rqtCtx);
 
     return HTTP_HANDLE_FREE;
@@ -310,9 +307,7 @@ githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirectUrl, con
 }
 
 // this check idp code and either wreq profil or redirect to idp login page
-static int
-githubLoginCB (afb_hreq * hreq, void *ctx)
-{
+int githubLoginCB (afb_hreq * hreq, void *ctx) {
     oidcIdpT *idp = (oidcIdpT *) ctx;
     assert (idp->magic == MAGIC_OIDC_IDP);
     char redirectUrl[EXT_HEADER_MAX_LEN];

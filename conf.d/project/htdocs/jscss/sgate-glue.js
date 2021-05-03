@@ -281,7 +281,7 @@ function sgateSubmit(action) {
     });
 }
 
-function passwordUser() {
+function passwordUser(verb) {
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
@@ -301,7 +301,6 @@ function passwordUser() {
 
     // call user-registration
     var api="sgate";
-    var verb="pam-login";
     log.command(api, verb, query);   
     ws.call(api + "/" + verb, query)
     .then(function (res) {

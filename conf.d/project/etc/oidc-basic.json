@@ -25,7 +25,7 @@
       },
       "idps": [
         {
-            "uid": "pam-login",
+            "uid": "pam",
             "info": "Linux local account authentication",
             "plugin": {
               "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
@@ -41,11 +41,11 @@
                 {"uid":"login", "loa":1, "scope":"login"}
             ]
         }, {
-            "uid": "ldap-login",
+            "uid": "ldap",
             "info": "Iot.bzh internal LDAP",
             "statics": {
-                "login": "/sgate/pam/login",
-                "logo": "/sgate/pam/logo-64px.png",
+                "login": "/sgate/ldap/login",
+                "logo": "/sgate/ldap/logo-64px.png",
                 "timeout": 900
             },
             "schema": {
@@ -56,7 +56,7 @@
                 "people": "ou=people,dc=vannes,dc=iot??uid,gecos,mail?sub?(cn=%login%))"
             },
             "wellknown": {
-                "loginTokenUrl": "/sgate/pam/login.html"
+                "loginTokenUrl": "/sgate/ldap/login.html"
             },
             "profils": [
                 {"uid":"login", "loa":1, "scope":"login"}
@@ -94,6 +94,7 @@
         {"uid": "idp-common", "url":"/sgate/common", "path":"idps/common" },
         {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "path":"idps/github" },
         {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "path":"idps/pam" },
+        {"uid": "idp-ldap"    , "url":"/sgate/ldap"   ,"loa":0, "path":"idps/ldap" },
         {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },
         {"uid": "private", "info": "Required basic authentication", "url":"/private",  "loa":1, "path":"private" },
         {"uid": "confidential", "info": "Required teams authentication", "url":"/confidential", "loa":2, "path":"confidential" },

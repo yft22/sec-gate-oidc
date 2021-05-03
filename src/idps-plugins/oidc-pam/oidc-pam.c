@@ -364,8 +364,7 @@ pamConfigCB (oidcIdpT * idp, json_object * idpJ)
 
 // pam sample plugin exposes only one IDP
 idpPluginT idpPamAuth[] = {
-    {.uid = "pam-login",.info = "use Linux pam login to check user/passwd",.ctx = "login",.configCB = pamConfigCB,.registerCB = pamRegisterCB,.loginCB =
-     pamLoginCB},
+    {.uid = "pam",.info = "use Linux pam login to check user/passwd",.ctx = "login",.configCB = pamConfigCB,.registerCB = pamRegisterCB,.loginCB =     pamLoginCB},
     {.uid = NULL}               // must be null terminated
 };
 

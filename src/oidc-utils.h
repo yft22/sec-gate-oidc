@@ -34,21 +34,4 @@
 #define OIDC_MAX_ARG_LABEL 64
 #endif
 
-typedef enum {
-    OIDC_MEM_STATIC=0,
-    OIDC_MEM_DYNAMIC,
-} oidcMemDefaultsE;
-
-typedef char*(*oidcGetDefaultCbT)(const char *label, void *ctx, void *userdata);
-typedef struct {
-    const char *label;
-    oidcGetDefaultCbT callback;
-    oidcMemDefaultsE  allocation;
-    void *ctx;
-} oidcDefaultsT;
-extern oidcDefaultsT oidcVarDefaults[];
-
-const char* utilsExpandString (oidcDefaultsT *defaults, const char* inputS, const char* prefix, const char* trailer, void *ctx);
-const char *utilsExpandKeyCtx (const char* src, void *ctx);
-const char* utilsExpandKey (const char* inputString);
-const char* utilsExpandJson (const char* src, json_object *keysJ);
+char* utilsExpandJson (const char* src, json_object *keysJ);

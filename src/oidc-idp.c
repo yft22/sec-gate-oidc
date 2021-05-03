@@ -28,6 +28,7 @@
 #include "oidc-core.h"
 #include "oidc-idp.h"
 #include "oidc-fedid.h"
+#include "oidc-utils.h"
 #include "idps-builtin.h"
 
 #include <string.h>
@@ -47,8 +48,7 @@ idpPluginT idpBuiltin[];
 static idpRegistryT *registryHead = NULL;
 
 
-void
-idpRqtCtxFree (idpRqtCtxT * rqtCtx)
+void idpRqtCtxFree (idpRqtCtxT * rqtCtx)
 {
     assert (rqtCtx->ucount >= 0);
     rqtCtx->ucount--;
@@ -60,8 +60,7 @@ idpRqtCtxFree (idpRqtCtxT * rqtCtx)
 }
 
 // return the idp list to display corresponding login page.
-json_object *
-idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
+json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
 {
     json_object *idpsJ = NULL;
 
@@ -113,8 +112,7 @@ idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
 
 
 // add a new plugin idp to the registry
-static int
-idpPluginRegisterCB (const char *pluginUid, idpPluginT * pluginCbs)
+static int idpPluginRegisterCB (const char *pluginUid, idpPluginT * pluginCbs)
 {
     idpRegistryT *registryIdx, *registryEntry;
 
@@ -137,8 +135,7 @@ idpPluginRegisterCB (const char *pluginUid, idpPluginT * pluginCbs)
     return 0;
 }
 
-static const oidcCredentialsT *
-idpParseCredentials (oidcIdpT * idp, json_object * credentialsJ, const oidcCredentialsT * defaults)
+static const oidcCredentialsT *idpParseCredentials (oidcIdpT * idp, json_object * credentialsJ, const oidcCredentialsT * defaults)
 {
 
     oidcCredentialsT *credentials = calloc (1, sizeof (oidcCredentialsT));
@@ -176,8 +173,7 @@ idpParseOneHeader (oidcIdpT * idp, json_object * headerJ, httpKeyValT * header)
     return 1;
 }
 
-static const httpKeyValT *
-idpParseHeaders (oidcIdpT * idp, json_object * headersJ, const httpKeyValT * defaults)
+static const httpKeyValT *idpParseHeaders (oidcIdpT * idp, json_object * headersJ, const httpKeyValT * defaults)
 {
     if (!headersJ)
         return defaults;
@@ -236,8 +232,7 @@ idpParseOneProfil (oidcIdpT * idp, json_object * profileJ, oidcProfilsT * profil
     return 1;
 }
 
-static const oidcProfilsT *
-idpParseProfils (oidcIdpT * idp, json_object * profilsJ, const oidcProfilsT * defaults)
+static const oidcProfilsT *idpParseProfils (oidcIdpT * idp, json_object * profilsJ, const oidcProfilsT * defaults)
 {
     oidcProfilsT *profils = NULL;
     int err;
@@ -279,8 +274,7 @@ idpParseProfils (oidcIdpT * idp, json_object * profilsJ, const oidcProfilsT * de
     return NULL;
 }
 
-static const oidcStaticsT *
-idpParsestatic (oidcIdpT * idp, json_object * staticJ, const oidcStaticsT * defaults)
+static const oidcStaticsT *idpParsestatic (oidcIdpT * idp, json_object * staticJ, const oidcStaticsT * defaults)
 {
 
     // no config use defaults
@@ -308,8 +302,7 @@ idpParsestatic (oidcIdpT * idp, json_object * staticJ, const oidcStaticsT * defa
     return NULL;
 }
 
-static const oidcWellknownT *
-idpParseWellknown (oidcIdpT * idp, json_object * wellknownJ, const oidcWellknownT * defaults)
+static const oidcWellknownT *idpParseWellknown (oidcIdpT * idp, json_object * wellknownJ, const oidcWellknownT * defaults)
 {
     if (!wellknownJ)
         return defaults;
@@ -334,8 +327,7 @@ idpParseWellknown (oidcIdpT * idp, json_object * wellknownJ, const oidcWellknown
     return NULL;
 }
 
-int
-idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * defaults, void *ctx)
+int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * defaults, void *ctx)
 {
 
     if (!configJ) {
@@ -373,8 +365,7 @@ idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * defau
 }
 
 // search for a plugin idps/decoders CB list
-static const idpPluginT *
-idpFindPlugin (const char *uid)
+static const idpPluginT *idpFindPlugin (const char *uid)
 {
     idpPluginT *idp = NULL;
     int index;
@@ -410,8 +401,7 @@ idpGenericCbT idpGenericCB = {
     .pluginRegister = idpPluginRegisterCB,
 };
 
-static int
-idpParseOne (oidcCoreHdlT * oidc, json_object * idpJ, oidcIdpT * idp)
+static int idpParseOne (oidcCoreHdlT * oidc, json_object * idpJ, oidcIdpT * idp)
 {
     int err;
 
@@ -479,8 +469,7 @@ idpParseOne (oidcCoreHdlT * oidc, json_object * idpJ, oidcIdpT * idp)
     return 1;
 }
 
-oidcIdpT const *
-idpParseConfig (oidcCoreHdlT * oidc, json_object * idpsJ)
+oidcIdpT const *idpParseConfig (oidcCoreHdlT * oidc, json_object * idpsJ)
 {
     oidcIdpT *idps;
     int err, count;
@@ -521,8 +510,7 @@ idpParseConfig (oidcCoreHdlT * oidc, json_object * idpsJ)
 }
 
 // register IDP login and authentication callback endpoint
-int
-idpRegisterOne (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
+int idpRegisterOne (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
 {
     int err;
 
@@ -536,7 +524,6 @@ idpRegisterOne (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_
             goto OnErrorExit;
         }
     }
-
     return 0;
 
   OnErrorExit:
@@ -544,8 +531,7 @@ idpRegisterOne (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_
     return 1;
 }
 
-int
-idpRegisterLogin (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv)
+int idpRegisterLogin (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv)
 {
     int err;
     EXT_DEBUG ("[idp-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
@@ -562,8 +548,8 @@ idpRegisterLogin (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv)
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 idpPluginT idpBuiltin[] = {
-    {.uid = "github",.info = "github public oauth2 idp",.configCB = githubConfigCB,.loginCB = githubLoginCB},
-    {.uid = "ldap"  ,.info = "ldap internal users",.configCB = ldapConfigCB,.loginCB = ldapLoginCB},
+    {.uid = "github",.info = "github public oauth2 idp",.configCB = githubConfigCB,.loginCB= githubLoginCB},
+    {.uid = "ldap"  ,.info = "ldap internal users",.configCB = ldapConfigCB,.loginCB= ldapLoginCB, .registerCB=ldapRegisterCB},
     {.uid = NULL}               // must be null terminated
 };
 

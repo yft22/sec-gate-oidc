@@ -87,14 +87,28 @@ static void multiCheckInfoCB(httpPoolT *httpPool)
 
             // this is a httpPool request 1st search for easyhandle
             CURL *easy = msg->easy_handle;
+            CURLcode estatus = msg->data.result;
 
             // retreive httpRqt from private easy handle
-            if (httpPool->verbose > 1)
-                fprintf(stderr, "-- multiCheckInfoCB: done\n");
+            if (httpPool->verbose > 1) fprintf(stderr, "-- multiCheckInfoCB: done\n");
+
             curl_easy_getinfo(easy, CURLINFO_PRIVATE, &httpRqt);
-            curl_easy_getinfo(httpRqt->easy, CURLINFO_SIZE_DOWNLOAD, &httpRqt->length);
-            curl_easy_getinfo(httpRqt->easy, CURLINFO_RESPONSE_CODE, &httpRqt->status);
-            curl_easy_getinfo(httpRqt->easy, CURLINFO_CONTENT_TYPE, &httpRqt->ctype);
+
+            if (estatus != CURLE_OK)  {
+                char * url, *message;
+                int len;
+                curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &url);
+
+                len= asprintf (&message, "[request-error] status=%d error='%s' url=[%s]", estatus, curl_easy_strerror(estatus), url);
+                if (httpPool->verbose)  fprintf(stderr, "\n--- %s\n", message);
+                httpRqt->status=-((long)estatus);
+                httpRqt->body= message;
+                httpRqt->length=len;
+            } else {
+                curl_easy_getinfo(easy, CURLINFO_SIZE_DOWNLOAD, &httpRqt->length);
+                curl_easy_getinfo(easy, CURLINFO_RESPONSE_CODE, &httpRqt->status);
+                curl_easy_getinfo(easy, CURLINFO_CONTENT_TYPE, &httpRqt->ctype);
+            }
 
             // do some clean up
             curl_multi_remove_handle(httpPool->multi, easy);
@@ -108,8 +122,8 @@ static void multiCheckInfoCB(httpPoolT *httpPool)
             httpRqtActionT status = httpRqt->callback(httpRqt);
             if (status == HTTP_HANDLE_FREE)
             {
-                if (httpRqt->freeCtx && httpRqt->userData)
-                    httpRqt->freeCtx(httpRqt->userData);
+                if (httpRqt->freeCtx && httpRqt->userData) httpRqt->freeCtx(httpRqt->userData);
+                if (httpRqt->body) free (httpRqt->body);
                 free(httpRqt);
             }
 

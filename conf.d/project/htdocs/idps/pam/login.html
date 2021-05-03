@@ -14,14 +14,14 @@
 <body class="page-content" onload="init();">
 	<img src="/assets/iot-bzh-logo-small.png">
 
-	<h1>oidc/sgate login</h1>
+	<h1>oidc/sgate PAM login</h1>
     <button id="afb_link"  class="sgate_button" onclick="init()">Binder WS Fail</button>
     <button id="afb_ping"  class="sgate_button" onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
     <br>
     <div id="sgate_div" class="sgate_box">
         <div id=sgate_error class="sgate_error"></div>
         <br>
-        <form id="sgate_form" action="JavaScript:passwordUser()">
+        <form id="sgate_form" action="JavaScript:passwordUser('pam');">
             <label class="sgate_label" for="login">login  :</label>
             <input class="sgate_input" type="text" id="login" name="login" required><br><br>
 
