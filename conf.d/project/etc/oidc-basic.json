@@ -53,7 +53,7 @@
                 "uri": "ldap://ldap.ovh.iot",
                 "login": "uid=%login%,ou=People,dc=vannes,dc=iot",
                 "groups": "ou=groups,dc=vannes,dc=iot?dn?sub?(memberUid=%login%)",
-                "people": "ou=people,dc=vannes,dc=iot??uid,gecos,mail?sub?(cn=%login%))"
+                "people": "ou=people,dc=vannes,dc=iot?uid,gecos,mail?sub?(cn=%login%)"
             },
             "wellknown": {
                 "loginTokenUrl": "/sgate/ldap/login.html"

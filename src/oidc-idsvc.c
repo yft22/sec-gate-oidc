@@ -164,7 +164,6 @@ idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], a
 
     afb_create_data_raw (reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void *) json_object_put, responseJ);
     afb_req_reply (wreq, 0, 1, reply);
-
     return;
 
   OnErrorExit:
@@ -202,8 +201,7 @@ static void idpQueryUser (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
 }
 
 // get result from /fedid/create-user
-static void
-userRegisterCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
+static void userRegisterCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
 {
     char *errorMsg = "[user-create-fail]  (idsvcuserRegisterCB)";
     afb_data_t reply[1], argd[2];
@@ -231,8 +229,7 @@ userRegisterCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], a
 }
 
 // Try to store fedsocial and feduser into local store
-static void
-userRegister (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
+static void userRegister (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     char *errorMsg = "[user-register-fail] invalid session/wreq";
     afb_event_t evtCookie = NULL;
@@ -272,35 +269,23 @@ userRegister (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
     if (argc == 1 && argd[0]) afb_data_array_unref (argc, argd);
 }
 
-// backup social data for further federation social linking
-static void
-userFederate (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
+static void userFederateCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
 {
-    char *errorMsg = "[user-federation-fail] invalid session/wreq";
-    afb_event_t evtCookie = NULL;
-    const oidcProfilsT *profil = NULL;
-    const fedSocialRawT *fedSocial;
+    static char errorMsg[] = "[user-federate-unavailable] should try user-register (userFederateCB)";
+    fedUserRawT *fedUser= (fedUserRawT*)ctx;
     fedidLinkT *fedBackup;
+    afb_data_t reply[1];
+    oidcProfilsT *profil = NULL;
+    oidcAliasT *alias = NULL;
     json_object *responseJ;
     int err;
 
-    if (argc != 1) goto OnErrorExit;
-
-    // retreive user registration form value from input argument
-    afb_data_t reply[1], argd[2];
-    const afb_type_t argt[] = { fedUserObjType, FEDID_TRAILLER };
-    err = afb_data_array_convert (argc, argv, argt, argd);
-    if (err < 0) goto OnErrorExit;
-    fedUserRawT *fedUser= afb_data_ro_pointer(argd[0]);
+    if (status < 0 || status == FEDID_ATTR_FREE) goto OnErrorExit;
 
     // get used IDP profil to access oidc wellknown urls
     afb_session *session = afb_req_v4_get_common (wreq)->session;
     afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profil);
     if (!profil) goto OnErrorExit;
-
-    // get current social data for further account linking
-    afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
-    if (!fedSocial) goto OnErrorExit;
 
     // copy current user social and registration data for further federation request
     fedBackup= malloc (sizeof(fedSocialRawT));
@@ -310,13 +295,42 @@ userFederate (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 
     // force federation mode within fedidCheckCB
     afb_session_set_loa (session, oidcFedSocialCookie, FEDID_LINK_REQUESTED);
-    
     err = wrap_json_pack (&responseJ, "{ss}", "target", profil->idp->oidc->globals->fedlinkUrl);
     if (err) goto OnErrorExit;
 
     afb_create_data_raw (reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void *) json_object_put, responseJ);
     afb_req_reply (wreq, 0, 1, reply);
 
+    return;
+
+  OnErrorExit:
+    afb_create_data_raw (&reply[0], AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, sizeof(errorMsg), NULL, NULL);
+    afb_req_reply (wreq, -1, 1, reply);
+    return;
+}
+
+// backup social data for further federation social linking
+static void userFederate (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
+{
+    char *errorMsg = "[user-federate-fail] invalid/missing query arguments";
+    afb_event_t evtCookie = NULL;
+    const oidcProfilsT *profil = NULL;
+    const fedSocialRawT *fedSocial;
+    json_object *responseJ;
+    int err;
+
+    if (argc != 1) goto OnErrorExit;
+
+    // retreive user registration form value from input argument
+    afb_data_t query, reply[1], argd[2];
+    const afb_type_t argt[] = { fedUserObjType, FEDID_TRAILLER };
+    err = afb_data_array_convert (argc, argv, argt, argd);
+    if (err < 0) goto OnErrorExit;
+    fedUserRawT *fedUser= afb_data_ro_pointer(argd[0]);
+
+    // check if pseudo/email already present within user federation db
+    afb_create_data_raw (&query, fedUserObjType, fedUser, 0, NULL, NULL);
+    afb_req_subcall (wreq, API_OIDC_USR_SVC, "user-exist", 1, &query, afb_req_subcall_on_behalf, userFederateCB, fedUser);
     return;
 
   OnErrorExit:

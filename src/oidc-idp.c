@@ -54,7 +54,7 @@ void idpRqtCtxFree (idpRqtCtxT * rqtCtx)
     rqtCtx->ucount--;
 
     if (rqtCtx->ucount < 0) {
-        free (rqtCtx->token);
+        if (rqtCtx->token) free (rqtCtx->token);
         free (rqtCtx);
     }
 }

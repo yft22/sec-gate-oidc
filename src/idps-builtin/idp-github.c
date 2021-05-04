@@ -167,6 +167,7 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
     fedSocialRawT *fedSocial = calloc (1, sizeof (fedSocialRawT));
     fedSocial->fedkey = strdup (json_object_get_string (json_object_object_get (profilJ, "id")));
     fedSocial->idp = strdup (idp->uid);
+    rqtCtx->fedSocial= fedSocial;
 
     fedUserRawT *fedUser = calloc (1, sizeof (fedUserRawT));
     fedUser->pseudo = json_object_dup_key_value (profilJ, "login");
@@ -187,16 +188,15 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
             githubGetAttrsByToken (rqtCtx, organizationsUrl);
         }
     }
-    free (rqtCtx->token);
     idpRqtCtxFree (rqtCtx);
-
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
     EXT_CRITICAL ("[github-fail-user-profil] Fail to get user profil from github status=%ld body='%s'", httpRqt->status, httpRqt->body);
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
-    free (rqtCtx->token);
-    free (rqtCtx);
+    idpRqtCtxFree(rqtCtx);
+    fedSocialFreeCB(fedSocial);
+    fedUserFreeCB(fedUser);
     return HTTP_HANDLE_FREE;
 }
 

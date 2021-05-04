@@ -39,13 +39,12 @@ char *utilsExpandJson (const char* src, json_object *keysJ) {
     json_object *labelJ;
     char separator = -1;
 
-    if (!keysJ) return (src);
-    if (!src) goto OnErrorExit;
+    if (!keysJ || !src) goto OnErrorExit;
 
     for (srcIdx=0; src[srcIdx]; srcIdx++) {
 
         // replace "%%" by '%'
-        if (src[srcIdx] == '%' || src[srcIdx] == '?') {
+        if (src[srcIdx] == '%') {
             separator= src[srcIdx];
             if (src[srcIdx+1] == separator) {
                 dst[destIdx++]= src[srcIdx];
@@ -88,7 +87,7 @@ char *utilsExpandJson (const char* src, json_object *keysJ) {
 
     // when expanded make a copy of dst into params
     if (!expanded) {
-        response=src;
+        response=strdup(src);
     } else {
         // fprintf (stderr, "utilsExpandJson: '%s' => '%s'\n", src, dst);
         response= strdup(dst);

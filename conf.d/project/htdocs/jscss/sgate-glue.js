@@ -251,6 +251,10 @@ function sgateSubmit(action) {
         var value= form[idx].value;
         if (value) {
             query[uid]=value;
+            document.getElementById(uid).style.className = "sgate_input sgate_on";
+        } else {
+            query[uid]="";
+            document.getElementById(uid).style.className = "sgate_input sgate_off";
         }
     }
 

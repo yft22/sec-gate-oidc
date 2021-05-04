@@ -113,18 +113,31 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
 
   	// token not json
     static const char token[]=  "DN: ";
-    fedSocial->attrs = calloc (ldapOpts.gidsMax+2, sizeof (char *));
+    fedSocial->attrs = calloc (ldapOpts.gidsMax+1, sizeof (char *));
 	char *ptr = strtok(httpRqt->body, token);
-	for (int index=0; ptr != NULL; index++)	{
-        char *group=NULL, *dummy=NULL;
-		sscanf(ptr, "cn=%s,%s", group, dummy);
-        fedSocial->attrs[index] = strdup(group);
-		ptr = strtok(NULL, token);
-        if (index == ldapOpts.gidsMax) {
-            EXT_ERROR ("[ldap-fail-groups] ldap->maxgids=%d too small (remaining groups ignored)", ldapOpts.gidsMax);
-            fedSocial->attrs[index+1]=NULL;
-            break;
+	for (int idx=0; ptr != NULL; idx++)	{      
+        static char cnString[]= "cn=";
+        static int  cnLen=sizeof(cnString)-1;
+        char *value= strcasestr (ptr, cnString);
+        if (value) {
+
+            // groups over gidsMax are ignored
+            if (idx == ldapOpts.gidsMax) {
+                EXT_ERROR ("[ldap-fail-groups] ldap->maxgids=%d too small (remaining groups ignored)", ldapOpts.gidsMax);
+                fedSocial->attrs[idx]=NULL;
+                break;
+            }
+
+            // extract groupname from LDIF cn=fulup,ou=Groups,dc=vannes,dc=iot\n
+            for (int jdx=cnLen; value[jdx]; jdx++) {
+                if (value[jdx] == ',' || value[jdx] == '\n') {
+                    fedSocial->attrs[idx]= strndup(&value[cnLen], jdx-cnLen);
+                    break;
+                }
+            }
         }
+        // move to next cn= (next group)
+        ptr = strtok(NULL, token);
 	}
 
     return HTTP_HANDLE_FREE;
@@ -175,16 +188,17 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     fedUserRawT *fedUser = calloc (1, sizeof (fedUserRawT));
     fedSocialRawT *fedSocial = calloc (1, sizeof (fedSocialRawT));
     fedSocial->idp = strdup (idp->uid);
+    rqtCtx->fedSocial= fedSocial;
 
     // something when wrong
     if (httpRqt->status < 0) goto OnErrorExit;
 
     // search for "DN:"
     static char dnString[]= "DN:";
-    start=sizeof(dnString)-1;
+    start=sizeof(dnString);
     value= strcasestr (&httpRqt->body[0], dnString);
     if (!value) goto OnErrorExit;
-    for (int idx=start; value[idx]; idx++) {
+    for (int idx=0; value[idx]; idx++) {
         if (value[idx] == '\n') {
             value[idx]='\0';
             fedSocial->fedkey = strdup (&httpRqt->body[start]);
@@ -197,10 +211,9 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     static char uidString[]= "uid:";
     value= strcasestr (&httpRqt->body[start], uidString);
     if (value) {
-        for (int idx=start; value[idx+sizeof(uidString)-1]; idx++) {
+        for (int idx=sizeof(uidString); value[idx]; idx++) {
             if (value[idx] == '\n') {
-                value[idx]='\0';
-                fedUser->pseudo= strdup(&value[sizeof(uidString)-1]);
+                fedUser->pseudo= strndup(&value[sizeof(uidString)], idx-sizeof(uidString));
                 break;
             }
         }
@@ -210,10 +223,9 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     static char gecosString[]= "gecos:";
     value= strcasestr (&httpRqt->body[start], gecosString);
     if (value) {
-        for (int idx=start; value[idx+sizeof(gecosString)-1]; idx++) {
+        for (int idx=sizeof(gecosString); value[idx]; idx++) {
             if (value[idx] == '\n') {
-                value[idx]='\0';
-                fedUser->name= strdup(&value[sizeof(gecosString)-1]);
+                fedUser->name= strndup(&value[sizeof(gecosString)], idx-sizeof(gecosString));
                 break;
             }
         }
@@ -223,10 +235,9 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     static char mailString[]= "mail:";
     value= strcasestr (&httpRqt->body[start], mailString);
     if (value) {
-        for (int idx=start; value[idx+sizeof(mailString)-1]; idx++) {
+        for (int idx=+sizeof(mailString); value[idx]; idx++) {
             if (value[idx] == '\n') {
-                value[idx]='\0';
-                fedUser->email= strdup(&value[sizeof(mailString)-1]);
+                fedUser->email= strndup(&value[sizeof(mailString)], idx-sizeof(mailString));
                 break;
             }
         }
@@ -240,8 +251,6 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     if (ldapOpts.groups) ldapAccessAttrs(rqtCtx);
 
     // free request handle
-    if (rqtCtx->userdn) free(rqtCtx->userdn);
-    if (rqtCtx->loginJ) json_object_put(rqtCtx->loginJ);
     ldapRqtCtxFree (rqtCtx);
     return HTTP_HANDLE_FREE;
 
