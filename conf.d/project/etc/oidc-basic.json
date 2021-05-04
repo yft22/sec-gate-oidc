@@ -87,7 +87,7 @@
       "apis": [
         {"uid": "fedid","info":"embedded social federated user identity svc","loa":0,"uri":"@fedid"},
         {"uid": "test1","lazy":1},
-        {"uid": "test2","uri":"unix:@test2", "loa":1, "role": ["user"], "lazy":1},
+        {"uid": "test2","uri":"unix:@test2", "loa":1, "requirer": ["user"], "lazy":1},
         {"uid": "test3","uri":"tcp:localhost:1235/test3", "loa":2, "requirer": ["user","admin"], "lazy":1}
       ],
       "alias": [

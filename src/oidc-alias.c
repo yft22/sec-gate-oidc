@@ -176,7 +176,7 @@ aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
 
                 // if current profil LOA is enough then fire same idp/profil authen
                 err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void *) &idpProfil);
-                if (!err && (idpProfil->loa >= alias->loa || idpProfil->loa == abs (idpProfil->loa))) {
+                if (!err && (idpProfil->loa >= alias->loa || idpProfil->loa == abs (alias->loa))) {
                     aliasRedirectTimeout (hreq, alias);
                 } else {
                     aliasRedirectLogin (hreq, alias);

@@ -51,8 +51,7 @@ static void fedBackupFreeCB (void* ctx) {
     free (backup);
 }
 
-static void
-idsvcPing (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
+static void idsvcPing (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     static int count = 0;
     char *response;
@@ -68,8 +67,7 @@ idsvcPing (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 }
 
 // get result from /fedid/create-user
-static void
-userCheckAttrCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
+static void userCheckAttrCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
 {
     static char errorMsg[] = "[user-attr-fail]  (userCheckAttrCB)";
     static char existMsg[] = "locked";
@@ -120,8 +118,7 @@ userCheckAttr (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 }
 
 // get result from /fedid/create-user
-static void
-idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
+static void idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
 {
     char *errorMsg = "[user-link-fail] internal error (idpQueryUserCB)";
     fedSocialRawT *fedSocial = NULL, *fedToLink;
@@ -150,14 +147,9 @@ idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], a
     afb_session_cookie_get (session, oidcAliasCookie, (void **) &alias);
 
     // build IDP list with corresponding scope for requested LOA
-    if (alias) {
-        idpsJ = idpLoaProfilsGet (oidc, alias->loa, idps);
-        wrap_json_pack (&aliasJ, "{ss ss* ss si}", "uid", alias->uid, "info", alias->info, "url", alias->url, "loa", alias->loa);
-
-    } else {
-        idpsJ = idpLoaProfilsGet (oidc, 0, idps);
-        aliasJ = NULL;
-    }
+    idpsJ = idpLoaProfilsGet (oidc, 0, idps);
+    if (alias) wrap_json_pack (&aliasJ, "{ss ss* ss si}", "uid", alias->uid, "info", alias->info, "url", alias->url, "loa", alias->loa);
+    else  aliasJ = NULL;
 
     err = wrap_json_pack (&responseJ, "{so so*}", "idps", idpsJ, "alias", aliasJ);
     if (err) goto OnErrorExit;
@@ -254,11 +246,10 @@ static void userRegister (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
     afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
     if (!fedSocial) goto OnErrorExit;
 
-    // user is new let's register it within fedid DB
-    err = afb_create_data_raw (&argd[1], fedSocialObjType, fedSocial, 0, fedSocialFreeCB, (void *) fedSocial);
+    // user is new let's register it within fedid DB (do not free fedSocial after call)
+    err = afb_create_data_raw (&argd[1], fedSocialObjType, fedSocial, 0, NULL, NULL);
     if (err < 0) goto OnErrorExit;
 
-    afb_data_array_addref(argc, argv);
     afb_req_subcall (wreq, API_OIDC_USR_SVC, "user-create", 2, argd, afb_req_subcall_on_behalf, userRegisterCB, NULL);
     return;
 
@@ -351,8 +342,7 @@ sessionReset (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 }
 
 // Return all information we have on current session (profil, loa, idp, ...)
-static void
-sessionGet (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
+static void sessionGet (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     char *errorMsg = "[fail-session-get] no session running anonymous mode";
     afb_data_t reply[3];
@@ -371,7 +361,7 @@ sessionGet (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 
     afb_session_cookie_get (session, oidcFedUserCookie, (void **) &fedUser);
     afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
-    afb_create_data_raw (&reply[0], fedUserObjType, fedUser, 0, fedUserFreeCB, fedUser);
+    afb_create_data_raw (&reply[0], fedUserObjType, fedUser, 0, NULL, NULL);
     afb_create_data_raw (&reply[1], fedSocialObjType, fedSocial, 0, NULL, NULL);        // keep feduser
     afb_create_data_raw (&reply[2], AFB_PREDEFINED_TYPE_JSON_C, profilJ, 0, (void *) json_object_put, profilJ);
 
@@ -386,8 +376,7 @@ sessionGet (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 
 
 // if not already done create and register a session event
-static void
-subscribeEvent (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
+static void subscribeEvent (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     const char *errorMsg = "[fail-event-create] hoops internal error (idsvcSubscribe)";
     int err;
@@ -417,8 +406,7 @@ subscribeEvent (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 }
 
 // Push a json object event to html5 application
-int
-idscvPushEvent (afb_hreq * hreq, json_object * eventJ)
+int idscvPushEvent (afb_hreq * hreq, json_object * eventJ)
 {
     int count;
     afb_event_t evtCookie = NULL;
@@ -446,8 +434,7 @@ idscvPushEvent (afb_hreq * hreq, json_object * eventJ)
 
 
 // return the list of autorities matching requested LOA
-static void
-idpQueryConf (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
+static void idpQueryConf (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     static const char unauthorizedMsg[] = "[unauthorized-api-call] authenticate to upgrade session/loa (idpQueryConf)";
     int err;
@@ -488,8 +475,7 @@ idpQueryConf (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 }
 
 // return the list of autorities matching requested LOA
-static void
-urlQuery (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
+static void urlQuery (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     static const char unauthorizedMsg[] = "[unauthorized-api-call] authenticate to upgrade session/loa (urlQuery)";
     int err;
@@ -537,8 +523,7 @@ static afb_verb_t idsvcVerbs[] = {
     {NULL}                      // terminator
 };
 
-int
-idsvcDeclare (oidcCoreHdlT * oidc, afb_apiset * declare_set, afb_apiset * call_set)
+int idsvcDeclare (oidcCoreHdlT * oidc, afb_apiset * declare_set, afb_apiset * call_set)
 {
     int err;
 

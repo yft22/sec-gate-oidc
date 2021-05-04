@@ -60,8 +60,7 @@ fedidsessionReset (int signal, void *ctx)
 }
 
 // if fedkey exists callback receive local store user profil otherwise we should create it
-static void
-fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], struct afb_api_v4 *api)
+static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], struct afb_api_v4 *api)
 {
     char *errorMsg = "[invalid-profil] Fail to process user profile (fedidCheckCB)";
     oidcFedidHdlT *userRqt = (oidcFedidHdlT *) ctx;
@@ -96,7 +95,7 @@ fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], 
         goto OnErrorExit;
     }
 
-    if (argc != 1) {            // feduser was not created
+    if (argc != 1) {  // feduser was not created
 
         // fedkey not fount let's store social authority profil into session and redirect user on userprofil creation
         afb_session_cookie_set (session, oidcFedUserCookie, userRqt->fedUser, fedUserFreeCB, userRqt->fedUser);
@@ -117,7 +116,7 @@ fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], 
         } else {
             target = userRqt->idp->oidc->globals->registerUrl;
         }
-    } else {                    // feduser is avaliable
+    } else {     // feduser is avaliable
 
         err = afb_data_convert (argv[0], fedUserObjType, &argd[0]);
         if (err < 0) goto OnErrorExit;
@@ -221,8 +220,7 @@ fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], 
 }
 
 // try to wreq user profile from its federation key
-int
-fedidCheck (oidcIdpT * idp, fedSocialRawT * fedSocial, fedUserRawT * fedUser, struct afb_req_v4 *wreq, afb_hreq * hreq)
+int fedidCheck (oidcIdpT * idp, fedSocialRawT * fedSocial, fedUserRawT * fedUser, struct afb_req_v4 *wreq, afb_hreq * hreq)
 {
     int err;
     afb_data_x4_t params[1];

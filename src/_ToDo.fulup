@@ -1,13 +1,4 @@
-0)
-   alligner request CB github avec ldap
-
-1) Finir le link de 2 idp accounts
-
-    - Tester que user-link retourne bien la list des idps du user
-    - Ajouter la fonction pour linked 2 account en base dans fedid-binding
-    - Stoker le fedid courant avant de lancer le link d'idp
-    - Au retour de l'autentification réussi sur le 2eme IDP lancer la fédération.
-    - Revalider l'IDP qui était présent avant le link d'account
+0) implementer IDP google
 
 3) Créer un binding d'admin de la feddb:
 
