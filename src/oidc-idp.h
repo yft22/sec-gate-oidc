@@ -38,6 +38,7 @@ typedef struct {
 } oidcWellknownT;
 
 typedef struct {
+    int timeout; // connection timeout to authority in seconds
     const char *clientId;
     const char *secret;
 } oidcCredentialsT;
@@ -83,6 +84,20 @@ typedef struct {
     const httpKeyValT *headers;
 } oidcDefaultsT;
 
+
+// request handle store federation attribute during multiple IDP async calls
+typedef struct {
+    int ucount;
+    oidcIdpT *idp;
+    afb_hreq *hreq;
+    struct afb_req_v4 *wreq;
+    fedSocialRawT *fedSocial;   
+    fedUserRawT *fedUser; 
+    const oidcProfilsT *profil;
+    char *token;
+    void *userData;
+} idpRqtCtxT;
+
 // generic IDP utility callback
 typedef struct idpGenericCbS {
     const oidcMagicT magic;
@@ -91,7 +106,7 @@ typedef struct idpGenericCbS {
     const oidcWellknownT *(*parseWellknown) (oidcIdpT * idp, json_object * wellknownJ, const oidcWellknownT * defaults);
     const httpKeyValT *(*parseHeaders) (oidcIdpT * idp, json_object * headersJ, const httpKeyValT * defaults);
     int (*parseConfig) (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * defaults, void *ctx);
-    int (*fedidCheck) (oidcIdpT * idp, fedSocialRawT * fedSocial, fedUserRawT * fedUser, struct afb_req_v4 * request, afb_hreq * hreq);
+    int (*fedidCheck) (idpRqtCtxT *idpRqtCtx);
     int (*pluginRegister) (const char *pluginUid, idpPluginT * pluginCbs);
 } idpGenericCbT;
 
@@ -106,15 +121,6 @@ typedef struct idpPluginS {
 } idpPluginT;
 
 
-// request handle
-typedef struct {
-    int ucount;
-    afb_hreq *hreq;
-    oidcIdpT *idp;
-    char *token;
-    fedSocialRawT *fedSocial;   // store fed idp security attributes
-    const oidcProfilsT *profil; // track requested scope
-} idpRqtCtxT;
 
 // idp callback definition
 typedef int (*oidcPluginInitCbT) (oidcCoreHdlT * oidc, idpGenericCbT * idpGenericCb);

@@ -206,9 +206,15 @@ checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct afb_data *cons
     // do no check federation when only login
     if (fedUser) {
         afb_req_addref (wreq);
-        err = idpCallbacks->fedidCheck (idp, fedSocial, fedUser, wreq, NULL);
+        idpRqtCtxT *idpRqtCtx= calloc (1,sizeof(idpRqtCtxT));
+        idpRqtCtx->idp = idp;
+        idpRqtCtx->fedSocial= fedSocial;
+        idpRqtCtx->fedUser= fedUser;
+        idpRqtCtx->wreq= wreq;
+        err = idpCallbacks->fedidCheck (idpRqtCtx);
         if (err) {
             afb_req_unref (wreq);
+            idpRqtCtxFree(idpRqtCtx);
             goto OnErrorExit;
         }
     } else {
@@ -300,8 +306,16 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
         if (err) goto OnErrorExit;
 
         // check if federated id is already present or not
-        err = idpCallbacks->fedidCheck (idp, fedSocial, fedUser, NULL, hreq);
-        if (err) goto OnErrorExit;
+        idpRqtCtxT *idpRqtCtx= calloc (1,sizeof(idpRqtCtxT));
+        idpRqtCtx->idp = idp;
+        idpRqtCtx->fedSocial= fedSocial;
+        idpRqtCtx->fedUser= fedUser;
+        idpRqtCtx->hreq= hreq;
+        err = idpCallbacks->fedidCheck (idpRqtCtx);
+        if (err) {
+            idpRqtCtxFree(idpRqtCtx);
+            goto OnErrorExit;
+        }
     }
 
     return 1;   // we're done

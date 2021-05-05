@@ -63,7 +63,7 @@ fedidsessionReset (int signal, void *ctx)
 static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], struct afb_api_v4 *api)
 {
     char *errorMsg = "[invalid-profil] Fail to process user profile (fedidCheckCB)";
-    oidcFedidHdlT *userRqt = (oidcFedidHdlT *) ctx;
+    idpRqtCtxT *idpRqtCtx = (idpRqtCtxT *) ctx;
     char url[EXT_URL_MAX_LEN];
     const char *target;
     afb_data_x4_t reply[1], argd[argc];
@@ -80,13 +80,13 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
     if (status < 0) goto OnErrorExit;
 
     // session is in hreq for REST and in comreq for wbesocket
-    if (userRqt->hreq) {
-        hreq = userRqt->hreq;
-        session = userRqt->hreq->comreq.session;
+    if (idpRqtCtx->hreq) {
+        hreq = idpRqtCtx->hreq;
+        session = idpRqtCtx->hreq->comreq.session;
     }
 
-    if (userRqt->wreq) {
-        wreq = userRqt->wreq;
+    if (idpRqtCtx->wreq) {
+        wreq = idpRqtCtx->wreq;
         session = afb_req_v4_get_common (wreq)->session;
     }
 
@@ -98,8 +98,8 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
     if (argc != 1) {  // feduser was not created
 
         // fedkey not fount let's store social authority profil into session and redirect user on userprofil creation
-        afb_session_cookie_set (session, oidcFedUserCookie, userRqt->fedUser, fedUserFreeCB, userRqt->fedUser);
-        afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, fedSocialFreeCB, userRqt->fedSocial);
+        afb_session_cookie_set (session, oidcFedUserCookie, idpRqtCtx->fedUser, fedUserFreeCB, idpRqtCtx->fedUser);
+        afb_session_cookie_set (session, oidcFedSocialCookie, idpRqtCtx->fedSocial, fedSocialFreeCB, idpRqtCtx->fedSocial);
         afb_session_set_loa (session, oidcSessionCookie, 0);    // user not register reset session loa
 
         httpKeyValT query[] = {
@@ -108,13 +108,13 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
         };
 
         if (hreq) {
-            err = httpBuildQuery (userRqt->idp->uid, url, sizeof (url), NULL /* prefix */ , userRqt->idp->oidc->globals->registerUrl, query);
+            err = httpBuildQuery (idpRqtCtx->idp->uid, url, sizeof (url), NULL /* prefix */ , idpRqtCtx->idp->oidc->globals->registerUrl, query);
             if (err) {
                 EXT_ERROR ("[fedid-register-unknown] fail to build redirect url");
                 goto OnErrorExit;
             }
         } else {
-            target = userRqt->idp->oidc->globals->registerUrl;
+            target = idpRqtCtx->idp->oidc->globals->registerUrl;
         }
     } else {     // feduser is avaliable
 
@@ -151,13 +151,13 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
 
         // let's store user profil into session cookie (/oidc/profil/get serves it)
         afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void *) afb_data_unref, argd[0]);
-        afb_session_cookie_set (session, oidcFedSocialCookie, userRqt->fedSocial, fedSocialFreeCB, userRqt->fedSocial);
+        afb_session_cookie_set (session, oidcFedSocialCookie, idpRqtCtx->fedSocial, fedSocialFreeCB, idpRqtCtx->fedSocial);
 
         // everyting looks good let's return user to original page
         afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfil);
         afb_session_cookie_get (session, oidcAliasCookie, (void **) &alias);
 
-        err = httpBuildQuery (userRqt->idp->uid, url, sizeof (url), NULL /* prefix */ , alias->url, NULL);
+        err = httpBuildQuery (idpRqtCtx->idp->uid, url, sizeof (url), NULL /* prefix */ , alias->url, NULL);
         if (err) {
             EXT_ERROR ("[fedid-register-exist] fail to build redirect url");
             goto OnErrorExit;
@@ -210,34 +210,27 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
         afb_req_v4_reply_hookable (wreq, status, 1, &reply);
     }
 
-    free (userRqt);
+    idpRqtCtxFree (idpRqtCtx);
     return;
 
   OnErrorExit:
     EXT_NOTICE ("[fedid-authent-redirect] (hoops!!!) internal error");
-    if (hreq) afb_hreq_redirect_to (hreq, userRqt->idp->oidc->globals->errorUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+    if (hreq) afb_hreq_redirect_to (hreq, idpRqtCtx->idp->oidc->globals->errorUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
     if (wreq) afb_req_v4_reply_hookable (wreq, -1, 0, NULL);
 }
 
 // try to wreq user profile from its federation key
-int fedidCheck (oidcIdpT * idp, fedSocialRawT * fedSocial, fedUserRawT * fedUser, struct afb_req_v4 *wreq, afb_hreq * hreq)
+int fedidCheck (idpRqtCtxT *idpRqtCtx)
 {
     int err;
     afb_data_x4_t params[1];
 
-    oidcFedidHdlT *userRqt = calloc (1, sizeof (oidcFedidHdlT));
-    userRqt->hreq = hreq;
-    userRqt->wreq = wreq;
-    userRqt->idp = idp;
-    userRqt->fedUser = fedUser;
-    userRqt->fedSocial = fedSocial;
-
     // fedSocial should remain valid after subcall for fedsocial cookie
-    err = afb_data_create_raw (&params[0], fedSocialObjType, fedSocial, 0, NULL, NULL);
+    err = afb_data_create_raw (&params[0], fedSocialObjType, idpRqtCtx->fedSocial, 0, NULL, NULL);
     if (err) goto OnErrorExit;
 
     afb_data_addref (params[0]);        // prevent params to be deleted
-    afb_api_v4_call_hookable (idp->oidc->apiv4, API_OIDC_USR_SVC, "social-check", 1, params, fedidCheckCB, userRqt);
+    afb_api_v4_call_hookable (idpRqtCtx->idp->oidc->apiv4, API_OIDC_USR_SVC, "social-check", 1, params, fedidCheckCB, idpRqtCtx);
     return 0;
 
   OnErrorExit:

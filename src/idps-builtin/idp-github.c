@@ -75,10 +75,11 @@ static const oidcStaticsT dfltstatics = {
     .sTimeout = 600
 };
 
-static const httpOptsT dfltOpts = {
+static httpOptsT dfltOpts = {
     .agent = HTTP_DFLT_AGENT,
     .headers = dfltHeaders,
     .follow = 1,
+    .timeout= 10, // default authentication timeout 
     // .verbose=1
 };
 
@@ -95,24 +96,28 @@ json_object_dup_key_value (json_object * objJ, const char *key)
 
 // call when IDP respond to user profil wreq
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
-static httpRqtActionT
-githubAttrsGetByTokenCB (httpRqtT * httpRqt)
+static httpRqtActionT githubAttrsGetByTokenCB (httpRqtT * httpRqt)
 {
-    fedSocialRawT *fedSocial= httpRqt->userData;
+    idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
+    int err;
 
     // something when wrong
-    if (httpRqt->status != 200)
-        goto OnErrorExit;
+    if (httpRqt->status != 200) goto OnErrorExit;
 
     // unwrap user profil
     json_object *orgsJ = json_tokener_parse (httpRqt->body);
     if (!orgsJ || !json_object_is_type (orgsJ, json_type_array)) goto OnErrorExit;
     size_t count = json_object_array_length (orgsJ);
-    fedSocial->attrs = calloc (count + 1, sizeof (char *));
+    rqtCtx->fedSocial->attrs = calloc (count + 1, sizeof (char *));
     for (int idx = 0; idx < count; idx++) {
         json_object *orgJ = json_object_array_get_idx (orgsJ, idx);
-        fedSocial->attrs[idx] = json_object_dup_key_value (orgJ, "login");
+        rqtCtx->fedSocial->attrs[idx] = json_object_dup_key_value (orgJ, "login");
     }
+
+    // we've got everything check federated user now
+    err = fedidCheck(rqtCtx);
+    if (err)  goto OnErrorExit;
+
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
@@ -128,21 +133,17 @@ githubGetAttrsByToken (idpRqtCtxT * rqtCtx, const char *orgApiUrl)
     oidcIdpT *idp = rqtCtx->idp;
     rqtCtx->ucount++;
 
-    snprintf (tokenVal, sizeof (tokenVal), "token %s", rqtCtx->token);
+    snprintf (tokenVal, sizeof(tokenVal), "token %s", rqtCtx->token);
     httpKeyValT authToken[] = {
         {.tag = "Authorization",.value = tokenVal},
         {NULL} // terminator
     };
 
     // asynchronous wreq to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
-    EXT_DEBUG ("[github-api-get] curl -H 'Authorization: %s' %s\n", rqtCtx->token, orgApiUrl);
-    int err = httpSendGet (idp->oidc->httpPool, orgApiUrl, &dfltOpts, authToken, githubAttrsGetByTokenCB, rqtCtx->fedSocial);
-    if (err)
-        goto OnErrorExit;
+    EXT_DEBUG ("[github-attrs-get] curl -H 'Authorization: %s' %s\n", tokenVal, orgApiUrl);
+    int err = httpSendGet (idp->oidc->httpPool, orgApiUrl, &dfltOpts, authToken, githubAttrsGetByTokenCB, rqtCtx);
+    if (err) EXT_ERROR ("[github-attrs-fail] curl -H 'Authorization: %s' %s\n", tokenVal, orgApiUrl);
     return;
-
-  OnErrorExit:
-    afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
 }
 
 // call when IDP respond to user profil wreq
@@ -175,20 +176,19 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
     fedUser->name = json_object_dup_key_value (profilJ, "name");
     fedUser->company = json_object_dup_key_value (profilJ, "company");
     fedUser->email = json_object_dup_key_value (profilJ, "email");
-
-    // check federation now groups are handle asynchronously
-    err = fedidCheck (idp, fedSocial, fedUser, NULL, rqtCtx->hreq);
-    if (err)  goto OnErrorExit;
+    rqtCtx->fedUser= fedUser;
 
     // user is ok, let's map user organisation onto security attributes
     if (rqtCtx->profil->label) {
         const char *organizationsUrl = json_object_get_string (json_object_object_get (profilJ, rqtCtx->profil->label));
         if (organizationsUrl) {
-            rqtCtx->fedSocial = fedSocial;
             githubGetAttrsByToken (rqtCtx, organizationsUrl);
         }
+    } else {
+        // no organisation attributes we've got everything check federated user now
+        err = fedidCheck(rqtCtx);
+        if (err)  goto OnErrorExit;
     }
-    idpRqtCtxFree (rqtCtx);
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
@@ -215,7 +215,7 @@ githubUserGetByToken (idpRqtCtxT * rqtCtx)
     };
 
     // asynchronous wreq to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
-    EXT_DEBUG ("[github-api-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->identityApiUrl);
+    EXT_DEBUG ("[github-profil-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->identityApiUrl);
     int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->identityApiUrl,
                            &dfltOpts, authToken, githubUserGetByTokenCB,
                            rqtCtx);
@@ -405,8 +405,11 @@ githubConfigCB (oidcIdpT * idp, json_object * configJ)
         .headers = dfltHeaders,
     };
     int err = idpParseOidcConfig (idp, configJ, &defaults, NULL);
-    if (err)
-        goto OnErrorExit;
+    if (err) goto OnErrorExit;
+
+    // if timeout defined 
+    if (idp->credentials->timeout) dfltOpts.timeout= idp->credentials->timeout;
+
     return 0;
 
   OnErrorExit:

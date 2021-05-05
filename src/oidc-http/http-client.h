@@ -45,7 +45,7 @@ typedef struct
     const char *username;
     const char *password;
     const char *bearer;
-    const long timeout;
+    long timeout;
     const long sslchk;
     const long verbose;
     const long maxsz;

@@ -171,6 +171,9 @@ function getSession() {
 
 function sgateCheckAttr(label) {
 
+    this.count;
+    if (this.count === undefined) this.count=0;
+
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
@@ -191,15 +194,14 @@ function sgateCheckAttr(label) {
     .then(function (res) {
         log.reply(res);
         var register= document.getElementById ("sgate_register");
-        var federate= document.getElementById ("sgate_federate");
         if (res.response === "locked") {
             // ok for register account
-            register.className = "sgate_button sgate_off";
-            federate.className = "sgate_button sgate_on";
+            register.value = "Federate";
+            this.count ++;
         } else {
             // ok for register federate
-            register.className = "sgate_button sgate_on";
-            federate.className = "sgate_button sgate_off";
+            this.count --;
+            if (this.count === 0) register.value = "Register";
         }
     })
     .catch(function (err) {
@@ -213,35 +215,39 @@ function sgateCheckAttr(label) {
     });
 }
 
-function sgateSubmit(action) {
+function sgateCancel() {
+    var api="sgate";
+    var query={};
+
+    verb="session-reset";
+    log.command(api, verb, query);   
+    ws.call(api + "/" + verb, query)
+    .then(function (res) {
+        log.reply(res);
+        // redirect to requested URL
+        window.location.replace(res.response.login);
+
+    })
+    .catch(function (err) {
+        window.location.replace("/")
+    });
+}
+
+function sgateSubmit() {
     var api="sgate";
     var verb="none";
     var query={};
 
-    // close session and return to home page
-    if (action == "cancel") {
-        callbinder(api,'session-reset' ,{});
-
-        verb="url-query-conf";
-        log.command(api, verb, query);   
-        ws.call(api + "/" + verb, query)
-        .then(function (res) {
-            log.reply(res);
-            // redirect to requested URL
-            window.location.replace(res.response.home);
-    
-        })
-        .catch(function (err) {
-            window.location.replace("/sgate/common/error.html")
-        });
-        return;
-    }
-
-     
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
         window.alert("registerUser() requirer <form id='sgate_form'> in page");
+        return; 
+    }
+
+    var register= document.getElementById ("sgate_register");
+    if (register === null) {
+        window.alert("registerUser() requirer <button id='sgate_register'> in page");
         return; 
     }
 
@@ -258,13 +264,8 @@ function sgateSubmit(action) {
         }
     }
 
-    if (action == "federate") {
-        verb="usr-federate";
-    }
-
-    if (action === "register") {
-        verb="usr-register";
-    }
+    if (register.value == "Federate") verb="usr-federate";
+    if (register.value === "Register") verb="usr-register";
 
     log.command(api, verb, query);   
     ws.call(api + "/" + verb, query)

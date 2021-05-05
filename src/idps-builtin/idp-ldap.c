@@ -45,10 +45,6 @@ typedef struct {
    char *login;
    char *passwd;
    char *userdn;
-   oidcIdpT * idp;
-   afb_hreq * hreq;
-   struct afb_req_v4 *wreq; 
-   fedSocialRawT *fedSocial;
    httpPoolT *httpPool;
    json_object *loginJ;
 } ldapRqtCtxT;
@@ -59,6 +55,7 @@ static const httpKeyValT noHeaders = { };
 
 typedef struct {
     int gidsMax;
+    int timeout;
     const char *avatarAlias;
     const char *login;
     const char *uri;
@@ -69,6 +66,7 @@ typedef struct {
 // dflt_xxxx config.json default options
 static ldapOptsT ldapOpts = {
     .gidsMax = 16,
+    .timeout=5, // 5s default timeout
     .avatarAlias = "/sgate/ldap/avatar-dflt.png",
     .groups=NULL,
     .login=NULL,
@@ -91,16 +89,18 @@ static const oidcWellknownT dfltWellknown = {
     .accessTokenUrl = NULL,
 };
 
-static void ldapRqtCtxFree (ldapRqtCtxT *rqtCtx) {
-    if (rqtCtx->login) free (rqtCtx->login);
-    if (rqtCtx->passwd) free (rqtCtx->passwd);
-    if (rqtCtx->userdn) free(rqtCtx->userdn);
-    if (rqtCtx->loginJ) json_object_put(rqtCtx->loginJ); 
+static void ldapRqtCtxFree (ldapRqtCtxT *ldapRqtCtx) {
+    if (ldapRqtCtx->login) free (ldapRqtCtx->login);
+    if (ldapRqtCtx->passwd) free (ldapRqtCtx->passwd);
+    if (ldapRqtCtx->userdn) free(ldapRqtCtx->userdn);
+    if (ldapRqtCtx->loginJ) json_object_put(ldapRqtCtx->loginJ); 
 }
 
 static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
 {
-    fedSocialRawT *fedSocial= httpRqt->userData;
+    idpRqtCtxT *idpRqtCtx= (idpRqtCtxT*)httpRqt->userData;
+    ldapRqtCtxT *ldapRqtCtx = (ldapRqtCtxT *) idpRqtCtx->userData;
+    int err;
 
     // something when wrong
     if (httpRqt->status < 0) goto OnErrorExit;
@@ -113,7 +113,7 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
 
   	// token not json
     static const char token[]=  "DN: ";
-    fedSocial->attrs = calloc (ldapOpts.gidsMax+1, sizeof (char *));
+    idpRqtCtx->fedSocial->attrs = calloc (ldapOpts.gidsMax+1, sizeof (char *));
 	char *ptr = strtok(httpRqt->body, token);
 	for (int idx=0; ptr != NULL; idx++)	{      
         static char cnString[]= "cn=";
@@ -124,14 +124,14 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
             // groups over gidsMax are ignored
             if (idx == ldapOpts.gidsMax) {
                 EXT_ERROR ("[ldap-fail-groups] ldap->maxgids=%d too small (remaining groups ignored)", ldapOpts.gidsMax);
-                fedSocial->attrs[idx]=NULL;
+                idpRqtCtx->fedSocial->attrs[idx]=NULL;
                 break;
             }
 
             // extract groupname from LDIF cn=fulup,ou=Groups,dc=vannes,dc=iot\n
             for (int jdx=cnLen; value[jdx]; jdx++) {
                 if (value[jdx] == ',' || value[jdx] == '\n') {
-                    fedSocial->attrs[idx]= strndup(&value[cnLen], jdx-cnLen);
+                    idpRqtCtx->fedSocial->attrs[idx]= strndup(&value[cnLen], jdx-cnLen);
                     break;
                 }
             }
@@ -139,6 +139,13 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
         // move to next cn= (next group)
         ptr = strtok(NULL, token);
 	}
+
+    // query federation ldap groups are handle asynchronously
+    err = fedidCheck (idpRqtCtx);
+    if (err) goto OnErrorExit;
+
+    // we done idpRqtCtx is cleared by fedidCheck
+    ldapRqtCtxFree (ldapRqtCtx);
 
     return HTTP_HANDLE_FREE;
 
@@ -148,9 +155,10 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
 }
 
 // reference https://docs.ldap.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
-static void ldapAccessAttrs (ldapRqtCtxT * rqtCtx) {
+static void ldapAccessAttrs (idpRqtCtxT *idpRqtCtx) {
+    ldapRqtCtxT *ldapRqtCtx = (ldapRqtCtxT *) idpRqtCtx->userData;
 
-    const char *curlQuery= utilsExpandJson (ldapOpts.groups, rqtCtx->loginJ);
+    const char *curlQuery= utilsExpandJson (ldapOpts.groups, ldapRqtCtx->loginJ);
     if (!curlQuery) {
         EXT_CRITICAL ("[curl-query-fail] fail to build curl ldap groups query=%s missing '%%login%%'", ldapOpts.login);
         goto OnErrorExit;
@@ -158,19 +166,19 @@ static void ldapAccessAttrs (ldapRqtCtxT * rqtCtx) {
 
     // build curl ldap options structure
     httpOptsT curlOpts= {
-        .username= rqtCtx->userdn,
-        .password= rqtCtx->passwd,
+        .username= ldapRqtCtx->userdn,
+        .password= ldapRqtCtx->passwd,
     };
 
      // asynchronous wreq to LDAP to check passwd and retreive user groups
-    EXT_DEBUG ("[curl-ldap-auth] curl -u '%s::my_secret_passwd' '%s'\n", rqtCtx->userdn, curlQuery);
-    int err = httpSendGet (rqtCtx->httpPool, curlQuery, &curlOpts, NULL, ldapAccessAttrsCB, rqtCtx->fedSocial);
+    EXT_DEBUG ("[curl-ldap-attrs] curl -u '%s:my_secret_passwd' '%s'\n", ldapRqtCtx->userdn, curlQuery);
+    int err = httpSendGet (ldapRqtCtx->httpPool, curlQuery, &curlOpts, NULL, ldapAccessAttrsCB, idpRqtCtx);
     if (err) goto OnErrorExit;
 
     return;
 
   OnErrorExit:
-    EXT_ERROR ("[curl-ldap-error] curl -u '%s::my_secret_passwd' '%s'\n", rqtCtx->userdn, curlQuery);
+    EXT_ERROR ("[curl-ldap-error] curl -u '%s:my_secret_passwd' '%s'\n", ldapRqtCtx->userdn, curlQuery);
     return;
 }
 
@@ -178,17 +186,16 @@ static void ldapAccessAttrs (ldapRqtCtxT * rqtCtx) {
 static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
 {
     static char errorMsg[]= "[ldap-fail-user-profil] Fail to get user profil from ldap (login/passwd ?)";
-    ldapRqtCtxT *rqtCtx = (ldapRqtCtxT *) httpRqt->userData;
-    oidcIdpT *idp = rqtCtx->idp;
+    idpRqtCtxT *idpRqtCtx= (idpRqtCtxT*)httpRqt->userData;
+    ldapRqtCtxT *ldapRqtCtx = (ldapRqtCtxT *) idpRqtCtx->userData;
     int err, start;
     char *value;
     afb_data_t reply;
 
     // reserve federation and social user structure
-    fedUserRawT *fedUser = calloc (1, sizeof (fedUserRawT));
-    fedSocialRawT *fedSocial = calloc (1, sizeof (fedSocialRawT));
-    fedSocial->idp = strdup (idp->uid);
-    rqtCtx->fedSocial= fedSocial;
+    idpRqtCtx->fedSocial= calloc (1, sizeof (fedSocialRawT));
+    idpRqtCtx->fedUser= calloc (1, sizeof (fedUserRawT));
+    idpRqtCtx->fedSocial->idp = strdup (idpRqtCtx->idp->uid);
 
     // something when wrong
     if (httpRqt->status < 0) goto OnErrorExit;
@@ -201,7 +208,7 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     for (int idx=0; value[idx]; idx++) {
         if (value[idx] == '\n') {
             value[idx]='\0';
-            fedSocial->fedkey = strdup (&httpRqt->body[start]);
+            idpRqtCtx->fedSocial->fedkey = strdup (&httpRqt->body[start]);
             start=idx+1;
             break;
         }
@@ -213,7 +220,7 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     if (value) {
         for (int idx=sizeof(uidString); value[idx]; idx++) {
             if (value[idx] == '\n') {
-                fedUser->pseudo= strndup(&value[sizeof(uidString)], idx-sizeof(uidString));
+                idpRqtCtx->fedUser->pseudo= strndup(&value[sizeof(uidString)], idx-sizeof(uidString));
                 break;
             }
         }
@@ -225,7 +232,7 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     if (value) {
         for (int idx=sizeof(gecosString); value[idx]; idx++) {
             if (value[idx] == '\n') {
-                fedUser->name= strndup(&value[sizeof(gecosString)], idx-sizeof(gecosString));
+                idpRqtCtx->fedUser->name= strndup(&value[sizeof(gecosString)], idx-sizeof(gecosString));
                 break;
             }
         }
@@ -237,36 +244,40 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     if (value) {
         for (int idx=+sizeof(mailString); value[idx]; idx++) {
             if (value[idx] == '\n') {
-                fedUser->email= strndup(&value[sizeof(mailString)], idx-sizeof(mailString));
+                idpRqtCtx->fedUser->email= strndup(&value[sizeof(mailString)], idx-sizeof(mailString));
                 break;
             }
         }
     }
 
-    // query federation ldap groups are handle asynchronously
-    err = fedidCheck (idp, fedSocial, fedUser, rqtCtx->wreq, rqtCtx->hreq);
-    if (err) goto OnErrorExit;
 
     // user is ok, let's map user organisation onto security attributes
-    if (ldapOpts.groups) ldapAccessAttrs(rqtCtx);
+    if (ldapOpts.groups) ldapAccessAttrs(idpRqtCtx);
+    else {
+        // query federation ldap groups are handle asynchronously
+        err = fedidCheck (idpRqtCtx);
+        if (err) goto OnErrorExit;
 
-    // free request handle
-    ldapRqtCtxFree (rqtCtx);
+        // we done idpRqtCtx is cleared by fedidCheck
+        ldapRqtCtxFree (ldapRqtCtx);
+    }
+
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
     EXT_CRITICAL ("%s", errorMsg);
 
-    if (rqtCtx->hreq) {
-        afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
+    if (idpRqtCtx->hreq) {
+        afb_hreq_reply_error (idpRqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
     } else {
         afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, sizeof(errorMsg), NULL, NULL);
-        afb_req_v4_reply_hookable (rqtCtx->wreq, -1, 1, &reply);
+        afb_req_v4_reply_hookable (idpRqtCtx->wreq, -1, 1, &reply);
     }
 
-    ldapRqtCtxFree(rqtCtx);
-    fedSocialFreeCB(fedSocial);
-    fedUserFreeCB(fedUser);
+    fedSocialFreeCB(idpRqtCtx->fedSocial);
+    fedUserFreeCB(idpRqtCtx->fedUser);
+    ldapRqtCtxFree(ldapRqtCtx);
+    idpRqtCtxFree(idpRqtCtx);
     return HTTP_HANDLE_FREE;
 }
 
@@ -276,26 +287,28 @@ static int ldapAccessProfile (oidcIdpT * idp, const char *login, const char *pas
     int err;
 
     // prepare context for curl callbacks
-    ldapRqtCtxT *rqtCtx= calloc (1, sizeof(ldapRqtCtxT));
-    rqtCtx->hreq= hreq;
-    rqtCtx->wreq= wreq;
-    rqtCtx->idp= idp;
-    rqtCtx->login=strdup(login);
-    rqtCtx->passwd=strdup(passwd);
-    rqtCtx->httpPool=idp->oidc->httpPool;    
+    ldapRqtCtxT *ldapRqtCtx= calloc (1, sizeof(ldapRqtCtxT));
+    ldapRqtCtx->login=strdup(login);
+    ldapRqtCtx->passwd=strdup(passwd);
+
+    idpRqtCtxT *idpRqtCtx= calloc (1, sizeof(idpRqtCtxT));
+    idpRqtCtx->hreq= hreq;
+    idpRqtCtx->wreq= wreq;
+    idpRqtCtx->idp= idp;
+    idpRqtCtx->userData= (void*)ldapRqtCtx;
 
     // place %%login%% with wreq.
-    err= wrap_json_pack (&rqtCtx->loginJ, "{ss}", "login", login);
+    err= wrap_json_pack (&ldapRqtCtx->loginJ, "{ss}", "login", login);
     if (err) goto OnErrorExit;
 
     // complete userdn login for authentication
-    rqtCtx->userdn= utilsExpandJson (ldapOpts.login, rqtCtx->loginJ);
-    if (!rqtCtx->userdn) {
+    ldapRqtCtx->userdn= utilsExpandJson (ldapOpts.login, ldapRqtCtx->loginJ);
+    if (!ldapRqtCtx->userdn) {
         EXT_CRITICAL ("[curl-query-fail] fail to build curl ldap login=%s missing '%%login%%'", ldapOpts.login);
         goto OnErrorExit;
     }
 
-    char *curlQuery= utilsExpandJson (ldapOpts.people, rqtCtx->loginJ);
+    char *curlQuery= utilsExpandJson (ldapOpts.people, ldapRqtCtx->loginJ);
     if (!curlQuery) {
         EXT_CRITICAL ("[curl-query-fail] fail to build curl ldap query=%s missing '%%login%%'", ldapOpts.login);
         goto OnErrorExit;
@@ -303,19 +316,21 @@ static int ldapAccessProfile (oidcIdpT * idp, const char *login, const char *pas
 
     // build curl ldap options structure
     httpOptsT curlOpts= {
-        .username= rqtCtx->userdn,
+        .username= ldapRqtCtx->userdn,
         .password= passwd,
+        .timeout= (long)ldapOpts.timeout,
     };
 
     // asynchronous wreq to LDAP to check passwd and retreive user groups
-    EXT_DEBUG ("[curl-ldap-auth] curl -u '%s::my_secret_passwd' '%s'\n", rqtCtx->userdn, curlQuery);
-    err = httpSendGet (rqtCtx->httpPool, curlQuery, &curlOpts, NULL, ldapAccessProfileCB, rqtCtx);
+    EXT_DEBUG ("[curl-ldap-profil] curl -u '%s:my_secret_passwd' '%s'\n", ldapRqtCtx->userdn, curlQuery);
+    err = httpSendGet (ldapRqtCtx->httpPool, curlQuery, &curlOpts, NULL, ldapAccessProfileCB, idpRqtCtx);
     if (err) goto OnErrorExit;
 
     return 0;
 
   OnErrorExit:
-    ldapRqtCtxFree (rqtCtx);
+    ldapRqtCtxFree(ldapRqtCtx);
+    idpRqtCtxFree(idpRqtCtx);
     return 1;
 }
 
@@ -484,15 +499,16 @@ int ldapConfigCB (oidcIdpT * idp, json_object * idpJ)
     };
 
     // check is we have custom options
-    json_object *pluginJ = json_object_object_get (idpJ, "schema");
-    if (pluginJ) {
-        err = wrap_json_unpack (pluginJ, "{ss ss ss ss s?s s?i}"
+    json_object *ldapJ = json_object_object_get (idpJ, "schema");
+    if (ldapJ) {
+        err = wrap_json_unpack (ldapJ, "{ss ss ss ss s?s s?i s?i}"
             , "uri", &ldapOpts.uri
             , "login", &ldapOpts.login
             , "groups", &ldapOpts.groups
             , "people", &ldapOpts.people
             , "avatar", &ldapOpts.avatarAlias
             , "gids", &ldapOpts.gidsMax
+            , "timeout", &ldapOpts.timeout
             );
         if (err) {
             EXT_ERROR ("[ldap-config-opts] json parse fail 'schema' requirer json keys: uri,login,groups,people");
