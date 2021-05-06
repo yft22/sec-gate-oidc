@@ -26,7 +26,7 @@
       "idps": [
         {
             "uid": "pam",
-            "info": "Linux local account authentication",
+            "info": "Linux local authentication",
             "plugin": {
               "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
               "ldpath": "./package/lib/plugins/pam-auth.idpso:/usr/local/afb-oidc/lib/pam-auth.idpso",
@@ -41,7 +41,8 @@
                 {"uid":"login", "loa":1, "scope":"login"}
             ]
         }, {
-            "uid": "ldap",
+            "uid": "ldap-iotbzh",
+            "type": "ldap",
             "info": "Iot.bzh internal LDAP",
             "statics": {
                 "login": "/sgate/ldap/login",
@@ -63,7 +64,7 @@
             ]
         }, {
             "uid": "github",
-            "info": "OpenIdC Social Authentication",
+            "info": "Github Social Authentication",
             "credentials": {
             "clientid": "7899e605a7c15ae42f07",
             "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
@@ -82,6 +83,28 @@
                 {"uid":"basic", "loa":1, "scope":"user:email"},
                 {"uid":"teams", "loa":2, "scope":"read:org", "label":"organizations_url"}
             ]
+        },
+        {
+            "uid": "phantauth",
+            "type": "oidc",
+            "info": "OpenIdC testing authority (https://phantauth.net/)",
+            "credentials": {
+                "clientid": "sgate-oidc-iotbzh",
+                "secret": "3ON5yAxX",
+            },
+            "wellknown": {
+                "loginTokenUrl": "https://phantauth.net/auth/authorize",
+                "accessTokenUrl": "https://phantauth.net/auth/token",
+                "identityApiUrl": "https://phantauth.net/user",
+            },
+            "statics": {
+                "login": "/sgate/phantauth/login",
+                "logo": "/sgate/phantauth/logo-64px.png",
+                "timeout": 600
+            },
+            "profils": [
+                {"uid":"basic", "loa":1, "scope":"openid,profile"},
+            ]
         }
       ],
       "apis": [
@@ -95,6 +118,7 @@
         {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "path":"idps/github" },
         {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "path":"idps/pam" },
         {"uid": "idp-ldap"    , "url":"/sgate/ldap"   ,"loa":0, "path":"idps/ldap" },
+        {"uid": "idp-phantauth" , "url":"/sgate/phantauth"   ,"loa":0, "path":"idps/phantauth" },
         {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },
         {"uid": "private", "info": "Required basic authentication", "url":"/private",  "loa":1, "path":"private" },
         {"uid": "confidential", "info": "Required teams authentication", "url":"/confidential", "loa":2, "path":"confidential" },

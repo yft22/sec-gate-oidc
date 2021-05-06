@@ -65,6 +65,7 @@ typedef struct oidcIdpS {
     int magic;
     const char *uid;
     const char *info;
+    const char *type;
     const oidcCredentialsT *credentials;
     const oidcWellknownT *wellknown;
     const httpKeyValT *headers;
@@ -74,6 +75,7 @@ typedef struct oidcIdpS {
     void *ctx;
     const idpPluginT *plugin;
     oidcCoreHdlT *oidc;
+    void *userData;
 } oidcIdpT;
 
 typedef struct {
@@ -119,8 +121,6 @@ typedef struct idpPluginS {
     int (*loginCB) (struct afb_hreq * hreq, void *ctx);
     void *ctx;
 } idpPluginT;
-
-
 
 // idp callback definition
 typedef int (*oidcPluginInitCbT) (oidcCoreHdlT * oidc, idpGenericCbT * idpGenericCb);

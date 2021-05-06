@@ -24,6 +24,7 @@
 #pragma once
 
 #include "../oidc-idp.h"
-#include "idp-oidc.h"
-#include "idp-github.h"
-#include "idp-ldap.h"
+
+// oidc.c
+int oidcLoginCB (struct afb_hreq *hreq, void *ctx);
+int oidcConfigCB (oidcIdpT * idp, json_object * idpJ);

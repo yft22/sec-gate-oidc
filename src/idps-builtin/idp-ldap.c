@@ -64,7 +64,7 @@ typedef struct {
 } ldapOptsT;
 
 // dflt_xxxx config.json default options
-static ldapOptsT ldapOpts = {
+static ldapOptsT dfltLdap = {
     .gidsMax = 16,
     .timeout=5, // 5s default timeout
     .avatarAlias = "/sgate/ldap/avatar-dflt.png",
@@ -100,6 +100,7 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
 {
     idpRqtCtxT *idpRqtCtx= (idpRqtCtxT*)httpRqt->userData;
     ldapRqtCtxT *ldapRqtCtx = (ldapRqtCtxT *) idpRqtCtx->userData;
+    ldapOptsT *ldapOpts= (ldapOptsT*)idpRqtCtx->idp->userData;
     int err;
 
     // something when wrong
@@ -113,7 +114,7 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
 
   	// token not json
     static const char token[]=  "DN: ";
-    idpRqtCtx->fedSocial->attrs = calloc (ldapOpts.gidsMax+1, sizeof (char *));
+    idpRqtCtx->fedSocial->attrs = calloc (ldapOpts->gidsMax+1, sizeof (char *));
 	char *ptr = strtok(httpRqt->body, token);
 	for (int idx=0; ptr != NULL; idx++)	{      
         static char cnString[]= "cn=";
@@ -122,8 +123,8 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
         if (value) {
 
             // groups over gidsMax are ignored
-            if (idx == ldapOpts.gidsMax) {
-                EXT_ERROR ("[ldap-fail-groups] ldap->maxgids=%d too small (remaining groups ignored)", ldapOpts.gidsMax);
+            if (idx == ldapOpts->gidsMax) {
+                EXT_ERROR ("[ldap-fail-groups] ldap->maxgids=%d too small (remaining groups ignored)", ldapOpts->gidsMax);
                 idpRqtCtx->fedSocial->attrs[idx]=NULL;
                 break;
             }
@@ -157,10 +158,12 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
 // reference https://docs.ldap.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
 static void ldapAccessAttrs (idpRqtCtxT *idpRqtCtx) {
     ldapRqtCtxT *ldapRqtCtx = (ldapRqtCtxT *) idpRqtCtx->userData;
+    ldapOptsT *ldapOpts= (ldapOptsT*)idpRqtCtx->idp->userData;
 
-    const char *curlQuery= utilsExpandJson (ldapOpts.groups, ldapRqtCtx->loginJ);
+
+    const char *curlQuery= utilsExpandJson (ldapOpts->groups, ldapRqtCtx->loginJ);
     if (!curlQuery) {
-        EXT_CRITICAL ("[curl-query-fail] fail to build curl ldap groups query=%s missing '%%login%%'", ldapOpts.login);
+        EXT_CRITICAL ("[curl-query-fail] fail to build curl ldap groups query=%s missing '%%login%%'", ldapOpts->login);
         goto OnErrorExit;
     }
 
@@ -188,6 +191,8 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     static char errorMsg[]= "[ldap-fail-user-profil] Fail to get user profil from ldap (login/passwd ?)";
     idpRqtCtxT *idpRqtCtx= (idpRqtCtxT*)httpRqt->userData;
     ldapRqtCtxT *ldapRqtCtx = (ldapRqtCtxT *) idpRqtCtx->userData;
+    ldapOptsT *ldapOpts= (ldapOptsT*)idpRqtCtx->idp->userData;
+
     int err, start;
     char *value;
     afb_data_t reply;
@@ -252,7 +257,7 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
 
 
     // user is ok, let's map user organisation onto security attributes
-    if (ldapOpts.groups) ldapAccessAttrs(idpRqtCtx);
+    if (ldapOpts->groups) ldapAccessAttrs(idpRqtCtx);
     else {
         // query federation ldap groups are handle asynchronously
         err = fedidCheck (idpRqtCtx);
@@ -285,6 +290,7 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
 static int ldapAccessProfile (oidcIdpT * idp, const char *login, const char *passwd, afb_hreq *hreq, struct afb_req_v4 *wreq)
 {
     int err;
+    ldapOptsT *ldapOpts= (ldapOptsT*)idp->userData;
 
     // prepare context for curl callbacks
     ldapRqtCtxT *ldapRqtCtx= calloc (1, sizeof(ldapRqtCtxT));
@@ -302,15 +308,15 @@ static int ldapAccessProfile (oidcIdpT * idp, const char *login, const char *pas
     if (err) goto OnErrorExit;
 
     // complete userdn login for authentication
-    ldapRqtCtx->userdn= utilsExpandJson (ldapOpts.login, ldapRqtCtx->loginJ);
+    ldapRqtCtx->userdn= utilsExpandJson (ldapOpts->login, ldapRqtCtx->loginJ);
     if (!ldapRqtCtx->userdn) {
-        EXT_CRITICAL ("[curl-query-fail] fail to build curl ldap login=%s missing '%%login%%'", ldapOpts.login);
+        EXT_CRITICAL ("[curl-query-fail] fail to build curl ldap login=%s missing '%%login%%'", ldapOpts->login);
         goto OnErrorExit;
     }
 
-    char *curlQuery= utilsExpandJson (ldapOpts.people, ldapRqtCtx->loginJ);
+    char *curlQuery= utilsExpandJson (ldapOpts->people, ldapRqtCtx->loginJ);
     if (!curlQuery) {
-        EXT_CRITICAL ("[curl-query-fail] fail to build curl ldap query=%s missing '%%login%%'", ldapOpts.login);
+        EXT_CRITICAL ("[curl-query-fail] fail to build curl ldap query=%s missing '%%login%%'", ldapOpts->login);
         goto OnErrorExit;
     }
 
@@ -318,7 +324,7 @@ static int ldapAccessProfile (oidcIdpT * idp, const char *login, const char *pas
     httpOptsT curlOpts= {
         .username= ldapRqtCtx->userdn,
         .password= passwd,
-        .timeout= (long)ldapOpts.timeout,
+        .timeout= (long)ldapOpts->timeout,
     };
 
     // asynchronous wreq to LDAP to check passwd and retreive user groups
@@ -489,6 +495,7 @@ int ldapRegisterCB (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_a
 int ldapConfigCB (oidcIdpT * idp, json_object * idpJ)
 {
     int err;
+    const char *people, *groups;
     // only default profil is usefull
     oidcDefaultsT defaults = {
         .profils = dfltProfils,
@@ -498,17 +505,22 @@ int ldapConfigCB (oidcIdpT * idp, json_object * idpJ)
         .headers = &noHeaders,
     };
 
+    // copy default ldap options as idp private user data
+    ldapOptsT *ldapOpts= malloc (sizeof(ldapOptsT));
+    memcpy (ldapOpts, &dfltLdap, sizeof(ldapOptsT));
+    idp->userData= (void*)ldapOpts;
+
     // check is we have custom options
     json_object *ldapJ = json_object_object_get (idpJ, "schema");
     if (ldapJ) {
         err = wrap_json_unpack (ldapJ, "{ss ss ss ss s?s s?i s?i}"
-            , "uri", &ldapOpts.uri
-            , "login", &ldapOpts.login
-            , "groups", &ldapOpts.groups
-            , "people", &ldapOpts.people
-            , "avatar", &ldapOpts.avatarAlias
-            , "gids", &ldapOpts.gidsMax
-            , "timeout", &ldapOpts.timeout
+            , "uri", &ldapOpts->uri
+            , "login", &ldapOpts->login
+            , "groups",&groups
+            , "people", &people
+            , "avatar", &ldapOpts->avatarAlias
+            , "gids", &ldapOpts->gidsMax
+            , "timeout", &ldapOpts->timeout
             );
         if (err) {
             EXT_ERROR ("[ldap-config-opts] json parse fail 'schema' requirer json keys: uri,login,groups,people");
@@ -516,8 +528,8 @@ int ldapConfigCB (oidcIdpT * idp, json_object * idpJ)
         }
 
         // prebuild request adding ldap uri
-        asprintf (&ldapOpts.groups, "%s/%s", ldapOpts.uri, ldapOpts.groups);
-        asprintf (&ldapOpts.people, "%s/%s", ldapOpts.uri, ldapOpts.people);
+        asprintf (&ldapOpts->groups, "%s/%s", ldapOpts->uri, groups);
+        asprintf (&ldapOpts->people, "%s/%s", ldapOpts->uri, people);
     }
     // delegate config parsing to common idp utility callbacks
     err = idpParseOidcConfig (idp, idpJ, &defaults, NULL);

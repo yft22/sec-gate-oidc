@@ -336,14 +336,24 @@ int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * d
     }
     // unpack main IDP config
     json_object *credentialsJ = NULL, *staticJ = NULL, *wellknownJ = NULL, *headersJ = NULL, *profilsJ;
-    int err = wrap_json_unpack (configJ, "{ss s?s s?o s?o s?o s?o}", "uid", &idp->uid,
-                                "info", &idp->info, "credentials", &credentialsJ,
-                                "statics", &staticJ, "profils", &profilsJ, "wellknown",
-                                &wellknownJ, "headers", &headersJ);
+    int err = wrap_json_unpack (configJ, "{ss s?s s?s s?o s?o s?o s?o}"
+        , "uid", &idp->uid
+        , "info", &idp->info
+        , "type", &idp->type
+        , "credentials", &credentialsJ
+        , "statics", &staticJ
+        , "profils", &profilsJ
+        , "wellknown", &wellknownJ
+        , "headers", &headersJ
+        );
     if (err) {
         EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (githubConfigCB)", idp->uid);
         goto OnErrorExit;
     }
+
+    // type is only use for generic IDP (ldap & oidc)
+    if (!idp->info) idp->info=idp->uid;
+
     // parse config sections
     idp->magic = MAGIC_OIDC_IDP;
     idp->ctx = ctx;
@@ -365,7 +375,7 @@ int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * d
 }
 
 // search for a plugin idps/decoders CB list
-static const idpPluginT *idpFindPlugin (const char *uid)
+static const idpPluginT *idpFindPlugin (const char *type)
 {
     idpPluginT *idp = NULL;
     int index;
@@ -374,7 +384,7 @@ static const idpPluginT *idpFindPlugin (const char *uid)
     for (idpRegistryT * registryIdx = registryHead; registryIdx; registryIdx = registryIdx->next) {
         idpPluginT *idps = registryIdx->plugin;
         for (index = 0; idps[index].uid; index++) {
-            if (!strcasecmp (idps[index].uid, uid)) {
+            if (!strcasecmp (idps[index].uid, type)) {
                 idp = &idps[index];
                 break;
             }
@@ -411,6 +421,9 @@ static int idpParseOne (oidcCoreHdlT * oidc, json_object * idpJ, oidcIdpT * idp)
         EXT_ERROR ("[idp-parsing-error] invalid json requires: uid");
         goto OnErrorExit;
     }
+    const char *type = json_object_get_string (json_object_object_get (idpJ, "type"));
+    if (!type) type=uid;
+
     // if not builtin load plugin before processing any further the config
     json_object *pluginJ = json_object_object_get (idpJ, "plugin");
     if (pluginJ) {
@@ -450,9 +463,9 @@ static int idpParseOne (oidcCoreHdlT * oidc, json_object * idpJ, oidcIdpT * idp)
 
     idp->magic = MAGIC_OIDC_IDP;
     idp->oidc = oidc;
-    idp->plugin = idpFindPlugin (uid);
+    idp->plugin = idpFindPlugin (type);
     if (!idp->plugin) {
-        EXT_ERROR ("[idp-plugin-missing] fail to find idp=%s", uid);
+        EXT_ERROR ("[idp-plugin-missing] fail to find type=%s [idp=%s]", type, uid);
         goto OnErrorExit;
     }
     // when call idp custom config callback
@@ -548,6 +561,7 @@ int idpRegisterLogin (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv)
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 idpPluginT idpBuiltin[] = {
+    {.uid = "oidc",.info = "openid connect idp",.configCB = oidcConfigCB,.loginCB= oidcLoginCB},
     {.uid = "github",.info = "github public oauth2 idp",.configCB = githubConfigCB,.loginCB= githubLoginCB},
     {.uid = "ldap"  ,.info = "ldap internal users",.configCB = ldapConfigCB,.loginCB= ldapLoginCB, .registerCB=ldapRegisterCB},
     {.uid = NULL}               // must be null terminated
