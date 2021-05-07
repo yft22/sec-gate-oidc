@@ -100,9 +100,9 @@ A json array defining each authentication authority. Default authority are oAith
       "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
     },
     "wellknown": {
-        "loginTokenUrl": "https://github.com/login/oauth/authorize",
-        "accessTokenUrl": "https://github.com/login/oauth/access_token",
-        "identityApiUrl": "https://api.github.com/user",
+        "tokenid": "https://github.com/login/oauth/authorize",
+        "authorize": "https://github.com/login/oauth/access_token",
+        "userinfo": "https://api.github.com/user",
     },
     "statics": {
         "login": "/sgate/github/login",
@@ -121,11 +121,11 @@ A json array defining each authentication authority. Default authority are oAith
 
 * **Wellknown**: remote IDP authority URLs, typically one URL to request the initial authentication token, then an other one to request the access token and final as many as needed URL for identity services provided by the authority.
 
-  * **LoginTokenUrl**: HTTP page to redirect to when authentication is requirer. This authority URL should prompt the user for authentication only when needed, in all the other case it should automatically redirect back oidc-sgate in SSO(Single-Sign-On).
+  * **tokenid**: HTTP page to redirect to when authentication is requirer. This authority URL should prompt the user for authentication only when needed, in all the other case it should automatically redirect back oidc-sgate in SSO(Single-Sign-On).
 
-  * **AccessTokenURL**: REST exchange authentication end-point. Provided an access-token from the authentication-token received from 'loginTokenUrl' SSO. The request to 'accessTokenURL' does not go through user browser, this avoid to expose IDP application secret to user browser.
+  * **authorize**: REST exchange authentication end-point. Provided an access-token from the authentication-token received from 'tokenid' SSO. The request to 'authorize' does not go through user browser, this avoid to expose IDP application secret to user browser.
 
-  * **IdentityApiUrl**: REST authority identity service. Provide identity attributes matching requesting scope. Note that some authority as Github has multiple identity end point depending requested attributes. 
+  * **userinfo**: REST authority identity service. Provide identity attributes matching requesting scope. Note that some authority as Github has multiple identity end point depending requested attributes. 
 
 * **statics**: define the REST/HTTP end point created on oid-sgate for IDPs protocol handshake.
 

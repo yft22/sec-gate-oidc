@@ -31,6 +31,24 @@
 
 #include "oidc-utils.h"
 
+
+// search for key label within key/value array
+int utilsMapValue (const nsKeyEnumT *keyvals, const char *label) {
+    int value=0;
+    if (!label) goto OnDefaultExit;
+
+    for (int idx=0; keyvals[idx].label; idx++) {
+        if (!strcasecmp (label,keyvals[ idx].label)) {
+            value= keyvals[idx].value;
+            break;
+        }
+    }
+    return value;
+
+OnDefaultExit:
+    return keyvals[0].value;
+}
+
 // replace any %key% with its coresponding json value (warning: json is case sensitive)
 char *utilsExpandJson (const char* src, json_object *keysJ) {
     int srcIdx, destIdx=0, labelIdx, expanded=0;

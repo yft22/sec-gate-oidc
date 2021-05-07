@@ -66,9 +66,9 @@ static const oidcStaticsT dfltstatics = {
 };
 
 static const oidcWellknownT dfltWellknown = {
-    .loginTokenUrl = "/sgate/pam/login.html",
-    .identityApiUrl = NULL,
-    .accessTokenUrl = NULL,
+    .tokenid = "/sgate/pam/login.html",
+    .userinfo = NULL,
+    .authorize = NULL,
 };
 
 // simulate a user UI for passwd input
@@ -283,7 +283,7 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
         afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profil, NULL, NULL);
 
         // build wreq and send it
-        err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->loginTokenUrl, query);
+        err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->tokenid, query);
         if (err) goto OnErrorExit;
 
         EXT_DEBUG ("[pam-redirect-url] %s (pamLoginCB)", url);
@@ -321,7 +321,7 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
     return 1;   // we're done
 
   OnErrorExit:
-    afb_hreq_redirect_to (hreq, idp->wellknown->loginTokenUrl, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
+    afb_hreq_redirect_to (hreq, idp->wellknown->tokenid, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
     return 1;
 }
 

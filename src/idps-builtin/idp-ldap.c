@@ -84,9 +84,9 @@ static const oidcStaticsT dfltstatics = {
 };
 
 static const oidcWellknownT dfltWellknown = {
-    .loginTokenUrl = "/sgate/ldap/login.html",
-    .identityApiUrl = NULL,
-    .accessTokenUrl = NULL,
+    .tokenid = "/sgate/ldap/login.html",
+    .userinfo = NULL,
+    .authorize = NULL,
 };
 
 static void ldapRqtCtxFree (ldapRqtCtxT *ldapRqtCtx) {
@@ -449,7 +449,7 @@ int ldapLoginCB (afb_hreq * hreq, void *ctx)
         afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profil, NULL, NULL);
 
         // build wreq and send it
-        err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->loginTokenUrl, query);
+        err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->tokenid, query);
         if (err) goto OnErrorExit;
 
         EXT_DEBUG ("[ldap-redirect-url] %s (ldapLoginCB)", url);
@@ -473,7 +473,7 @@ int ldapLoginCB (afb_hreq * hreq, void *ctx)
     return 1;   // we're done
 
   OnErrorExit:
-    afb_hreq_redirect_to (hreq, idp->wellknown->loginTokenUrl, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
+    afb_hreq_redirect_to (hreq, idp->wellknown->tokenid, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
     return 1;
 }
 

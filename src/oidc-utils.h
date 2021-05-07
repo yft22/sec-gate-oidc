@@ -34,4 +34,10 @@
 #define OIDC_MAX_ARG_LABEL 64
 #endif
 
+typedef struct {
+    const char *label;
+    const int  value;
+} nsKeyEnumT;
+
+int utilsMapValue (const nsKeyEnumT *keyvals, const char *label);
 char* utilsExpandJson (const char* src, json_object *keysJ);

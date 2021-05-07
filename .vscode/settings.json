@@ -19,6 +19,7 @@
         "random": "cpp",
         "*.tcc": "cpp",
         "type_traits": "cpp",
-        "afb-http.h": "c"
+        "afb-http.h": "c",
+        "condition_variable": "cpp"
     }
 }

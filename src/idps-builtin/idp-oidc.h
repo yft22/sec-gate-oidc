@@ -25,6 +25,18 @@
 
 #include "../oidc-idp.h"
 
+#define IDP_CLIENT_SECRET_DEFAULT IDP_CLIENT_SECRET_POST
+
+typedef struct {
+    const char *fedid;
+    const char *pseudo;
+    const char *avatar;
+    const char *name;
+    const char *company;
+    const char *email;
+    char *auth64;
+} oidcSchemaT;
+
 // oidc.c
 int oidcLoginCB (struct afb_hreq *hreq, void *ctx);
 int oidcConfigCB (oidcIdpT * idp, json_object * idpJ);

@@ -20,6 +20,106 @@
 #include <assert.h>
 #include <fcntl.h>
 
+// Fulup TDB remove when Jose will have made public with afb-libafb
+int wrap_base64_encode(
+		const uint8_t *data,
+		size_t datalen,
+		char **encoded,
+		size_t *encodedlen,
+		int width,
+		int pad,
+		int url)
+{
+	uint16_t u16 = 0;
+	uint8_t u8 = 0;
+	size_t in, out, rlen, n3, r3, iout, nout;
+	int iw;
+	char *result, c;
+
+	/* compute unformatted output length */
+	n3 = datalen / 3;
+	r3 = datalen % 3;
+	nout = 4 * n3 + r3 + !!r3;
+
+	/* deduce formatted output length */
+	rlen = nout;
+	if (pad)
+		rlen += ((~rlen) + 1) & 3;
+	if (width)
+		rlen += rlen / (unsigned)width;
+
+	/* allocate the output */
+	result = malloc(rlen + 1);
+	if (result == NULL)
+		return -1;
+
+	/* compute the formatted output */
+	iw = width;
+	for (in = out = iout = 0 ; iout < nout ; iout++) {
+		/* get in 'u8' the 6 bits value to add */
+		switch (iout & 3) {
+		case 0:
+			u16 = (uint16_t)data[in++];
+			u8 = (uint8_t)(u16 >> 2);
+			break;
+		case 1:
+			u16 = (uint16_t)(u16 << 8);
+			if (in < datalen)
+				u16 = (uint16_t)(u16 | data[in++]);
+			u8 = (uint8_t)(u16 >> 4);
+			break;
+		case 2:
+			u16 = (uint16_t)(u16 << 8);
+			if (in < datalen)
+				u16 = (uint16_t)(u16 | data[in++]);
+			u8 = (uint8_t)(u16 >> 6);
+			break;
+		case 3:
+			u8 = (uint8_t)u16;
+			break;
+		}
+		u8 &= 63;
+
+		/* encode 'u8' to the char 'c' */
+		if (u8 < 52) {
+			if (u8 < 26)
+				c = (char)('A' + u8);
+			else
+				c = (char)('a' + u8 - 26);
+		} else {
+			if (u8 < 62)
+				c = (char)('0' + u8 - 52);
+			else if (u8 == 62)
+				c = url ? '-' : '+';
+			else
+				c = url ? '_' : '/';
+		}
+
+		/* put to output with format */
+		result[out++] = c;
+		if (iw && !--iw) {
+			result[out++] = '\n';
+			iw = width;
+		}
+	}
+
+	/* pad the output */
+	while (out < rlen) {
+		result[out++] = '=';
+		if (iw && !--iw) {
+			result[out++] = '\n';
+			iw = width;
+		}
+	}
+
+	/* terminate */
+	result[out] = 0;
+	*encoded = result;
+	*encodedlen = rlen;
+	return 0;
+}
+
+
 // callback might be called as many time as needed to transfert all data
 static size_t httpBodyCB(void *data, size_t blkSize, size_t blkCount, void *ctx)
 {
@@ -199,8 +299,6 @@ static int httpSendQuery(httpPoolT *httpPool, const char *url, const httpOptsT *
         }
 
     if (opts) {
-
-
         if (opts->headers) for (int idx = 0; opts->headers[idx].tag; idx++)   {
             snprintf(header, sizeof(header), "%s: %s", opts->headers[idx].tag, opts->headers[idx].value);
             rqtHeaders = curl_slist_append(rqtHeaders, header);
@@ -434,4 +532,21 @@ int httpBuildQuery(const char *uid, char *response, size_t maxlen, const char *p
 OnErrorExit:
     fprintf(stderr, "[url-too-long] idp=%s url=%s cannot add query to url (httpMakeRequest)", uid, url);
     return 1;
+}
+
+// convert a string into base64
+char * httpEncode64 (const char* inputData, size_t inputLen) {
+    if (!inputLen) inputLen=strlen(inputData);
+    int status;
+    char *data64;
+    size_t len64;
+
+    status= wrap_base64_encode ((uint8_t*)inputData, inputLen, &data64, &len64,0,1,0);
+    if (status != CURLE_OK) goto OnErrorExit;
+
+    return (data64);
+
+OnErrorExit:
+    if (data64) free (data64);
+    return NULL;    
 }

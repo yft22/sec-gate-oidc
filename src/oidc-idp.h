@@ -31,10 +31,21 @@ extern void *oidcIdpProfilCookie;
 
 typedef struct oidcIdpS oidcIdpT;
 
+typedef enum {
+    IDP_CLIENT_SECRET_UNKNOWN=0,
+    IDP_CLIENT_SECRET_POST,
+    IDP_CLIENT_SECRET_BASIC,
+    IDP_CLIENT_SECRET_JWT,
+    IDP_PRIVATE_KEY_JWT
+} oidcAuthMethodT;
+
 typedef struct {
-    const char *loginTokenUrl;
-    const char *accessTokenUrl;
-    const char *identityApiUrl;
+    const char *discovery;
+    const char *tokenid;
+    const char *authorize;
+    const char *userinfo;
+    const char *jwks;
+    oidcAuthMethodT authMethod;
 } oidcWellknownT;
 
 typedef struct {

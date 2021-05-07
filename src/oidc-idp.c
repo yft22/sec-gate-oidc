@@ -47,6 +47,14 @@ typedef struct idpRegistryS {
 idpPluginT idpBuiltin[];
 static idpRegistryT *registryHead = NULL;
 
+const nsKeyEnumT idpAuthMethods[] = {
+    {"secret-unknown"  , IDP_CLIENT_SECRET_UNKNOWN},
+    {"client_secret_post", IDP_CLIENT_SECRET_POST},
+    {"client_secret_basic"  , IDP_CLIENT_SECRET_BASIC},
+    // {"client_secret_jwt", IDP_CLIENT_SECRET_JWT}, not implemented
+    // {"private_key_jwt", IDP_PRIVATE_KEY_JWT}, not implemented
+    {NULL} // terminator
+};
 
 void idpRqtCtxFree (idpRqtCtxT * rqtCtx)
 {
@@ -89,20 +97,27 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
             json_object *profilJ;
             if (!profilsJ)
                 profilsJ = json_object_new_array ();
-            wrap_json_pack (&profilJ, "{si ss ss* ss}", "loa",
-                            idp->profils[jdx].loa, "uid", idp->profils[jdx].uid, "info", idp->profils[jdx].info, "scope", idp->profils[jdx].scope);
+            wrap_json_pack (&profilJ, "{si ss ss* ss}"
+                , "loa",  idp->profils[jdx].loa
+                , "uid", idp->profils[jdx].uid
+                , "info", idp->profils[jdx].info
+                , "scope", idp->profils[jdx].scope
+                );
             json_object_array_add (profilsJ, profilJ);
         }
 
         // only return IDP with a corresponding loa/scope
         if (profilsJ) {
             json_object *idpJ;
-            if (!idpsJ)
-                idpsJ = json_object_new_array ();
-            wrap_json_pack (&idpJ, "{ss ss* ss* ss* ss* ss* so}", "uid",
-                            idp->uid, "info", idp->info, "logo",
-                            idp->statics->aliasLogo, "client-id",
-                            idp->credentials->clientId, "token-url", idp->wellknown->loginTokenUrl, "login-url", idp->statics->aliasLogin, "profils", profilsJ);
+            if (!idpsJ) idpsJ = json_object_new_array ();
+            wrap_json_pack (&idpJ, "{ss ss* ss* ss* ss* so}"
+                , "uid", idp->uid
+                , "info", idp->info
+                , "logo", idp->statics->aliasLogo
+                , "client-id", idp->credentials->clientId
+                , "login-url", idp->statics->aliasLogin
+                , "profils", profilsJ
+            );
 
             json_object_array_add (idpsJ, idpJ);
         }
@@ -175,8 +190,7 @@ idpParseOneHeader (oidcIdpT * idp, json_object * headerJ, httpKeyValT * header)
 
 static const httpKeyValT *idpParseHeaders (oidcIdpT * idp, json_object * headersJ, const httpKeyValT * defaults)
 {
-    if (!headersJ)
-        return defaults;
+    if (!headersJ) return defaults;
 
     httpKeyValT *headers;
     int err;
@@ -304,19 +318,24 @@ static const oidcStaticsT *idpParsestatic (oidcIdpT * idp, json_object * staticJ
 
 static const oidcWellknownT *idpParseWellknown (oidcIdpT * idp, json_object * wellknownJ, const oidcWellknownT * defaults)
 {
-    if (!wellknownJ)
-        return defaults;
+    // no config use default;
+    if (!wellknownJ) return defaults;
+
+    const char* authMethod;
 
     oidcWellknownT *wellknown = calloc (1, sizeof (oidcWellknownT));
-    if (defaults)
-        memcpy (wellknown, defaults, sizeof (oidcWellknownT));
+    if (defaults) memcpy (wellknown, defaults, sizeof (oidcWellknownT));
 
-    int err = wrap_json_unpack (wellknownJ, "{s?s,s?s,s?s}", "loginTokenUrl",
-                                &wellknown->loginTokenUrl, "accessTokenUrl",
-                                &wellknown->accessTokenUrl, "identityApiUrl",
-                                &wellknown->identityApiUrl);
+    int err = wrap_json_unpack (wellknownJ, "{s?s,s?s,s?s,s?s,s?s,s?s !}"
+                , "discovery", &wellknown->discovery
+                , "tokenid", &wellknown->tokenid
+                , "authorize",&wellknown->authorize
+                , "userinfo",&wellknown->userinfo
+                , "jwks",&wellknown->jwks
+                , "auth-method", &authMethod
+                );
     if (err) {
-        EXT_CRITICAL ("github parsing fail wellknown expect: loginTokenUrl,accessTokenUrl,identityApiUrl (idpParseWellknown)");
+        EXT_CRITICAL ("github parsing fail wellknown expect: discovery,tokenid,authorize,userinfo (idpParseWellknown)");
         goto OnErrorExit;
     }
 

@@ -41,7 +41,7 @@
                   "timeout": 900
               },
               "wellknown": {
-                  "loginTokenUrl": "/sgate/common/oidc#passwd"
+                  "tokenid": "/sgate/common/oidc#passwd"
               },
               "profils": [
                   {"uid":"login", "loa":1, "scope":"login"}
@@ -54,9 +54,9 @@
               "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970"
               },
               "wellknown": {
-                  "loginTokenUrl": "https://github.com/login/oauth/authorize",
-                  "accessTokenUrl": "https://github.com/login/oauth/access_token",
-                  "identityApiUrl": "https://api.github.com/user"
+                  "tokenid": "https://github.com/login/oauth/authorize",
+                  "authorize": "https://github.com/login/oauth/access_token",
+                  "userinfo": "https://api.github.com/user"
               },
               "statics": {
                   "login": "/sgate/github/login",

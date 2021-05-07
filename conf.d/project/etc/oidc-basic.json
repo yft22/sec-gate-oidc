@@ -25,6 +25,34 @@
       },
       "idps": [
         {
+            "uid": "phantauth",
+            "type": "oidc",
+            "info": "OpenIdC testing authority (https://phantauth.net/)",
+            "credentials": {
+                "clientid": "sgate-oidc-iotbzh",
+                "secret": "3ON5yAxX",
+            },
+            "wellknown": {
+                "discovery": "https://phantauth.net/.well-known/openid-configuration",
+            },
+            "schema": {
+                "fedid" :"sub",
+                "avatar":"picture",
+                "pseudo":"preferred_username",
+                "name": "name",
+                "company": "company",
+                "email": "email",
+            },
+            "statics": {
+                "login": "/sgate/phantauth/login",
+                "logo": "/sgate/phantauth/logo-64px.png",
+                "timeout": 600
+            },
+            "profils": [
+                {"uid":"basic", "loa":1, "scope":"openid,profile"},
+            ]
+        },
+        {
             "uid": "pam",
             "info": "Linux local authentication",
             "plugin": {
@@ -57,7 +85,7 @@
                 "people": "ou=people,dc=vannes,dc=iot?uid,gecos,mail?sub?(cn=%login%)"
             },
             "wellknown": {
-                "loginTokenUrl": "/sgate/ldap/login.html"
+                "tokenid": "/sgate/ldap/login.html"
             },
             "profils": [
                 {"uid":"login", "loa":1, "scope":"login"}
@@ -70,9 +98,9 @@
             "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
             },
             "wellknown": {
-                "loginTokenUrl": "https://github.com/login/oauth/authorize",
-                "accessTokenUrl": "https://github.com/login/oauth/access_token",
-                "identityApiUrl": "https://api.github.com/user",
+                "authorize": "https://github.com/login/oauth/authorize",
+                "tokenid": "https://github.com/login/oauth/access_token",
+                "userinfo": "https://api.github.com/user",
             },
             "statics": {
                 "login": "/sgate/github/login",
@@ -82,28 +110,6 @@
             "profils": [
                 {"uid":"basic", "loa":1, "scope":"user:email"},
                 {"uid":"teams", "loa":2, "scope":"read:org", "label":"organizations_url"}
-            ]
-        },
-        {
-            "uid": "phantauth",
-            "type": "oidc",
-            "info": "OpenIdC testing authority (https://phantauth.net/)",
-            "credentials": {
-                "clientid": "sgate-oidc-iotbzh",
-                "secret": "3ON5yAxX",
-            },
-            "wellknown": {
-                "loginTokenUrl": "https://phantauth.net/auth/authorize",
-                "accessTokenUrl": "https://phantauth.net/auth/token",
-                "identityApiUrl": "https://phantauth.net/user",
-            },
-            "statics": {
-                "login": "/sgate/phantauth/login",
-                "logo": "/sgate/phantauth/logo-64px.png",
-                "timeout": 600
-            },
-            "profils": [
-                {"uid":"basic", "loa":1, "scope":"openid,profile"},
             ]
         }
       ],

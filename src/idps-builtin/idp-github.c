@@ -64,9 +64,9 @@ static const oidcProfilsT dfltProfils[] = {
 };
 
 static const oidcWellknownT dfltWellknown = {
-    .loginTokenUrl = "https://github.com/login/oauth/authorize",
-    .accessTokenUrl = "https://github.com/login/oauth/access_token",
-    .identityApiUrl = "https://api.github.com/user",
+    .tokenid = "https://github.com/login/oauth/authorize",
+    .authorize = "https://github.com/login/oauth/access_token",
+    .userinfo = "https://api.github.com/user",
 };
 
 static const oidcStaticsT dfltstatics = {
@@ -166,7 +166,7 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
 
     // build social fedkey from idp->uid+github->id
     fedSocialRawT *fedSocial = calloc (1, sizeof (fedSocialRawT));
-    fedSocial->fedkey = strdup (json_object_get_string (json_object_object_get (profilJ, "id")));
+    fedSocial->fedkey = json_object_dup_key_value (profilJ, "id");
     fedSocial->idp = strdup (idp->uid);
     rqtCtx->fedSocial= fedSocial;
 
@@ -215,8 +215,8 @@ githubUserGetByToken (idpRqtCtxT * rqtCtx)
     };
 
     // asynchronous wreq to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
-    EXT_DEBUG ("[github-profil-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->identityApiUrl);
-    int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->identityApiUrl,
+    EXT_DEBUG ("[github-profil-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->userinfo);
+    int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->userinfo,
                            &dfltOpts, authToken, githubUserGetByTokenCB,
                            rqtCtx);
     if (err) goto OnErrorExit;
@@ -247,8 +247,6 @@ githubAccessTokenCB (httpRqtT * httpRqt)
     if (!rqtCtx->token)
         goto OnErrorExit;
 
-    EXT_DEBUG ("[github-auth-token] token=%s (githubAccessTokenCB)", rqtCtx->token);
-
     // we have our wreq token let's try to get user profil
     githubUserGetByToken (rqtCtx);
 
@@ -262,8 +260,7 @@ githubAccessTokenCB (httpRqtT * httpRqt)
     return HTTP_HANDLE_FREE;
 }
 
-static int
-githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirectUrl, const char *code)
+static int githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirectUrl, const char *code)
 {
     assert (idp->magic == MAGIC_OIDC_IDP);
     char url[EXT_URL_MAX_LEN];
@@ -288,15 +285,12 @@ githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirectUrl, con
         goto OnErrorExit;
 
     // send asynchronous post wreq with params in query // https://gist.github.com/technoweenie/419219
-    err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ ,
-                          idp->wellknown->accessTokenUrl, params);
+    err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->tokenid, params);
     if (err) goto OnErrorExit;
 
-    err = httpSendPost (oidc->httpPool, url, &dfltOpts, NULL /*token */ ,
-                        (void *) 1 /*post */ , 0 /*no data */ ,
-                        githubAccessTokenCB, rqtCtx);
-    if (err)
-        goto OnErrorExit;
+    EXT_DEBUG ("[github-access-token] curl -X post %s\n", url);
+    err = httpSendPost (oidc->httpPool, url, &dfltOpts, NULL /*token */ , (void *) 1 /*post */ , 0 /*no data */ , githubAccessTokenCB, rqtCtx);
+    if (err)  goto OnErrorExit;
 
     return 0;
 
@@ -363,7 +357,7 @@ int githubLoginCB (afb_hreq * hreq, void *ctx) {
 
         // build wreq and send it
         err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ ,
-                              idp->wellknown->loginTokenUrl, query);
+                              idp->wellknown->authorize, query);
         if (err)
             goto OnErrorExit;
 
@@ -371,7 +365,7 @@ int githubLoginCB (afb_hreq * hreq, void *ctx) {
         afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 
     } else {
-        // use state to retreive original wreq session uuid and restore original session before wreqing token
+        // check question/response state match
         const char *oidcState = afb_hreq_get_argument (hreq, "state");
         if (strcmp (oidcState, session)) {
             EXT_DEBUG ("[github-auth-code] missmatch session/state state=%s session=%s (githubLoginCB)", oidcState, session);

@@ -128,3 +128,4 @@ httpPoolT *httpCreatePool(void *evtLoop, httpCallbacksT *mainLoopCbs, int verbos
 // curl action callback to be called from glue layer
 int httpOnSocketCB(httpPoolT *httpPool, int sock, int action);
 int httpOnTimerCB(httpPoolT *httpPool);
+char * httpEncode64 (const char* inputData, size_t inputLen);

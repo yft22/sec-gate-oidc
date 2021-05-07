@@ -34,23 +34,41 @@
 #include "oidc-alias.h"
 #include "oidc-fedid.h"
 #include "http-client.h"
+#include "oidc-utils.h"
+#include "idp-oidc.h"
 
 #include <assert.h>
 #include <string.h>
 #include <locale.h>
 
-static const httpKeyValT dfltHeaders[] = {
-    {.tag = "Accept",.value = "application/json"},
-    {.tag = "Authorization", .value = NULL},
-    {NULL}  // terminator
-};
+// import idp authentication enum/label
+extern const nsKeyEnumT idpAuthMethods[];
 
 static const oidcProfilsT dfltProfils[] = {
     {.loa = 1,.scope = "openid,profile"},
     {NULL}  // terminator
 };
 
-static const oidcWellknownT dfltWellknown = {
+static const oidcSchemaT dfltSchema = {
+    .fedid="sub",
+    .pseudo="preferred_username",
+    .name="name",
+    .email= "email",
+    .avatar="picture",
+    .company="company",
+};
+
+static const httpKeyValT dfltHeaders[] = {
+    {.tag = "Content-type",.value = "application/x-www-form-urlencoded"},
+    {.tag = "Accept",.value = "application/json"},
+    {NULL}                      // terminator
+};
+
+static httpOptsT dfltOpts = {
+    .agent = HTTP_DFLT_AGENT,
+    .follow = 1,
+    .timeout= 10, // default authentication timeout 
+    // .verbose=1
 };
 
 static const oidcStaticsT dfltstatics = {
@@ -59,151 +77,80 @@ static const oidcStaticsT dfltstatics = {
     .sTimeout = 600
 };
 
-static httpOptsT dfltOpts = {
-    .agent = HTTP_DFLT_AGENT,
-    .headers = dfltHeaders,
-    .follow = 1,
-    .timeout= 10, // default authentication timeout 
-    // .verbose=1
-};
-
 // duplicate key value if not null
-static char *
-json_object_dup_key_value (json_object * objJ, const char *key)
+static char *json_object_dup_key_value (json_object * objJ, const char *key)
 {
     char *value;
     value = (char *) json_object_get_string (json_object_object_get (objJ, key));
-    if (value)
-        value = strdup (value);
+    if (value) value = strdup (value);
     return value;
 }
 
 // call when IDP respond to user profil wreq
 // reference: https://docs.oidc.com/en/rest/reference/users#get-the-authenticated-user
-static httpRqtActionT oidcAttrsGetByTokenCB (httpRqtT * httpRqt)
+static httpRqtActionT oidcUserGetByTokenCB (httpRqtT * httpRqt)
 {
     idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
+    oidcIdpT *idp = rqtCtx->idp;
+    oidcSchemaT *schema= (oidcSchemaT*) idp->userData;
+    fedSocialRawT *fedSocial=NULL;
+    fedUserRawT *fedUser=NULL;
     int err;
+
+    // free previous access token
+    free (rqtCtx->userData);
 
     // something when wrong
     if (httpRqt->status != 200) goto OnErrorExit;
 
     // unwrap user profil
-    json_object *orgsJ = json_tokener_parse (httpRqt->body);
-    if (!orgsJ || !json_object_is_type (orgsJ, json_type_array)) goto OnErrorExit;
-    size_t count = json_object_array_length (orgsJ);
-    rqtCtx->fedSocial->attrs = calloc (count + 1, sizeof (char *));
-    for (int idx = 0; idx < count; idx++) {
-        json_object *orgJ = json_object_array_get_idx (orgsJ, idx);
-        rqtCtx->fedSocial->attrs[idx] = json_object_dup_key_value (orgJ, "login");
-    }
+    json_object *profilJ = json_tokener_parse (httpRqt->body);
+    if (!profilJ) goto OnErrorExit;
 
-    // we've got everything check federated user now
+    // build social fedkey from idp->uid+oidc->id
+    fedSocial = calloc (1, sizeof (fedSocialRawT));
+    fedSocial->fedkey = json_object_dup_key_value (profilJ, schema->fedid);
+    fedSocial->idp = strdup (idp->uid);
+    rqtCtx->fedSocial= fedSocial;
+
+    fedUser = calloc (1, sizeof (fedUserRawT));
+    fedUser->pseudo = json_object_dup_key_value (profilJ, schema->pseudo);
+    fedUser->avatar = json_object_dup_key_value (profilJ, schema->avatar);
+    fedUser->name = json_object_dup_key_value (profilJ, schema->name);
+    fedUser->company = json_object_dup_key_value (profilJ, schema->company);
+    fedUser->email = json_object_dup_key_value (profilJ, schema->email);
+    rqtCtx->fedUser= fedUser;
+
+    // no organisation attributes we've got everything check federated user now
     err = fedidCheck(rqtCtx);
     if (err)  goto OnErrorExit;
 
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
-    EXT_CRITICAL ("[oidc-fail-orgs] Fail to get user organisation status=%ld body='%s'", httpRqt->status, httpRqt->body);
-    return HTTP_HANDLE_FREE;
-}
-
-// reference https://docs.oidc.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
-static void
-oidcGetAttrsByToken (idpRqtCtxT * rqtCtx, const char *orgApiUrl)
-{
-    char tokenVal[EXT_TOKEN_MAX_LEN];
-    oidcIdpT *idp = rqtCtx->idp;
-    rqtCtx->ucount++;
-
-    snprintf (tokenVal, sizeof(tokenVal), "token %s", rqtCtx->token);
-    httpKeyValT authToken[] = {
-        {.tag = "Authorization",.value = tokenVal},
-        {NULL} // terminator
-    };
-
-    // asynchronous wreq to IDP user profil https://docs.oidc.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
-    EXT_DEBUG ("[oidc-attrs-get] curl -H 'Authorization: %s' %s\n", tokenVal, orgApiUrl);
-    int err = httpSendGet (idp->oidc->httpPool, orgApiUrl, &dfltOpts, authToken, oidcAttrsGetByTokenCB, rqtCtx);
-    if (err) EXT_ERROR ("[oidc-attrs-fail] curl -H 'Authorization: %s' %s\n", tokenVal, orgApiUrl);
-    return;
-}
-
-// call when IDP respond to user profil wreq
-// reference: https://docs.oidc.com/en/rest/reference/users#get-the-authenticated-user
-static httpRqtActionT
-oidcUserGetByTokenCB (httpRqtT * httpRqt)
-{
-    idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
-    oidcIdpT *idp = rqtCtx->idp;
-    int err;
-
-    // something when wrong
-    if (httpRqt->status != 200)
-        goto OnErrorExit;
-
-    // unwrap user profil
-    json_object *profilJ = json_tokener_parse (httpRqt->body);
-    if (!profilJ)
-        goto OnErrorExit;
-
-    // build social fedkey from idp->uid+oidc->id
-    fedSocialRawT *fedSocial = calloc (1, sizeof (fedSocialRawT));
-    fedSocial->fedkey = strdup (json_object_get_string (json_object_object_get (profilJ, "id")));
-    fedSocial->idp = strdup (idp->uid);
-    rqtCtx->fedSocial= fedSocial;
-
-    fedUserRawT *fedUser = calloc (1, sizeof (fedUserRawT));
-    fedUser->pseudo = json_object_dup_key_value (profilJ, "login");
-    fedUser->avatar = json_object_dup_key_value (profilJ, "avatar_url");
-    fedUser->name = json_object_dup_key_value (profilJ, "name");
-    fedUser->company = json_object_dup_key_value (profilJ, "company");
-    fedUser->email = json_object_dup_key_value (profilJ, "email");
-    rqtCtx->fedUser= fedUser;
-
-    // user is ok, let's map user organisation onto security attributes
-    if (rqtCtx->profil->label) {
-        const char *organizationsUrl = json_object_get_string (json_object_object_get (profilJ, rqtCtx->profil->label));
-        if (organizationsUrl) {
-            oidcGetAttrsByToken (rqtCtx, organizationsUrl);
-        }
-    } else {
-        // no organisation attributes we've got everything check federated user now
-        err = fedidCheck(rqtCtx);
-        if (err)  goto OnErrorExit;
-    }
-    return HTTP_HANDLE_FREE;
-
-  OnErrorExit:
     EXT_CRITICAL ("[oidc-fail-user-profil] Fail to get user profil from oidc status=%ld body='%s'", httpRqt->status, httpRqt->body);
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
     idpRqtCtxFree(rqtCtx);
-    fedSocialFreeCB(fedSocial);
-    fedUserFreeCB(fedUser);
+    if (fedSocial) fedSocialFreeCB(fedSocial);
+    if (fedUser)fedUserFreeCB(fedUser);
     return HTTP_HANDLE_FREE;
 }
 
 // from acces token wreq user profil
 // reference https://docs.oidc.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
-static void
-oidcUserGetByToken (idpRqtCtxT * rqtCtx)
+static void oidcUserGetByToken (idpRqtCtxT * rqtCtx)
 {
-    char tokenVal[EXT_TOKEN_MAX_LEN];
     oidcIdpT *idp = rqtCtx->idp;
 
-    snprintf (tokenVal, sizeof (tokenVal), "token %s", rqtCtx->token);
     httpKeyValT authToken[] = {
-        {.tag = "Authorization",.value = tokenVal},
+        {.tag = "Authorization",.value = rqtCtx->token},
         {.tag = "grant_type", .value="authorization_code"},
         {NULL}  // terminator
     };
 
     // asynchronous wreq to IDP user profil https://docs.oidc.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
-    EXT_DEBUG ("[oidc-profil-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->identityApiUrl);
-    int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->identityApiUrl,
-                           &dfltOpts, authToken, oidcUserGetByTokenCB,
-                           rqtCtx);
+    EXT_DEBUG ("[oidc-profil-get] curl -H 'Authorization: %s' %s\n", rqtCtx->token, idp->wellknown->userinfo);
+    int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->userinfo, &dfltOpts, authToken, oidcUserGetByTokenCB, rqtCtx);
     if (err) goto OnErrorExit;
     return;
 
@@ -213,25 +160,27 @@ oidcUserGetByToken (idpRqtCtxT * rqtCtx)
 }
 
 // call when oidc return a valid access_token
-static httpRqtActionT
-oidcAccessTokenCB (httpRqtT * httpRqt)
+static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
 {
+    const char *tokenVal, *tokenType;
     assert (httpRqt->magic == MAGIC_HTTP_RQT);
     idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
 
-    // oidc returns "access_token=ffefd8e2f7b0fbe2de25b54e6a415c92a15491b8&scope=user%3Aemail&token_type=bearer"
-    if (httpRqt->status != 200)
-        goto OnErrorExit;
+    // free old post data
+    free (rqtCtx->userData);
+
+    if (httpRqt->status != 200) goto OnErrorExit;
 
     // we should have a valid token or something when wrong
     json_object *responseJ = json_tokener_parse (httpRqt->body);
-    if (!responseJ)
-        goto OnErrorExit;
+    if (!responseJ) goto OnErrorExit;
 
-    rqtCtx->token = json_object_dup_key_value (responseJ, "access_token");
-    if (!rqtCtx->token) goto OnErrorExit;
-
-    EXT_DEBUG ("[oidc-auth-token] token=%s (oidcAccessTokenCB)", rqtCtx->token);
+    int err= wrap_json_unpack (responseJ, "{ss ss}"
+        , "access_token", & tokenVal
+        , "token_type", & tokenType
+        );
+    if (err) goto OnErrorExit;
+    asprintf (&rqtCtx->token, "%s %s", tokenType, tokenVal);
 
     // we have our wreq token let's try to get user profil
     oidcUserGetByToken (rqtCtx);
@@ -246,45 +195,55 @@ oidcAccessTokenCB (httpRqtT * httpRqt)
     return HTTP_HANDLE_FREE;
 }
 
-static int
-oidcAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirectUrl, const char *code)
+static int oidcAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirectUrl, const char *code)
 {
     assert (idp->magic == MAGIC_OIDC_IDP);
-    char url[EXT_URL_MAX_LEN];
     oidcCoreHdlT *oidc = idp->oidc;
-    int err;
-
-    httpKeyValT params[] = {
-        {.tag = "client_id",.value = idp->credentials->clientId},
-        {.tag = "client_secret",.value = idp->credentials->secret},
-        {.tag = "code",.value = code},
-        {.tag = "redirect_uri",.value = redirectUrl},
-        {.tag = "grant_type",.value = "authorization_code"},
-        {.tag = "state",.value = afb_session_uuid (hreq->comreq.session)},
-        {NULL}                  // terminator
-    };
+    int err, dataLen;
+    oidcSchemaT *schema= (oidcSchemaT*)idp->userData;
 
     idpRqtCtxT *rqtCtx = calloc (1, sizeof (idpRqtCtxT));
-    // afb_hreq_addref (hreq); // prevent automatic href liberation
     rqtCtx->hreq = hreq;
     rqtCtx->idp = idp;
     err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &rqtCtx->profil);
-    if (err)
-        goto OnErrorExit;
+    if (err) goto OnErrorExit;
 
-    // send asynchronous post wreq with params in query // https://gist.oidc.com/technoweenie/419219
-    err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->accessTokenUrl, params);
-    if (err)
-        goto OnErrorExit;
+    switch (idp->wellknown->authMethod) {
 
-    httpKeyValT *headers= (httpKeyValT *)idp->userData;
-    EXT_DEBUG ("[oidc-access-token] curl -H 'Authorization: %s' %s\n", headers[1].value, url);
-    err = httpSendPost (oidc->httpPool, url, &dfltOpts, headers, (void *) 1 /*post */ , 0 /*no data */ , oidcAccessTokenCB, rqtCtx);
+        case IDP_CLIENT_SECRET_BASIC: {
+
+            dataLen= asprintf ((char**)&rqtCtx->userData, "code=%s&redirect_uri=%s&grant_type=%s"
+                , code
+                , redirectUrl
+                , "authorization_code"
+            );
+
+            httpKeyValT headers[] = {
+                {.tag = "Content-type",.value = "application/x-www-form-urlencoded"},
+                {.tag = "Accept",.value = "application/json"},
+                {.tag = "Authorization",.value = schema->auth64},
+                {NULL}  // terminator
+            };
+
+            EXT_DEBUG ("[oidc-access-token] curl -H 'Authorization: %s' -X post -d '%s' %s\n", schema->auth64, (char*)rqtCtx->userData, idp->wellknown->tokenid);
+            err = httpSendPost (oidc->httpPool, idp->wellknown->tokenid, &dfltOpts, headers, rqtCtx->userData, dataLen , oidcAccessTokenCB, rqtCtx);
+            break;
+        }
+
+        case IDP_CLIENT_SECRET_POST:    
+            break;
+
+        default: 
+            EXT_DEBUG ("[oidc-auth-unknown] idp=%s unsupported authentication method=%d",idp->uid, idp->wellknown->authMethod);
+            goto OnErrorExit;
+    }
     if (err) goto OnErrorExit;
 
     return 0;
 
   OnErrorExit:
+    if (rqtCtx->userData) free(rqtCtx->userData);
+    free (rqtCtx);
     afb_hreq_reply_error (hreq, EXT_HTTP_UNAUTHORIZED);
     return 1;
 }
@@ -302,15 +261,12 @@ int oidcLoginCB (afb_hreq * hreq, void *ctx) {
     const char *code = afb_hreq_get_argument (hreq, "code");
     const char *session = afb_session_uuid (hreq->comreq.session);
     afb_session_cookie_get (hreq->comreq.session, oidcAliasCookie, (void **) &alias);
-    if (alias)
-        aliasLoa = alias->loa;
-    else
-        aliasLoa = 0;
+    if (alias) aliasLoa = alias->loa;
+    else aliasLoa = 0;
 
     // add afb-binder endpoint to login redirect alias
     status = afb_hreq_make_here_url (hreq, idp->statics->aliasLogin, redirectUrl, sizeof (redirectUrl));
-    if (status < 0)
-        goto OnErrorExit;
+    if (status < 0) goto OnErrorExit;
 
     // if no code then set state and redirect to IDP
     if (!code) {
@@ -329,8 +285,7 @@ int oidcLoginCB (afb_hreq * hreq, void *ctx) {
         }
 
         // if loa wreqed and no profil fit exit without trying authentication
-        if (!profil)
-            goto OnErrorExit;
+        if (!profil) goto OnErrorExit;
 
         // store wreqed profil to retreive attached loa and role filter if login succeded
         afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profil, NULL, NULL);
@@ -346,10 +301,8 @@ int oidcLoginCB (afb_hreq * hreq, void *ctx) {
         };
 
         // build wreq and send it
-        err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ ,
-                              idp->wellknown->loginTokenUrl, query);
-        if (err)
-            goto OnErrorExit;
+        err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->authorize, query);
+        if (err) goto OnErrorExit;
 
         EXT_DEBUG ("[oidc-redirect-url] %s (oidcLoginCB)", url);
         afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
@@ -375,35 +328,107 @@ int oidcLoginCB (afb_hreq * hreq, void *ctx) {
     return 1;
 }
 
+// request IDP wellknown endpoint and retreive config
+static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
+{
+    assert (httpRqt->magic == MAGIC_HTTP_RQT);
+    oidcIdpT *idp = (oidcIdpT*) httpRqt->userData;
+    oidcWellknownT *wellknown= (oidcWellknownT*) idp->wellknown;
+    json_object *authMethodJ;
+
+    if (httpRqt->status != 200) goto OnErrorExit;
+
+    // we should have a valid json object
+    json_object *responseJ = json_tokener_parse (httpRqt->body);
+    if (!responseJ) goto OnErrorExit;
+
+    wrap_json_unpack (responseJ, "{s?s s?s s?s s?s s?o}"
+         , "token_endpoint", &wellknown->tokenid
+         , "authorization_endpoint", &wellknown->authorize
+         , "userinfo_endpoint", &wellknown->userinfo
+         , "jwks_uri", &wellknown->jwks
+         , "token_endpoint_auth_methods_supported", &authMethodJ
+        );
+
+    if (!wellknown->tokenid || !wellknown->authorize || !wellknown->userinfo) goto OnErrorExit;
+
+    // search for IDP supported authentication method
+    if (authMethodJ) {
+        for (int idx=0; idx < json_object_array_length(authMethodJ); idx++) {
+            const char* method = json_object_get_string(json_object_array_get_idx(authMethodJ, idx));
+            wellknown->authMethod =utilsMapValue (idpAuthMethods, method);
+            if (wellknown->authMethod) break;
+        }
+    }
+    // nothing defined let's try default
+    if (!wellknown->authMethod) wellknown->authMethod= IDP_CLIENT_SECRET_DEFAULT;
+
+    // callback is responsible to free wreq & context
+    return HTTP_HANDLE_FREE;
+
+  OnErrorExit:
+    EXT_CRITICAL ("[fail-wellknown-discovery] Fail to process response from oidc status=%ld body='%s' (oidcDiscoveryCB)", httpRqt->status, httpRqt->body);
+    return HTTP_HANDLE_FREE;
+}
+
 // oidc is openid compliant. Provide default and delegate parsing to default ParseOidcConfigCB
-int
-oidcConfigCB (oidcIdpT * idp, json_object * configJ)
+int oidcConfigCB (oidcIdpT * idp, json_object * configJ)
 {
 
     oidcDefaultsT defaults = {
         .credentials = NULL,
-        .statics = &dfltstatics,
-        .wellknown = &dfltWellknown,
-        .profils = dfltProfils,
+        .wellknown = NULL,
         .headers = dfltHeaders,
+        .statics = &dfltstatics,
+        .profils = dfltProfils,
     };
+
     int err = idpParseOidcConfig (idp, configJ, &defaults, NULL);
     if (err) goto OnErrorExit;
 
-    // if timeout defined 
-    if (idp->credentials->timeout) dfltOpts.timeout= idp->credentials->timeout;
+        // copy default ldap options as idp private user data
+    oidcSchemaT *schema= malloc (sizeof(oidcSchemaT));
+    memcpy (schema, &dfltSchema, sizeof(oidcSchemaT));
+    idp->userData= (void*)schema;
 
-    // prebuilt authentication token
+    // check is we have custom options
+    json_object *schemaJ = json_object_object_get (configJ, "schema");
+    if (schemaJ) {
+        err = wrap_json_unpack (schemaJ, "{s?s s?s s?s s?s s?s s?s !}"
+            , "fedid", &schema->fedid
+            , "avatar", &schema->avatar
+            , "pseudo",&schema->pseudo
+            , "name", &schema->name
+            , "email", &schema->email
+            , "company", &schema->company
+            );
+        if (err) {
+            EXT_ERROR ("[iodc-config-schema] json error 'schema' support json keys: fedid,avatar,pseudo,email,name");
+            goto OnErrorExit;
+        }
+    }
+
+    // prebuilt basic authentication token
     char *authstr;
     int len= asprintf (&authstr,"%s:%s", idp->credentials->clientId, idp->credentials->secret);
-    httpKeyValT *headers=malloc(sizeof(dfltHeaders));
-    memcpy(headers, dfltHeaders, sizeof(dfltHeaders));
-    headers[1].value= curl_easy_escape(NULL, authstr, len);
-    idp->userData= headers;
+    char *auth64= httpEncode64(authstr, len);
+    asprintf ((char**)&schema->auth64, "Basic %s", auth64);
+    idp->userData=schema;
     free(authstr);
+    free(auth64);
+
+    // if discovery url is present request it now
+    if (idp->wellknown->discovery) {
+        int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->discovery, &dfltOpts, NULL, oidcDiscoveryCB, idp);
+        if (err) {
+            EXT_CRITICAL ("[fail-wellknown-discovery] invalid url='%s' (oidcDiscoveryCB)", idp->wellknown->discovery);
+            goto OnErrorExit;
+        }
+    }
 
     return 0;
 
   OnErrorExit:
+    EXT_CRITICAL ("[fail-config-oidc] invalid config idp='%s' (oidcDiscoveryCB)", idp->uid);
     return 1;
 }
