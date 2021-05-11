@@ -79,12 +79,12 @@ apisRegisterOne (oidcCoreHdlT * oidc, oidcApisT * api, afb_apiset * declare_set,
         if (err) goto OnErrorExit;
     }
     // Extract API from URI
-    for (index = 0; api->uri[index]; index++) {
+    for (index = (int)strlen(api->uri)-1; index > 0; index--) {
         if (api->uri[index] == '@' || api->uri[index] == '/') break;
     }
 
     // If needed create an alias
-    if (api->uri[index]) {
+    if (index) {
         if (strcasecmp (&api->uri[index + 1], api->uid)) {
             err = afb_api_v4_add_alias_hookable (oidc->apiv4, &api->uri[index + 1], api->uid);
             if (err) goto OnErrorExit;
