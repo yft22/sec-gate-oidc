@@ -397,7 +397,7 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
 
 
 // when call with no login/passwd display form otherwise try to log user
-int ldapLoginCB (afb_hreq * hreq, void *ctx)
+static int ldapLoginCB (afb_hreq * hreq, void *ctx)
 {
     oidcIdpT *idp = (oidcIdpT *) ctx;
     assert (idp->magic == MAGIC_OIDC_IDP);
@@ -452,7 +452,7 @@ int ldapLoginCB (afb_hreq * hreq, void *ctx)
         err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->tokenid, query);
         if (err) goto OnErrorExit;
 
-        EXT_DEBUG ("[ldap-redirect-url] %s (ldapLoginCB)", url);
+        EXT_DEBUG ("[ldap-redirect-url] %s (ldapRegisterAlias)", url);
         afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 
     } else {
@@ -461,7 +461,7 @@ int ldapLoginCB (afb_hreq * hreq, void *ctx)
         const char *state = afb_hreq_get_argument (hreq, "state");
         if (!state || strcmp (state, afb_session_uuid (hreq->comreq.session))) goto OnErrorExit;
 
-        EXT_DEBUG ("[ldap-auth-code] login=%s (ldapLoginCB)", login);
+        EXT_DEBUG ("[ldap-auth-code] login=%s (ldapRegisterAlias)", login);
         afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &profil);
         if (!profil) goto OnErrorExit;
 
@@ -477,7 +477,7 @@ int ldapLoginCB (afb_hreq * hreq, void *ctx)
     return 1;
 }
 
-int ldapRegisterCB (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
+int ldapRegisterApis (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
 {
     int err;
 
@@ -491,8 +491,23 @@ int ldapRegisterCB (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_a
     return 1;
 }
 
+int ldapRegisterAlias (oidcIdpT * idp, afb_hsrv * hsrv)
+{
+    int err;
+    EXT_DEBUG ("[ldap-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
+
+    err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogin, ldapLoginCB, idp, EXT_HIGHEST_PRIO);
+    if (!err) goto OnErrorExit;
+
+    return 0;
+
+  OnErrorExit:
+    EXT_ERROR ("[ldap-register-alias] idp=%s fail to register alias=%s (ldapRegisterAlias)", idp->uid, idp->statics->aliasLogin);
+    return 1;
+}
+
 // ldap is a fake openid authority as it get everyting locally
-int ldapConfigCB (oidcIdpT * idp, json_object * idpJ)
+int ldapRegsterConfig (oidcIdpT * idp, json_object * idpJ)
 {
     int err;
     const char *people, *groups;

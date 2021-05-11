@@ -1,8 +1,8 @@
 var afb = new AFB("api", "mysecret");
+var urlws=afb.setURL;
 var ws;
 var evtidx = 0;
 var count = 0;
-
 
 //**********************************************
 // Logger

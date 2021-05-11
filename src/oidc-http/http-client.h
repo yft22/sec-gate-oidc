@@ -129,3 +129,4 @@ httpPoolT *httpCreatePool(void *evtLoop, httpCallbacksT *mainLoopCbs, int verbos
 int httpOnSocketCB(httpPoolT *httpPool, int sock, int action);
 int httpOnTimerCB(httpPoolT *httpPool);
 char * httpEncode64 (const char* inputData, size_t inputLen);
+char * httpDecode64 (const char* inputData, size_t inputLen, int url);

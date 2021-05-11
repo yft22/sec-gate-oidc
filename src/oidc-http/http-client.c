@@ -21,6 +21,63 @@
 #include <fcntl.h>
 
 // Fulup TDB remove when Jose will have made public with afb-libafb
+int wrap_base64_decode(
+		const char *data,
+		size_t datalen,
+		uint8_t **decoded,
+		size_t *decodedlen,
+		int url)
+{
+	uint16_t u16;
+	uint8_t u8, *result;
+	size_t in, out, iin;
+	char c;
+
+	/* allocate enougth output */
+	result = malloc(datalen);
+	if (result == NULL)
+		return -1;
+
+	/* decode the input */
+	for (iin = in = out = 0 ; in < datalen ; in++) {
+		c = data[in];
+		if (c != '\n' && c != '\r' && c != '=') {
+			if ('A' <= c && c <= 'Z')
+				u8 = (uint8_t)(c - 'A');
+			else if ('a' <= c && c <= 'z')
+				u8 = (uint8_t)(c - 'a' + 26);
+			else if ('0' <= c && c <= '9')
+				u8 = (uint8_t)(c - '0' + 52);
+			else if (c == '+' || c == '-')
+				u8 = (uint8_t)62;
+			else if (c == '/' || c == '_')
+				u8 = (uint8_t)63;
+			else {
+				free(result);
+				return -1;
+			}
+			if (!iin) {
+				u16 = (uint16_t)u8;
+				iin = 6;
+			} else {
+				u16 = (uint16_t)((u16 << 6) | u8);
+				iin -= 2;
+				u8 = (uint8_t)(u16 >> iin);
+				result[out++] = u8;
+			}
+		}
+	}
+
+	/* terminate */
+	*decoded = realloc(result, out);
+	if (out && *decoded == NULL) {
+		free(result);
+		return -1;
+	}
+	*decodedlen = out;
+	return 0;
+}
+
 int wrap_base64_encode(
 		const uint8_t *data,
 		size_t datalen,
@@ -542,6 +599,23 @@ char * httpEncode64 (const char* inputData, size_t inputLen) {
     size_t len64;
 
     status= wrap_base64_encode ((uint8_t*)inputData, inputLen, &data64, &len64,0,1,0);
+    if (status != CURLE_OK) goto OnErrorExit;
+
+    return (data64);
+
+OnErrorExit:
+    if (data64) free (data64);
+    return NULL;    
+}
+
+// decode a string into base64
+char * httpDecode64 (const char* inputData, size_t inputLen, int url) {
+    if (!inputLen) inputLen=strlen(inputData);
+    int status;
+    char *data64;
+    size_t len64;
+
+    status= wrap_base64_decode (inputData, inputLen, (uint8_t**)&data64, &len64, url);
     if (status != CURLE_OK) goto OnErrorExit;
 
     return (data64);

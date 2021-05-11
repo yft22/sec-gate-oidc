@@ -39,6 +39,14 @@ typedef enum {
     IDP_PRIVATE_KEY_JWT
 } oidcAuthMethodT;
 
+typedef enum {
+    IDP_RESPOND_TYPE_UNKNOWN=0,
+    IDP_RESPOND_TYPE_CODE,
+    IDP_RESPOND_TYPE_ID_TOKEN,
+    IDP_RESPOND_TYPE_ID_TOKEN_TOKEN,
+} oidcRespondTypeT;
+
+
 typedef struct {
     const char *discovery;
     const char *tokenid;
@@ -46,6 +54,11 @@ typedef struct {
     const char *userinfo;
     const char *jwks;
     oidcAuthMethodT authMethod;
+    oidcRespondTypeT respondType;
+    const char* respondLabel;
+    const char* authLabel;
+    const char* errorLabel;
+    json_object *jwksJ;
 } oidcWellknownT;
 
 typedef struct {
@@ -70,6 +83,7 @@ typedef struct oidcStaticsS {
     unsigned long sTimeout;
     const char *aliasLogo;
     const char *aliasLogin;
+    const char *aliasLogout;
 } oidcStaticsT;
 
 typedef struct oidcIdpS {
@@ -96,7 +110,6 @@ typedef struct {
     const oidcProfilsT *profils;
     const httpKeyValT *headers;
 } oidcDefaultsT;
-
 
 // request handle store federation attribute during multiple IDP async calls
 typedef struct {
@@ -127,9 +140,9 @@ typedef struct idpGenericCbS {
 typedef struct idpPluginS {
     const char *uid;
     const char *info;
-    int (*configCB) (oidcIdpT * idp, json_object * idpJ);
-    int (*registerCB) (oidcIdpT * idp, struct afb_apiset * declare_set, struct afb_apiset * call_set);
-    int (*loginCB) (struct afb_hreq * hreq, void *ctx);
+    int (*registerConfig) (oidcIdpT * idp, json_object * idpJ);
+    int (*registerApis) (oidcIdpT * idp, struct afb_apiset * declare_set, struct afb_apiset * call_set);
+    int (*registerAlias) (oidcIdpT * idp, afb_hsrv * hsrv);
     void *ctx;
 } idpPluginT;
 
@@ -139,8 +152,8 @@ typedef int (*oidcPluginInitCbT) (oidcCoreHdlT * oidc, idpGenericCbT * idpGeneri
 // idp exported functions
 const oidcIdpT *idpParseConfig (oidcCoreHdlT * oidc, json_object * idpsJ);
 int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * defaults, void *ctx);
-int idpRegisterOne (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set);
-int idpRegisterLogin (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv);
+int idpRegisterApis (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set);
+int idpRegisterAlias (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv);
 json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps);
 int idpPLuginRegistryInit (void);
 void idpRqtCtxFree (idpRqtCtxT * rqtCtx);

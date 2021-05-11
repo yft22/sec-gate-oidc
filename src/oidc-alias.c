@@ -88,7 +88,7 @@ aliasRedirectTimeout (afb_hreq * hreq, oidcAliasT * alias)
     char url[EXT_URL_MAX_LEN];
     httpKeyValT query[] = {
         {.tag = "client_id",.value = profil->idp->credentials->clientId},
-        {.tag = "response_type",.value = "code"},
+        {.tag = "response_type",.value = profil->idp->wellknown->respondLabel},
         {.tag = "state",.value = afb_session_uuid (hreq->comreq.session)},
         {.tag = "scope",.value = profil->scope},
         {.tag = "redirect_uri",.value = redirectUrl},

@@ -39,19 +39,6 @@
 #include <string.h>
 #include <locale.h>
 
-/*
-	// token not json
-	char *ptr = strtok(httpRqt->body, "&");
-	while(ptr != NULL)	{
-		index= strncmp(ptr, tokenLabel, sizeof(tokenLabel)-1);
-		if (!index) {
-			accessToken= &ptr[sizeof(tokenLabel)-1];
-			break;
-		}
-		ptr = strtok(NULL, "&");
-	}
-*/
-
 static const httpKeyValT dfltHeaders[] = {
     {.tag = "Content-type",.value = "application/x-www-form-urlencoded"},
     {.tag = "Accept",.value = "application/json"},
@@ -67,6 +54,8 @@ static const oidcWellknownT dfltWellknown = {
     .tokenid = "https://github.com/login/oauth/authorize",
     .authorize = "https://github.com/login/oauth/access_token",
     .userinfo = "https://api.github.com/user",
+    .respondType= IDP_RESPOND_TYPE_CODE,
+    .respondLabel= "code",
 };
 
 static const oidcStaticsT dfltstatics = {
@@ -84,8 +73,7 @@ static httpOptsT dfltOpts = {
 };
 
 // duplicate key value if not null
-static char *
-json_object_dup_key_value (json_object * objJ, const char *key)
+static char *json_object_dup_key_value (json_object * objJ, const char *key)
 {
     char *value;
     value = (char *) json_object_get_string (json_object_object_get (objJ, key));
@@ -126,8 +114,7 @@ static httpRqtActionT githubAttrsGetByTokenCB (httpRqtT * httpRqt)
 }
 
 // reference https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
-static void
-githubGetAttrsByToken (idpRqtCtxT * rqtCtx, const char *orgApiUrl)
+static void githubGetAttrsByToken (idpRqtCtxT * rqtCtx, const char *orgApiUrl)
 {
     char tokenVal[EXT_TOKEN_MAX_LEN];
     oidcIdpT *idp = rqtCtx->idp;
@@ -148,8 +135,7 @@ githubGetAttrsByToken (idpRqtCtxT * rqtCtx, const char *orgApiUrl)
 
 // call when IDP respond to user profil wreq
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
-static httpRqtActionT
-githubUserGetByTokenCB (httpRqtT * httpRqt)
+static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
 {
     idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
     oidcIdpT *idp = rqtCtx->idp;
@@ -202,8 +188,7 @@ githubUserGetByTokenCB (httpRqtT * httpRqt)
 
 // from acces token wreq user profil
 // reference https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
-static void
-githubUserGetByToken (idpRqtCtxT * rqtCtx)
+static void githubUserGetByToken (idpRqtCtxT * rqtCtx)
 {
     char tokenVal[EXT_TOKEN_MAX_LEN];
     oidcIdpT *idp = rqtCtx->idp;
@@ -228,8 +213,7 @@ githubUserGetByToken (idpRqtCtxT * rqtCtx)
 }
 
 // call when github return a valid access_token
-static httpRqtActionT
-githubAccessTokenCB (httpRqtT * httpRqt)
+static httpRqtActionT githubAccessTokenCB (httpRqtT * httpRqt)
 {
     assert (httpRqt->magic == MAGIC_HTTP_RQT);
     idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
@@ -300,7 +284,7 @@ static int githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redir
 }
 
 // this check idp code and either wreq profil or redirect to idp login page
-int githubLoginCB (afb_hreq * hreq, void *ctx) {
+static int githubLoginCB (afb_hreq * hreq, void *ctx) {
     oidcIdpT *idp = (oidcIdpT *) ctx;
     assert (idp->magic == MAGIC_OIDC_IDP);
     char redirectUrl[EXT_HEADER_MAX_LEN];
@@ -361,18 +345,18 @@ int githubLoginCB (afb_hreq * hreq, void *ctx) {
         if (err)
             goto OnErrorExit;
 
-        EXT_DEBUG ("[github-redirect-url] %s (githubLoginCB)", url);
+        EXT_DEBUG ("[github-redirect-url] %s (githubRegisterAlias)", url);
         afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 
     } else {
         // check question/response state match
         const char *oidcState = afb_hreq_get_argument (hreq, "state");
         if (strcmp (oidcState, session)) {
-            EXT_DEBUG ("[github-auth-code] missmatch session/state state=%s session=%s (githubLoginCB)", oidcState, session);
+            EXT_DEBUG ("[github-auth-code] missmatch session/state state=%s session=%s (githubRegisterAlias)", oidcState, session);
             goto OnErrorExit;
         }
 
-        EXT_DEBUG ("[github-auth-code] state=%s code=%s (githubLoginCB)", oidcState, code);
+        EXT_DEBUG ("[github-auth-code] state=%s code=%s (githubRegisterAlias)", oidcState, code);
         // wreq authentication token from tempry code
         err = githubAccessToken (hreq, idp, redirectUrl, code);
         if (err) goto OnErrorExit;
@@ -384,9 +368,23 @@ int githubLoginCB (afb_hreq * hreq, void *ctx) {
     return 1;
 }
 
+int githubRegisterAlias (oidcIdpT * idp, afb_hsrv * hsrv)
+{
+    int err;
+    EXT_DEBUG ("[github-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
+
+    err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogin, githubLoginCB, idp, EXT_HIGHEST_PRIO);
+    if (!err) goto OnErrorExit;
+
+    return 0;
+
+  OnErrorExit:
+    EXT_ERROR ("[github-register-alias] idp=%s fail to register alias=%s (githubRegisterAlias)", idp->uid, idp->statics->aliasLogin);
+    return 1;
+}
+
 // github is openid compliant. Provide default and delegate parsing to default ParseOidcConfigCB
-int
-githubConfigCB (oidcIdpT * idp, json_object * configJ)
+int githubRegisterConfig (oidcIdpT * idp, json_object * configJ)
 {
 
     oidcDefaultsT defaults = {

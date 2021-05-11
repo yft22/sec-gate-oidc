@@ -72,8 +72,7 @@ static const oidcWellknownT dfltWellknown = {
 };
 
 // simulate a user UI for passwd input
-static int
-pamChalengeCB (int num_msg, const struct pam_message **msg, struct pam_response **resp, void *passwd)
+static int pamChalengeCB (int num_msg, const struct pam_message **msg, struct pam_response **resp, void *passwd)
 {
     struct pam_response *reply = malloc (sizeof (struct pam_response));
     reply->resp = strdup (passwd);
@@ -84,8 +83,7 @@ pamChalengeCB (int num_msg, const struct pam_message **msg, struct pam_response 
 }
 
 // check pam login/passwd using scope as pam application
-static int
-pamAccessToken (oidcIdpT * idp, const oidcProfilsT * profil, const char *login, const char *passwd, fedSocialRawT ** social, fedUserRawT ** user)
+static int pamAccessToken (oidcIdpT * idp, const oidcProfilsT * profil, const char *login, const char *passwd, fedSocialRawT ** social, fedUserRawT ** user)
 {
     int status = 0, err;
     pam_handle_t *pamh = NULL;
@@ -157,8 +155,7 @@ pamAccessToken (oidcIdpT * idp, const oidcProfilsT * profil, const char *login, 
 }
 
 // check user email/pseudo attribute
-static void
-checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct afb_data *const params[])
+static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct afb_data *const params[])
 {
     const char *errmsg = "[pam-login] invalid credentials";
     oidcIdpT *idp = (oidcIdpT *) afb_req_v4_vcbdata (wreq);
@@ -230,8 +227,7 @@ checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct afb_data *cons
 
 
 // when call with no login/passwd display form otherwise try to log user
-int
-pamLoginCB (afb_hreq * hreq, void *ctx)
+int pamLoginCB (afb_hreq * hreq, void *ctx)
 {
     oidcIdpT *idp = (oidcIdpT *) ctx;
     assert (idp->magic == MAGIC_OIDC_IDP);
@@ -325,8 +321,7 @@ pamLoginCB (afb_hreq * hreq, void *ctx)
     return 1;
 }
 
-int
-pamRegisterCB (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
+int pamRegisterApis (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
 {
     int err;
 
@@ -341,9 +336,23 @@ pamRegisterCB (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset
     return 1;
 }
 
+static int pamRegisterAlias (oidcIdpT * idp, afb_hsrv * hsrv)
+{
+    int err;
+    EXT_DEBUG ("[pam-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
+
+    err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogin, pamLoginCB, idp, EXT_HIGHEST_PRIO);
+    if (!err) goto OnErrorExit;
+
+    return 0;
+
+  OnErrorExit:
+    EXT_ERROR ("[pam-register-alias] idp=%s fail to register alias=%s (pamRegisterAlias)", idp->uid, idp->statics->aliasLogin);
+    return 1;
+}
+
 // pam is a fake openid authority as it get everyting locally
-int
-pamConfigCB (oidcIdpT * idp, json_object * idpJ)
+static int pamRegisterConfig (oidcIdpT * idp, json_object * idpJ)
 {
     int err;
     assert (idpCallbacks);
@@ -378,13 +387,12 @@ pamConfigCB (oidcIdpT * idp, json_object * idpJ)
 
 // pam sample plugin exposes only one IDP
 idpPluginT idpPamAuth[] = {
-    {.uid = "pam",.info = "use Linux pam login to check user/passwd",.ctx = "login",.configCB = pamConfigCB,.registerCB = pamRegisterCB,.loginCB =     pamLoginCB},
+    {.uid = "pam",.info = "use Linux pam login to check user/passwd",.ctx = "login",.registerConfig = pamRegisterConfig,.registerApis = pamRegisterApis,.registerAlias= pamRegisterAlias},
     {.uid = NULL}               // must be null terminated
 };
 
 // Plugin init call at config.json parsing time
-int
-oidcPluginInit (oidcCoreHdlT * oidc, idpGenericCbT * idpGenericCbs)
+int oidcPluginInit (oidcCoreHdlT * oidc, idpGenericCbT * idpGenericCbs)
 {
     assert (idpGenericCbs->magic == MAGIC_OIDC_CBS);    // check provided callback magic
 

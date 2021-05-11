@@ -143,7 +143,7 @@ int AfbExtensionDeclareV1 (void *ctx, struct afb_apiset *declare_set, struct afb
     if (err) goto OnErrorExit;
 
     for (int idx = 0; oidc->idps[idx].uid; idx++) {
-        err = idpRegisterOne (oidc, &oidc->idps[idx], declare_set, call_set);
+        err = idpRegisterApis (oidc, &oidc->idps[idx], declare_set, call_set);
         if (err) goto OnErrorExit;
     }
 
@@ -172,7 +172,7 @@ int AfbExtensionHTTPV1 (void *ctx, afb_hsrv * hsrv)
     if (!oidc->httpPool) goto OnErrorExit;
 
     for (int idx = 0; oidc->idps[idx].uid; idx++) {
-        err = idpRegisterLogin (oidc, &oidc->idps[idx], hsrv);
+        err = idpRegisterAlias (oidc, &oidc->idps[idx], hsrv);
         if (err) goto OnErrorExit;
     }
 

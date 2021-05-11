@@ -20,7 +20,10 @@
  *  https://www.gnu.org/licenses/gpl-3.0.html.
  * $RP_END_LICENSE$
  *
- *  References: https://phantauth.net/
+ *  References: 
+ *      https://onelogin.com
+ *      https://phantauth.net/
+ *      https://benmcollins.github.io/libjwt/group__jwt__header.html#ga308c00b85ab5ebfa76b1d2485a494104
 */
 
 #define _GNU_SOURCE
@@ -40,9 +43,11 @@
 #include <assert.h>
 #include <string.h>
 #include <locale.h>
+#include <jwt.h> 
 
 // import idp authentication enum/label
 extern const nsKeyEnumT idpAuthMethods[];
+extern const nsKeyEnumT idpRespondTypes[];
 
 static const oidcProfilsT dfltProfils[] = {
     {.loa = 1,.scope = "openid,profile"},
@@ -56,6 +61,12 @@ static const oidcSchemaT dfltSchema = {
     .email= "email",
     .avatar="picture",
     .company="company",
+};
+
+static const oidcWellknownT dfltWellknown = {
+    .authMethod= IDP_CLIENT_SECRET_DEFAULT,
+    .respondType= IDP_RESPOND_TYPE_UNKNOWN,
+    .errorLabel= "error_description",
 };
 
 static const httpKeyValT dfltHeaders[] = {
@@ -97,8 +108,6 @@ static httpRqtActionT oidcUserGetByTokenCB (httpRqtT * httpRqt)
     fedUserRawT *fedUser=NULL;
     int err;
 
-    // free previous access token
-    free (rqtCtx->userData);
 
     // something when wrong
     if (httpRqt->status != 200) goto OnErrorExit;
@@ -162,7 +171,7 @@ static void oidcUserGetByToken (idpRqtCtxT * rqtCtx)
 // call when oidc return a valid access_token
 static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
 {
-    const char *tokenVal, *tokenType;
+    char *tokenVal, *tokenType, *tokenId=NULL;
     assert (httpRqt->magic == MAGIC_HTTP_RQT);
     idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
 
@@ -175,12 +184,42 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
     json_object *responseJ = json_tokener_parse (httpRqt->body);
     if (!responseJ) goto OnErrorExit;
 
-    int err= wrap_json_unpack (responseJ, "{ss ss}"
+    int err= wrap_json_unpack (responseJ, "{ss ss s?s}"
         , "access_token", & tokenVal
         , "token_type", & tokenType
+        , "id_token", &tokenId
         );
     if (err) goto OnErrorExit;
     asprintf (&rqtCtx->token, "%s %s", tokenType, tokenVal);
+
+    if (tokenId) {
+        jwt_t *jwt;
+        int index=0, start=0;
+        char *token[3];
+        int length[3];
+
+	    for (int idx=0; tokenId[idx] != '\0'; idx++) {      
+            if (tokenId[idx] == '.') {
+               if (index == 3) goto OnErrorExit;
+               tokenId[idx]='\0';
+               length[index]= idx-start;
+               token[index]= &tokenId[start];
+               index++;
+               start=idx+1;
+            }
+        }
+        token[index++]=&tokenId[start];
+
+        json_object *headerJ= json_tokener_parse (httpDecode64 (token[0], length[0], 1));
+
+
+        index++;
+
+        //err= jwt_decode(&jwt, , NULL, 0);
+        //char* jtoken= jwt_get_headers_json (jwt, NULL);
+	}
+
+
 
     // we have our wreq token let's try to get user profil
     oidcUserGetByToken (rqtCtx);
@@ -230,7 +269,25 @@ static int oidcAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirec
             break;
         }
 
+        // reference  https://developers.onelogin.com/openid-connect/api/client-credentials-grant
+        // https://iot-bzh-dev.onelogin.com/ (email not username)
         case IDP_CLIENT_SECRET_POST:    
+            dataLen= asprintf ((char**)&rqtCtx->userData, "code=%s&redirect_uri=%s&grant_type=%s&client_id=%s&client_secret=%s"
+                , code
+                , redirectUrl
+                , "client_credentials"
+                , idp->credentials->clientId
+                , idp->credentials->secret
+            );
+
+            httpKeyValT headers[] = {
+                {.tag = "Content-type",.value = "application/x-www-form-urlencoded"},
+                {.tag = "Accept",.value = "application/json"},
+                {NULL}  // terminator
+            };
+
+            EXT_DEBUG ("[oidc-access-token] curl -X post -d '%s' %s\n", (char*)rqtCtx->userData, idp->wellknown->tokenid);
+            err = httpSendPost (oidc->httpPool, idp->wellknown->tokenid, &dfltOpts, headers, rqtCtx->userData, dataLen , oidcAccessTokenCB, rqtCtx);
             break;
 
         default: 
@@ -249,7 +306,7 @@ static int oidcAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirec
 }
 
 // this check idp code and either wreq profil or redirect to idp login page
-int oidcLoginCB (afb_hreq * hreq, void *ctx) {
+static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
     oidcIdpT *idp = (oidcIdpT *) ctx;
     assert (idp->magic == MAGIC_OIDC_IDP);
     char redirectUrl[EXT_HEADER_MAX_LEN];
@@ -263,7 +320,7 @@ int oidcLoginCB (afb_hreq * hreq, void *ctx) {
     afb_session_cookie_get (hreq->comreq.session, oidcAliasCookie, (void **) &alias);
     if (alias) aliasLoa = alias->loa;
     else aliasLoa = 0;
-
+   
     // add afb-binder endpoint to login redirect alias
     status = afb_hreq_make_here_url (hreq, idp->statics->aliasLogin, redirectUrl, sizeof (redirectUrl));
     if (status < 0) goto OnErrorExit;
@@ -292,8 +349,9 @@ int oidcLoginCB (afb_hreq * hreq, void *ctx) {
 
         httpKeyValT query[] = {
             {.tag = "client_id",.value = idp->credentials->clientId},
-            {.tag = "response_type",.value = "code"},
+            {.tag = "response_type",.value = idp->wellknown->respondLabel},
             {.tag = "state",.value = session},
+            {.tag = "nonce",.value = session},
             {.tag = "scope",.value = profil->scope},
             {.tag = "redirect_uri",.value = redirectUrl},
             {.tag = "language",.value = setlocale (LC_CTYPE, "")},
@@ -304,18 +362,18 @@ int oidcLoginCB (afb_hreq * hreq, void *ctx) {
         err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->authorize, query);
         if (err) goto OnErrorExit;
 
-        EXT_DEBUG ("[oidc-redirect-url] %s (oidcLoginCB)", url);
+        EXT_DEBUG ("[oidc-redirect-url] %s (oidcRegisterAlias)", url);
         afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 
     } else {
         // use state to retreive original wreq session uuid and restore original session before wreqing token
         const char *oidcState = afb_hreq_get_argument (hreq, "state");
         if (strcmp (oidcState, session)) {
-            EXT_DEBUG ("[oidc-auth-code] missmatch session/state state=%s session=%s (oidcLoginCB)", oidcState, session);
+            EXT_DEBUG ("[oidc-auth-code] missmatch session/state state=%s session=%s (oidcRegisterAlias)", oidcState, session);
             goto OnErrorExit;
         }
 
-        EXT_DEBUG ("[oidc-auth-code] state=%s code=%s (oidcLoginCB)", oidcState, code);
+        EXT_DEBUG ("[oidc-auth-code] state=%s code=%s (oidcRegisterAlias)", oidcState, code);
         // wreq authentication token from tempry code
         err = oidcAccessToken (hreq, idp, redirectUrl, code);
         if (err)
@@ -328,13 +386,34 @@ int oidcLoginCB (afb_hreq * hreq, void *ctx) {
     return 1;
 }
 
+// this check idp code and either wreq profil or redirect to idp login page
+static int oidcLogoutCB (afb_hreq * hreq, void *ctx) {
+    oidcIdpT *idp = (oidcIdpT *) ctx;
+    assert (idp->magic == MAGIC_OIDC_IDP);
+
+    const char *session = afb_session_uuid (hreq->comreq.session);
+    if (!session) goto OnErrorExit;
+
+    // reset session and redirect to home page
+    fedidsessionReset (0, (void *) session);
+
+    EXT_DEBUG ("[oidc-logout-url] %s (oidcLogoutCB)", idp->oidc->globals->homeUrl);
+    afb_hreq_redirect_to (hreq, idp->oidc->globals->homeUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+    return 1;  // we're done (0 would search for an html page)
+
+  OnErrorExit:
+    afb_hreq_reply_error (hreq, EXT_HTTP_UNAUTHORIZED);
+    return 1;
+}
+
+
 // request IDP wellknown endpoint and retreive config
-static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
+static httpRqtActionT oidcDiscoJwksCB (httpRqtT * httpRqt)
 {
     assert (httpRqt->magic == MAGIC_HTTP_RQT);
     oidcIdpT *idp = (oidcIdpT*) httpRqt->userData;
     oidcWellknownT *wellknown= (oidcWellknownT*) idp->wellknown;
-    json_object *authMethodJ;
+    int err;
 
     if (httpRqt->status != 200) goto OnErrorExit;
 
@@ -342,26 +421,89 @@ static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
     json_object *responseJ = json_tokener_parse (httpRqt->body);
     if (!responseJ) goto OnErrorExit;
 
-    wrap_json_unpack (responseJ, "{s?s s?s s?s s?s s?o}"
+    err= wrap_json_unpack (responseJ, "{so}" , "keys", &wellknown->jwksJ);
+    if (err || !json_object_is_type(wellknown->jwksJ, json_type_array)) goto OnErrorExit;
+
+    return HTTP_HANDLE_FREE;
+
+  OnErrorExit:
+    EXT_CRITICAL ("[fail-wellknown-discovery] Fail to process response from oidc status=%ld body='%s' (oidcDiscoveryCB)", httpRqt->status, httpRqt->body);
+    return HTTP_HANDLE_FREE;
+}
+
+// request IDP wellknown endpoint and retreive config
+static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
+{
+    assert (httpRqt->magic == MAGIC_HTTP_RQT);
+    oidcIdpT *idp = (oidcIdpT*) httpRqt->userData;
+    oidcWellknownT *wellknown= (oidcWellknownT*) idp->wellknown;
+    json_object *authMethodJ=NULL, *respondTypeJ=NULL;
+
+    if (httpRqt->status != 200) goto OnErrorExit;
+
+    // we should have a valid json object
+    json_object *responseJ = json_tokener_parse (httpRqt->body);
+    if (!responseJ) goto OnErrorExit;
+
+    wrap_json_unpack (responseJ, "{s?s s?s s?s s?s s?o s?o}"
          , "token_endpoint", &wellknown->tokenid
          , "authorization_endpoint", &wellknown->authorize
          , "userinfo_endpoint", &wellknown->userinfo
          , "jwks_uri", &wellknown->jwks
          , "token_endpoint_auth_methods_supported", &authMethodJ
+         , "response_types_supported", &respondTypeJ
+         , "jwks_uri", &wellknown->jwks
         );
 
     if (!wellknown->tokenid || !wellknown->authorize || !wellknown->userinfo) goto OnErrorExit;
 
     // search for IDP supported authentication method
-    if (authMethodJ) {
-        for (int idx=0; idx < json_object_array_length(authMethodJ); idx++) {
-            const char* method = json_object_get_string(json_object_array_get_idx(authMethodJ, idx));
-            wellknown->authMethod =utilsMapValue (idpAuthMethods, method);
-            if (wellknown->authMethod) break;
+    if (wellknown->authLabel) {
+        wellknown->authMethod =utillLabel2Value (idpAuthMethods, wellknown->authLabel);
+    } else {
+        if (authMethodJ) {
+            for (int idx=0; idx < json_object_array_length(authMethodJ); idx++) {
+                const char* method = json_object_get_string(json_object_array_get_idx(authMethodJ, idx));
+                wellknown->authMethod =utillLabel2Value (idpAuthMethods, method);
+                if (wellknown->authMethod) {
+                    wellknown->authLabel= method;
+                    break;
+                }
+            }
         }
     }
-    // nothing defined let's try default
     if (!wellknown->authMethod) wellknown->authMethod= IDP_CLIENT_SECRET_DEFAULT;
+    if (!wellknown->authLabel) wellknown->authLabel= utillValue2Label (idpAuthMethods,IDP_RESPOND_TYPE_DEFAULT);
+    if (!wellknown->authLabel) goto OnErrorExit;
+
+    // if response type not defined use from from idp remote wellknown
+    if (wellknown->respondLabel) {
+        wellknown->respondType =utillLabel2Value (idpRespondTypes, wellknown->respondLabel);
+        if (!wellknown->respondType) goto OnErrorExit;
+    } else {
+            if (respondTypeJ) {
+                for (int idx=0; idx < json_object_array_length(respondTypeJ); idx++) {
+                    const char* redpond = json_object_get_string(json_object_array_get_idx(respondTypeJ, idx));
+                    wellknown->respondType =utillLabel2Value (idpRespondTypes, redpond);
+                    if (wellknown->respondType) {
+                        wellknown->respondLabel= redpond;
+                        break;
+                    }
+                }
+            }
+    }
+
+    // nothing defined let's try default
+    if (!wellknown->respondType) wellknown->respondType= IDP_RESPOND_TYPE_DEFAULT;
+    if (!wellknown->respondLabel) wellknown->respondLabel= utillValue2Label (idpRespondTypes,IDP_RESPOND_TYPE_DEFAULT);
+    if (!wellknown->respondLabel) goto OnErrorExit;
+
+    // if jwks is define request URI to get jwt keys
+    if (wellknown->jwks) {
+        int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->jwks, NULL, NULL, oidcDiscoJwksCB, idp);
+        if (err) goto OnErrorExit;
+
+    }
 
     // callback is responsible to free wreq & context
     return HTTP_HANDLE_FREE;
@@ -371,13 +513,33 @@ static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
     return HTTP_HANDLE_FREE;
 }
 
+int oidcRegisterAlias (oidcIdpT * idp, afb_hsrv * hsrv)
+{
+    int err;
+    EXT_DEBUG ("[oidc-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
+
+    err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogin, oidcLoginCB, idp, EXT_HIGHEST_PRIO);
+    if (!err) goto OnErrorExit;
+
+    if (idp->statics->aliasLogout) {
+        err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogout, oidcLogoutCB, idp, EXT_HIGHEST_PRIO);
+        if (!err) goto OnErrorExit;
+    }
+    return 0;
+
+  OnErrorExit:
+    EXT_ERROR ("[oidc-register-alias] idp=%s fail to register static aliases (oidcRegisterAlias)", idp->uid);
+    return 1;
+}
+
+
 // oidc is openid compliant. Provide default and delegate parsing to default ParseOidcConfigCB
-int oidcConfigCB (oidcIdpT * idp, json_object * configJ)
+int oidcRegisterConfig (oidcIdpT * idp, json_object * configJ)
 {
 
     oidcDefaultsT defaults = {
         .credentials = NULL,
-        .wellknown = NULL,
+        .wellknown = &dfltWellknown,
         .headers = dfltHeaders,
         .statics = &dfltstatics,
         .profils = dfltProfils,
@@ -419,6 +581,7 @@ int oidcConfigCB (oidcIdpT * idp, json_object * configJ)
 
     // if discovery url is present request it now
     if (idp->wellknown->discovery) {
+        EXT_NOTICE ("[oidc-wellknown-get] oidc wellknown url=%s",  idp->wellknown->discovery);
         int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->discovery, &dfltOpts, NULL, oidcDiscoveryCB, idp);
         if (err) {
             EXT_CRITICAL ("[fail-wellknown-discovery] invalid url='%s' (oidcDiscoveryCB)", idp->wellknown->discovery);

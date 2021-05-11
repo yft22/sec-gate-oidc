@@ -33,7 +33,7 @@
 
 
 // search for key label within key/value array
-int utilsMapValue (const nsKeyEnumT *keyvals, const char *label) {
+int utillLabel2Value (const nsKeyEnumT *keyvals, const char *label) {
     int value=0;
     if (!label) goto OnDefaultExit;
 
@@ -48,6 +48,20 @@ int utilsMapValue (const nsKeyEnumT *keyvals, const char *label) {
 OnDefaultExit:
     return keyvals[0].value;
 }
+
+// search for key label within key/value array
+const char* utillValue2Label (const nsKeyEnumT *keyvals, const int value) {
+    const char *label=NULL;
+
+    for (int idx=0; keyvals[idx].label; idx++) {
+        if (keyvals[ idx].value == value) {
+            label= keyvals[idx].label;
+            break;
+        }
+    }
+    return label;
+}
+
 
 // replace any %key% with its coresponding json value (warning: json is case sensitive)
 char *utilsExpandJson (const char* src, json_object *keysJ) {

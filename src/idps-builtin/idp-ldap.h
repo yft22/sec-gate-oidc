@@ -26,6 +26,6 @@
 #include "../oidc-idp.h"
 
 // ldap.c
-int ldapLoginCB (struct afb_hreq *hreq, void *ctx);
-int ldapConfigCB (oidcIdpT * idp, json_object * idpJ);
-int ldapRegisterCB (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set);
+int ldapRegisterAlias (oidcIdpT * idp, afb_hsrv * hsrv);
+int ldapRegsterConfig (oidcIdpT * idp, json_object * idpJ);
+int ldapRegisterApis (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set);

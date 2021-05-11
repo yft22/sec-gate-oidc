@@ -56,6 +56,14 @@ const nsKeyEnumT idpAuthMethods[] = {
     {NULL} // terminator
 };
 
+const nsKeyEnumT idpRespondTypes[] = {
+    {"respond-type-unknown",  IDP_RESPOND_TYPE_UNKNOWN},
+    {"code"  , IDP_RESPOND_TYPE_CODE},
+    // {"id_token", IDP_RESPOND_TYPE_ID_TOKEN}, // hybrid mode
+    // {"id_token token"  , IDP_RESPOND_TYPE_ID_TOKEN_TOKEN}, // hybrid mode
+    {NULL} // terminator
+};
+
 void idpRqtCtxFree (idpRqtCtxT * rqtCtx)
 {
     assert (rqtCtx->ucount >= 0);
@@ -301,9 +309,12 @@ static const oidcStaticsT *idpParsestatic (oidcIdpT * idp, json_object * staticJ
     if (!statics->sTimeout)
         statics->sTimeout = idp->oidc->globals->sTimeout;
 
-    int err = wrap_json_unpack (staticJ, "{s?s,s?s,s?i}", "login", &statics->aliasLogin,
-                                "logo", &statics->aliasLogo, "timeout",
-                                &statics->sTimeout);
+    int err = wrap_json_unpack (staticJ, "{s?s,s?s,s?s,s?i}"
+            , "login", &statics->aliasLogin
+            , "logout", &statics->aliasLogout
+            , "logo", &statics->aliasLogo
+            , "timeout", &statics->sTimeout
+            );
     if (err) {
         EXT_CRITICAL ("[idp-static-error] idp=%s parsing fail statics expect: login,logo,plugin,timeout (idpParsestatic)", idp->uid);
         goto OnErrorExit;
@@ -321,21 +332,22 @@ static const oidcWellknownT *idpParseWellknown (oidcIdpT * idp, json_object * we
     // no config use default;
     if (!wellknownJ) return defaults;
 
-    const char* authMethod;
+    const char* authMethod=NULL;
 
     oidcWellknownT *wellknown = calloc (1, sizeof (oidcWellknownT));
     if (defaults) memcpy (wellknown, defaults, sizeof (oidcWellknownT));
 
-    int err = wrap_json_unpack (wellknownJ, "{s?s,s?s,s?s,s?s,s?s,s?s !}"
+    int err = wrap_json_unpack (wellknownJ, "{s?s,s?s,s?s,s?s,s?s,s?s,s?s !}"
                 , "discovery", &wellknown->discovery
                 , "tokenid", &wellknown->tokenid
                 , "authorize",&wellknown->authorize
                 , "userinfo",&wellknown->userinfo
                 , "jwks",&wellknown->jwks
-                , "auth-method", &authMethod
+                , "authent", &wellknown->authLabel
+                , "respond", &wellknown->respondLabel
                 );
     if (err) {
-        EXT_CRITICAL ("github parsing fail wellknown expect: discovery,tokenid,authorize,userinfo (idpParseWellknown)");
+        EXT_CRITICAL ("github parsing fail wellknown expect: discovery,tokenid,authorize,userinfo,authent,respond (idpParseWellknown)");
         goto OnErrorExit;
     }
 
@@ -350,7 +362,7 @@ int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * d
 {
 
     if (!configJ) {
-        EXT_CRITICAL ("ext=%s github config must define client->id & client->secret (githubConfigCB)", idp->uid);
+        EXT_CRITICAL ("ext=%s github config must define client->id & client->secret (githubRegisterConfig)", idp->uid);
         goto OnErrorExit;
     }
     // unpack main IDP config
@@ -366,7 +378,7 @@ int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * d
         , "headers", &headersJ
         );
     if (err) {
-        EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (githubConfigCB)", idp->uid);
+        EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (githubRegisterConfig)", idp->uid);
         goto OnErrorExit;
     }
 
@@ -488,8 +500,8 @@ static int idpParseOne (oidcCoreHdlT * oidc, json_object * idpJ, oidcIdpT * idp)
         goto OnErrorExit;
     }
     // when call idp custom config callback
-    if (idp->plugin->configCB)
-        err = idp->plugin->configCB (idp, idpJ);
+    if (idp->plugin->registerConfig)
+        err = idp->plugin->registerConfig (idp, idpJ);
     else
         err = idpParseOidcConfig (idp, idpJ, NULL, NULL);
     if (err)
@@ -541,48 +553,44 @@ oidcIdpT const *idpParseConfig (oidcCoreHdlT * oidc, json_object * idpsJ)
     return NULL;
 }
 
+int idpRegisterAlias (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv) {
+    int err;
+
+    if (idp->plugin->registerAlias) {
+        EXT_DEBUG ("[idp-register-alias] uid=%s login='%s'", idp->uid, idp->plugin->uid);
+        err = idp->plugin->registerAlias (idp, hsrv);
+        if (err) goto OnErrorExit;
+    }
+    return 0;
+
+ OnErrorExit:
+    EXT_ERROR ("[idp-register-alias] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
+    return 1;
+}
+
 // register IDP login and authentication callback endpoint
-int idpRegisterOne (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
+int idpRegisterApis (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
 {
     int err;
 
-    EXT_DEBUG ("[idp-register] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
-
     // call idp init callback
-    if (idp->plugin->registerCB) {
-        err = idp->plugin->registerCB (idp, declare_set, call_set);
-        if (err) {
-            EXT_ERROR ("[idp-initcb-fail] idp=%s not avaliable within registered idp plugins", idp->uid);
-            goto OnErrorExit;
-        }
+    if (idp->plugin->registerApis) {
+        EXT_DEBUG ("[idp-register-apis] uid=%s login='%s'", idp->uid, idp->plugin->uid);
+        err = idp->plugin->registerApis (idp, declare_set, call_set);
+        if (err) goto OnErrorExit;
     }
     return 0;
 
   OnErrorExit:
-    EXT_ERROR ("[idp-register-error] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
-    return 1;
-}
-
-int idpRegisterLogin (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv)
-{
-    int err;
-    EXT_DEBUG ("[idp-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
-
-    err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogin, idp->plugin->loginCB, idp, EXT_HIGHEST_PRIO);
-    if (!err)
-        goto OnErrorExit;
-    return 0;
-
-  OnErrorExit:
-    EXT_ERROR ("[idp-register-alias] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
+    EXT_ERROR ("[idp-register-apis] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
     return 1;
 }
 
 // Builtin in output formater. Note that first one is used when cmd does not define a format
 idpPluginT idpBuiltin[] = {
-    {.uid = "oidc",.info = "openid connect idp",.configCB = oidcConfigCB,.loginCB= oidcLoginCB},
-    {.uid = "github",.info = "github public oauth2 idp",.configCB = githubConfigCB,.loginCB= githubLoginCB},
-    {.uid = "ldap"  ,.info = "ldap internal users",.configCB = ldapConfigCB,.loginCB= ldapLoginCB, .registerCB=ldapRegisterCB},
+    {.uid = "oidc",.info = "openid connect idp",.registerConfig = oidcRegisterConfig,.registerAlias= oidcRegisterAlias},
+    {.uid = "github",.info = "github public oauth2 idp",.registerConfig = githubRegisterConfig,.registerAlias= githubRegisterAlias},
+    {.uid = "ldap"  ,.info = "ldap internal users",.registerConfig = ldapRegsterConfig,.registerAlias= ldapRegisterAlias, .registerApis=ldapRegisterApis},
     {.uid = NULL}               // must be null terminated
 };
 
