@@ -35,8 +35,7 @@ int wrap_base64_decode(
 
 	/* allocate enougth output */
 	result = malloc(datalen);
-	if (result == NULL)
-		return -1;
+	if (result == NULL) return -1;
 
 	/* decode the input */
 	for (iin = in = out = 0 ; in < datalen ; in++) {
@@ -64,11 +63,13 @@ int wrap_base64_decode(
 				iin -= 2;
 				u8 = (uint8_t)(u16 >> iin);
 				result[out++] = u8;
+                if (out == datalen) return -1; // added Fulup
 			}
 		}
 	}
 
 	/* terminate */
+    result[out]='\0'; // added fulup
 	*decoded = realloc(result, out);
 	if (out && *decoded == NULL) {
 		free(result);
@@ -107,8 +108,7 @@ int wrap_base64_encode(
 
 	/* allocate the output */
 	result = malloc(rlen + 1);
-	if (result == NULL)
-		return -1;
+	if (result == NULL) return -1;
 
 	/* compute the formatted output */
 	iw = width;
@@ -188,8 +188,7 @@ static size_t httpBodyCB(void *data, size_t blkSize, size_t blkCount, void *ctx)
         fprintf(stderr, "-- httpBodyCB: blkSize=%ld blkCount=%ld\n", blkSize, blkCount);
 
     // final callback is called from multiCheckInfoCB when CURLMSG_DONE
-    if (!data)
-        return 0;
+    if (!data) return 0;
 
     httpRqt->body = realloc(httpRqt->body, httpRqt->bodyLen + size + 1);
     if (!httpRqt->body)
@@ -599,13 +598,13 @@ char * httpEncode64 (const char* inputData, size_t inputLen) {
     size_t len64;
 
     status= wrap_base64_encode ((uint8_t*)inputData, inputLen, &data64, &len64,0,1,0);
-    if (status != CURLE_OK) goto OnErrorExit;
+    if (status) goto OnErrorExit;
 
     return (data64);
 
 OnErrorExit:
     if (data64) free (data64);
-    return NULL;    
+    return NULL;
 }
 
 // decode a string into base64
@@ -616,11 +615,12 @@ char * httpDecode64 (const char* inputData, size_t inputLen, int url) {
     size_t len64;
 
     status= wrap_base64_decode (inputData, inputLen, (uint8_t**)&data64, &len64, url);
-    if (status != CURLE_OK) goto OnErrorExit;
+    if (status) goto OnErrorExit;
 
+    data64[len64]='\0';
     return (data64);
 
 OnErrorExit:
     if (data64) free (data64);
-    return NULL;    
+    return NULL;
 }

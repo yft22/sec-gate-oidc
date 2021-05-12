@@ -58,7 +58,6 @@ typedef struct {
     const char* respondLabel;
     const char* authLabel;
     const char* errorLabel;
-    json_object *jwksJ;
 } oidcWellknownT;
 
 typedef struct {
@@ -117,8 +116,8 @@ typedef struct {
     oidcIdpT *idp;
     afb_hreq *hreq;
     struct afb_req_v4 *wreq;
-    fedSocialRawT *fedSocial;   
-    fedUserRawT *fedUser; 
+    fedSocialRawT *fedSocial;
+    fedUserRawT *fedUser;
     const oidcProfilsT *profil;
     char *token;
     void *userData;

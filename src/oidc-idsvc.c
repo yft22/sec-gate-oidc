@@ -139,8 +139,6 @@ static void idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data
     if (err < 0) goto OnErrorExit;
     const char **idps = (void *) afb_data_ro_pointer (argd[0]);
 
-    fprintf (stderr, "**** idps=0x%p  value=%s\n", idps, idps[0]);
-    
     // retreive oidc config from current alias cookie
     oidcAliasT *alias = NULL;
     afb_session *session = afb_req_v4_get_common (wreq)->session;

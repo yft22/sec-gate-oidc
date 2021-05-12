@@ -20,7 +20,7 @@
  *  https://www.gnu.org/licenses/gpl-3.0.html.
  * $RP_END_LICENSE$
  *
- *  References: 
+ *  References:
  *      https://onelogin.com
  *      https://phantauth.net/
  *      https://benmcollins.github.io/libjwt/group__jwt__header.html#ga308c00b85ab5ebfa76b1d2485a494104
@@ -43,11 +43,19 @@
 #include <assert.h>
 #include <string.h>
 #include <locale.h>
-#include <jwt.h> 
 
 // import idp authentication enum/label
 extern const nsKeyEnumT idpAuthMethods[];
 extern const nsKeyEnumT idpRespondTypes[];
+
+// make code easier to read
+enum {
+    TKN_HEADER=0,
+    TKN_BODY=1,
+    TKN_SIGN=2,
+    TKN_SIZE=3
+} tokenPart;
+#define ENCODED_URL 1
 
 static const oidcProfilsT dfltProfils[] = {
     {.loa = 1,.scope = "openid,profile"},
@@ -61,6 +69,7 @@ static const oidcSchemaT dfltSchema = {
     .email= "email",
     .avatar="picture",
     .company="company",
+    .attrs="groups",
 };
 
 static const oidcWellknownT dfltWellknown = {
@@ -78,12 +87,13 @@ static const httpKeyValT dfltHeaders[] = {
 static httpOptsT dfltOpts = {
     .agent = HTTP_DFLT_AGENT,
     .follow = 1,
-    .timeout= 10, // default authentication timeout 
+    .timeout= 10, // default authentication timeout
     // .verbose=1
 };
 
 static const oidcStaticsT dfltstatics = {
     .aliasLogin = "/sgate/oidc/login",
+    .aliasLogout= "/sgate/oidc/logout",
     .aliasLogo = "/sgate/oidc/logo-64px.png",
     .sTimeout = 600
 };
@@ -97,30 +107,79 @@ static char *json_object_dup_key_value (json_object * objJ, const char *key)
     return value;
 }
 
-// call when IDP respond to user profil wreq
-// reference: https://docs.oidc.com/en/rest/reference/users#get-the-authenticated-user
-static httpRqtActionT oidcUserGetByTokenCB (httpRqtT * httpRqt)
-{
-    idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
+// signature to be check with GNUTLS to be added by JOSE)
+// reference https://jwt.io/ https://datatracker.ietf.org/doc/html/rfc7517
+static json_object* oidcJwtCheck (oidcSchemaT *schema, char *token[]) {
+    int err;
+    const char *keyId, *keyAlg;
+    const char *kty, *kid, *use;
+    const unsigned char *nkey, *esign;
+    json_object *headerJ, *jwkJ=NULL;
+
+    headerJ= json_tokener_parse(token[TKN_HEADER]);
+    if (!headerJ) goto OnErrorExit;
+
+    err = wrap_json_unpack (headerJ, "{ss ss}"
+        ,"kid", &keyId
+        ,"alg", &keyAlg
+        );
+    if (err) goto OnErrorExit;
+
+    // for for kid withing jwks
+    for (int idx=0; idx < json_object_array_length(schema->jwksJ); idx++) {
+        json_object *slotJ;
+        slotJ= json_object_array_get_idx(schema->jwksJ, idx);
+        err= wrap_json_unpack (slotJ, "{ss ss ss ss ss !}"
+            , "kty", &kty
+            , "kid", &kid
+            , "use", &use
+            , "n"  , &nkey
+            , "e"  , &esign
+        );
+        if (err) goto OnErrorExit;
+        if (!strcasecmp (kid, keyId)) {
+            jwkJ= slotJ;
+            break;
+        }
+    }
+    if (!jwkJ) goto OnErrorExit;
+
+    // JOSE to implement signature check use="sign" nkey="idp key" esign="jwt signature"
+
+OnErrorExit:
+    EXT_CRITICAL ("[token-sign-invalid] fail to check tokenId signature (oidcJwtCheck)");
+    return NULL;
+}
+
+
+static int oidcUserFederateId (idpRqtCtxT *rqtCtx, json_object *profilJ) {
     oidcIdpT *idp = rqtCtx->idp;
     oidcSchemaT *schema= (oidcSchemaT*) idp->userData;
-    fedSocialRawT *fedSocial=NULL;
-    fedUserRawT *fedUser=NULL;
+    fedSocialRawT *fedSocial;
+    fedUserRawT *fedUser;
+    json_object *attrsJ;
     int err;
 
-
-    // something when wrong
-    if (httpRqt->status != 200) goto OnErrorExit;
-
-    // unwrap user profil
-    json_object *profilJ = json_tokener_parse (httpRqt->body);
-    if (!profilJ) goto OnErrorExit;
+    // no profile just ignore
+    if (!profilJ) return -1;
 
     // build social fedkey from idp->uid+oidc->id
     fedSocial = calloc (1, sizeof (fedSocialRawT));
     fedSocial->fedkey = json_object_dup_key_value (profilJ, schema->fedid);
     fedSocial->idp = strdup (idp->uid);
     rqtCtx->fedSocial= fedSocial;
+
+    // check groups as security attributs
+    json_object_object_get_ex (profilJ, schema->attrs, &attrsJ);
+    // fprintf (stderr, "fedid= %s ***\n", json_object_get_string(profilJ));
+    if (json_object_is_type(attrsJ, json_type_array)) {
+       int count= json_object_array_length (attrsJ);
+       fedSocial->attrs = calloc (count + 1, sizeof (char *));
+       for (int idx=0; idx < count; idx++) {
+        json_object *attrJ = json_object_array_get_idx (attrsJ, idx);
+        rqtCtx->fedSocial->attrs[idx] = strdup (json_object_get_string (attrJ));
+       }
+    }
 
     fedUser = calloc (1, sizeof (fedUserRawT));
     fedUser->pseudo = json_object_dup_key_value (profilJ, schema->pseudo);
@@ -130,8 +189,32 @@ static httpRqtActionT oidcUserGetByTokenCB (httpRqtT * httpRqt)
     fedUser->email = json_object_dup_key_value (profilJ, schema->email);
     rqtCtx->fedUser= fedUser;
 
-    // no organisation attributes we've got everything check federated user now
     err = fedidCheck(rqtCtx);
+    if (err) goto OnErrorExit;
+
+    return 0;
+
+OnErrorExit:
+    free (fedSocial);
+    free (fedUser);
+    return -1;
+}
+
+// call when IDP respond to user profil wreq
+// reference: https://docs.oidc.com/en/rest/reference/users#get-the-authenticated-user
+static httpRqtActionT oidcUserGetByTokenCB (httpRqtT * httpRqt)
+{
+    idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
+    int err;
+
+    // something when wrong
+    if (httpRqt->status != 200) goto OnErrorExit;
+
+    // unwrap user profil
+    json_object *profilJ = json_tokener_parse (httpRqt->body);
+    if (!profilJ) goto OnErrorExit;
+
+    err= oidcUserFederateId (rqtCtx, profilJ);
     if (err)  goto OnErrorExit;
 
     return HTTP_HANDLE_FREE;
@@ -140,14 +223,12 @@ static httpRqtActionT oidcUserGetByTokenCB (httpRqtT * httpRqt)
     EXT_CRITICAL ("[oidc-fail-user-profil] Fail to get user profil from oidc status=%ld body='%s'", httpRqt->status, httpRqt->body);
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
     idpRqtCtxFree(rqtCtx);
-    if (fedSocial) fedSocialFreeCB(fedSocial);
-    if (fedUser)fedUserFreeCB(fedUser);
     return HTTP_HANDLE_FREE;
 }
 
 // from acces token wreq user profil
 // reference https://docs.oidc.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
-static void oidcUserGetByToken (idpRqtCtxT * rqtCtx)
+static int oidcUserGetByToken (idpRqtCtxT * rqtCtx)
 {
     oidcIdpT *idp = rqtCtx->idp;
 
@@ -161,12 +242,56 @@ static void oidcUserGetByToken (idpRqtCtxT * rqtCtx)
     EXT_DEBUG ("[oidc-profil-get] curl -H 'Authorization: %s' %s\n", rqtCtx->token, idp->wellknown->userinfo);
     int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->userinfo, &dfltOpts, authToken, oidcUserGetByTokenCB, rqtCtx);
     if (err) goto OnErrorExit;
-    return;
+    return 0;
 
   OnErrorExit:
-    afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
-    afb_hreq_unref (rqtCtx->hreq);
+    return -1;
 }
+
+// parse jwt token
+// reference https://developer.yahoo.com/oauth2/guide/openid_connect/decode_id_token.html?guccounter=1
+static json_object * oidcUserGetByJwt (oidcSchemaT *schema, char *tokenId) {
+    int tknIdx=0, start=0, index;
+    char *token[TKN_SIZE];
+    int length[TKN_SIZE];
+    json_object *bodyJ;
+
+    // split jwt token "header64"."body64"."sign64"
+    for (index=0; tokenId[index] != '\0'; index++) {
+        if (tokenId[index] == '.') {
+            if (tknIdx == 3) goto OnErrorExit;
+            tokenId[index]='\0';
+            length[tknIdx]= index-start;
+            token[tknIdx]= &tokenId[start];
+            tknIdx++;
+            start=index+1;
+        }
+    }
+    token[tknIdx]=&tokenId[start];
+    length[tknIdx]=index-start;
+
+    // uncode64 and open json object
+    token[TKN_BODY]= httpDecode64 (token[TKN_BODY], length[TKN_BODY], ENCODED_URL);
+    if (!token[TKN_BODY]) goto OnErrorExit;
+
+    // if no signature directly open token body as a json object
+    if (!schema->jwksJ) {
+        bodyJ= json_tokener_parse(token[TKN_BODY]);
+    } else {
+        token[TKN_HEADER]= httpDecode64 (token[TKN_HEADER], length[TKN_HEADER], ENCODED_URL);
+        // signature is not encoded
+        if (!token[TKN_HEADER] || !token[TKN_SIGN]) goto OnErrorExit;
+        bodyJ= oidcJwtCheck (schema, token);
+    }
+    free (token[TKN_HEADER]);
+    free (token[TKN_BODY]);
+    return bodyJ;
+
+OnErrorExit:
+    EXT_CRITICAL ("[token-id-invalid] fail to parse tokenId (oidcUserGetByJwt)");
+    return NULL;
+}
+
 
 // call when oidc return a valid access_token
 static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
@@ -174,6 +299,8 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
     char *tokenVal, *tokenType, *tokenId=NULL;
     assert (httpRqt->magic == MAGIC_HTTP_RQT);
     idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
+    oidcSchemaT *schema = (oidcSchemaT*) rqtCtx->idp->userData;
+    int err;
 
     // free old post data
     free (rqtCtx->userData);
@@ -184,7 +311,7 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
     json_object *responseJ = json_tokener_parse (httpRqt->body);
     if (!responseJ) goto OnErrorExit;
 
-    int err= wrap_json_unpack (responseJ, "{ss ss s?s}"
+    err= wrap_json_unpack (responseJ, "{ss ss s?s}"
         , "access_token", & tokenVal
         , "token_type", & tokenType
         , "id_token", &tokenId
@@ -192,40 +319,19 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
     if (err) goto OnErrorExit;
     asprintf (&rqtCtx->token, "%s %s", tokenType, tokenVal);
 
+    // if we get a token ID check it otherwise try to query user profile end point
     if (tokenId) {
-        jwt_t *jwt;
-        int index=0, start=0;
-        char *token[3];
-        int length[3];
-
-	    for (int idx=0; tokenId[idx] != '\0'; idx++) {      
-            if (tokenId[idx] == '.') {
-               if (index == 3) goto OnErrorExit;
-               tokenId[idx]='\0';
-               length[index]= idx-start;
-               token[index]= &tokenId[start];
-               index++;
-               start=idx+1;
-            }
-        }
-        token[index++]=&tokenId[start];
-
-        json_object *headerJ= json_tokener_parse (httpDecode64 (token[0], length[0], 1));
-
-
-        index++;
-
-        //err= jwt_decode(&jwt, , NULL, 0);
-        //char* jtoken= jwt_get_headers_json (jwt, NULL);
-	}
-
-
-
-    // we have our wreq token let's try to get user profil
-    oidcUserGetByToken (rqtCtx);
+        json_object* fedIdJ= oidcUserGetByJwt (schema, tokenId);
+        err= oidcUserFederateId (rqtCtx, fedIdJ);
+        if (err)  goto OnErrorExit;
+    } else {
+        // when no token id an extra request to user profil info endpoint requirer
+        err= oidcUserGetByToken (rqtCtx);
+    }
+    json_object_put (responseJ);
+    if (err) goto OnErrorExit;
 
     // callback is responsible to free wreq & context
-    json_object_put (responseJ);
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
@@ -271,7 +377,7 @@ static int oidcAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirec
 
         // reference  https://developers.onelogin.com/openid-connect/api/client-credentials-grant
         // https://iot-bzh-dev.onelogin.com/ (email not username)
-        case IDP_CLIENT_SECRET_POST:    
+        case IDP_CLIENT_SECRET_POST:
             dataLen= asprintf ((char**)&rqtCtx->userData, "code=%s&redirect_uri=%s&grant_type=%s&client_id=%s&client_secret=%s"
                 , code
                 , redirectUrl
@@ -290,7 +396,7 @@ static int oidcAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirec
             err = httpSendPost (oidc->httpPool, idp->wellknown->tokenid, &dfltOpts, headers, rqtCtx->userData, dataLen , oidcAccessTokenCB, rqtCtx);
             break;
 
-        default: 
+        default:
             EXT_DEBUG ("[oidc-auth-unknown] idp=%s unsupported authentication method=%d",idp->uid, idp->wellknown->authMethod);
             goto OnErrorExit;
     }
@@ -320,7 +426,7 @@ static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
     afb_session_cookie_get (hreq->comreq.session, oidcAliasCookie, (void **) &alias);
     if (alias) aliasLoa = alias->loa;
     else aliasLoa = 0;
-   
+
     // add afb-binder endpoint to login redirect alias
     status = afb_hreq_make_here_url (hreq, idp->statics->aliasLogin, redirectUrl, sizeof (redirectUrl));
     if (status < 0) goto OnErrorExit;
@@ -389,16 +495,25 @@ static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
 // this check idp code and either wreq profil or redirect to idp login page
 static int oidcLogoutCB (afb_hreq * hreq, void *ctx) {
     oidcIdpT *idp = (oidcIdpT *) ctx;
-    assert (idp->magic == MAGIC_OIDC_IDP);
+    oidcSchemaT *schema= (oidcSchemaT*) idp->userData;
+    const char *sessionUid;
+    struct afb_session *session;
+    int err;
 
-    const char *session = afb_session_uuid (hreq->comreq.session);
+    // retreive nonce from tokenid to access targetted session
+    const char *tokenId = afb_hreq_get_argument (hreq, "id_token_hint");
+    json_object *fedIdJ= oidcUserGetByJwt (schema, (char*)tokenId);
+    if (!fedIdJ) goto OnErrorExit;
+
+    // tokenid nonce should match with the session uuid to reset
+    err= wrap_json_unpack (fedIdJ, "{ss}", "nonce", &sessionUid);
+    if (err) goto OnErrorExit;
+
+    // search session uuid and close it when exist
+    session= afb_session_search (sessionUid);
     if (!session) goto OnErrorExit;
+    fedidsessionReset (0, (void*)session);
 
-    // reset session and redirect to home page
-    fedidsessionReset (0, (void *) session);
-
-    EXT_DEBUG ("[oidc-logout-url] %s (oidcLogoutCB)", idp->oidc->globals->homeUrl);
-    afb_hreq_redirect_to (hreq, idp->oidc->globals->homeUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
     return 1;  // we're done (0 would search for an html page)
 
   OnErrorExit:
@@ -406,13 +521,30 @@ static int oidcLogoutCB (afb_hreq * hreq, void *ctx) {
     return 1;
 }
 
+int oidcRegisterAlias (oidcIdpT * idp, afb_hsrv * hsrv)
+{
+    int err;
+    EXT_DEBUG ("[oidc-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
+
+    err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogin, oidcLoginCB, idp, EXT_HIGHEST_PRIO);
+    if (!err) goto OnErrorExit;
+
+    if (idp->statics->aliasLogout) {
+        err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogout, oidcLogoutCB, idp, EXT_HIGHEST_PRIO);
+        if (!err) goto OnErrorExit;
+    }
+    return 0;
+
+  OnErrorExit:
+    EXT_ERROR ("[oidc-register-alias] idp=%s fail to register static aliases (oidcRegisterAlias)", idp->uid);
+    return 1;
+}
 
 // request IDP wellknown endpoint and retreive config
 static httpRqtActionT oidcDiscoJwksCB (httpRqtT * httpRqt)
 {
     assert (httpRqt->magic == MAGIC_HTTP_RQT);
-    oidcIdpT *idp = (oidcIdpT*) httpRqt->userData;
-    oidcWellknownT *wellknown= (oidcWellknownT*) idp->wellknown;
+    oidcSchemaT *schema = (oidcSchemaT*) httpRqt->userData;
     int err;
 
     if (httpRqt->status != 200) goto OnErrorExit;
@@ -421,8 +553,8 @@ static httpRqtActionT oidcDiscoJwksCB (httpRqtT * httpRqt)
     json_object *responseJ = json_tokener_parse (httpRqt->body);
     if (!responseJ) goto OnErrorExit;
 
-    err= wrap_json_unpack (responseJ, "{so}" , "keys", &wellknown->jwksJ);
-    if (err || !json_object_is_type(wellknown->jwksJ, json_type_array)) goto OnErrorExit;
+    err= wrap_json_unpack (responseJ, "{so}", "keys", &schema->jwksJ);
+    if (err || !json_object_is_type(schema->jwksJ, json_type_array)) goto OnErrorExit;
 
     return HTTP_HANDLE_FREE;
 
@@ -436,6 +568,7 @@ static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
 {
     assert (httpRqt->magic == MAGIC_HTTP_RQT);
     oidcIdpT *idp = (oidcIdpT*) httpRqt->userData;
+    oidcSchemaT *schema= (oidcSchemaT*) idp->userData;
     oidcWellknownT *wellknown= (oidcWellknownT*) idp->wellknown;
     json_object *authMethodJ=NULL, *respondTypeJ=NULL;
 
@@ -499,10 +632,9 @@ static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
     if (!wellknown->respondLabel) goto OnErrorExit;
 
     // if jwks is define request URI to get jwt keys
-    if (wellknown->jwks) {
-        int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->jwks, NULL, NULL, oidcDiscoJwksCB, idp);
+    if (idp->wellknown->jwks && schema->jwksJ && json_object_get_boolean(schema->jwksJ)) {
+        int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->jwks, NULL, NULL, oidcDiscoJwksCB, schema);
         if (err) goto OnErrorExit;
-
     }
 
     // callback is responsible to free wreq & context
@@ -511,25 +643,6 @@ static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
   OnErrorExit:
     EXT_CRITICAL ("[fail-wellknown-discovery] Fail to process response from oidc status=%ld body='%s' (oidcDiscoveryCB)", httpRqt->status, httpRqt->body);
     return HTTP_HANDLE_FREE;
-}
-
-int oidcRegisterAlias (oidcIdpT * idp, afb_hsrv * hsrv)
-{
-    int err;
-    EXT_DEBUG ("[oidc-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
-
-    err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogin, oidcLoginCB, idp, EXT_HIGHEST_PRIO);
-    if (!err) goto OnErrorExit;
-
-    if (idp->statics->aliasLogout) {
-        err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogout, oidcLogoutCB, idp, EXT_HIGHEST_PRIO);
-        if (!err) goto OnErrorExit;
-    }
-    return 0;
-
-  OnErrorExit:
-    EXT_ERROR ("[oidc-register-alias] idp=%s fail to register static aliases (oidcRegisterAlias)", idp->uid);
-    return 1;
 }
 
 
@@ -556,7 +669,8 @@ int oidcRegisterConfig (oidcIdpT * idp, json_object * configJ)
     // check is we have custom options
     json_object *schemaJ = json_object_object_get (configJ, "schema");
     if (schemaJ) {
-        err = wrap_json_unpack (schemaJ, "{s?s s?s s?s s?s s?s s?s !}"
+        err = wrap_json_unpack (schemaJ, "{s?o s?s s?s s?s s?s s?s s?s !}"
+            , "signed", &schema->jwksJ
             , "fedid", &schema->fedid
             , "avatar", &schema->avatar
             , "pseudo",&schema->pseudo
@@ -565,7 +679,7 @@ int oidcRegisterConfig (oidcIdpT * idp, json_object * configJ)
             , "company", &schema->company
             );
         if (err) {
-            EXT_ERROR ("[iodc-config-schema] json error 'schema' support json keys: fedid,avatar,pseudo,email,name");
+            EXT_ERROR ("[iodc-config-schema] json error 'schema' support json keys: signed,fedid,avatar,pseudo,email,name");
             goto OnErrorExit;
         }
     }

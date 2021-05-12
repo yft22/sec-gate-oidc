@@ -1,15 +1,3 @@
-0) finir implementation openidC
-
-    * deplacer le parsing de token_id dans une routine a part.
-
- - regarder l'option basic post secret
-
-    set token_endpoint_auth_method= client_secret_post
-    https://docs.digdir.no/oidc_protocol_token.html#client-authentication-using-client-secret-post
-
- - tester avec dex et JWT
-
- 1) implementer un alias de logout
 
 3) Créer un binding d'admin de la feddb:
 

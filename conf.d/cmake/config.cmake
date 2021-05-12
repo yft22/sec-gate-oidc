@@ -75,7 +75,6 @@ set (PKG_REQUIRED_LIST
 	libafb
 	libcurl
     fedid-types
-    libjwt
 )
 
 # Print a helper message when every thing is finished

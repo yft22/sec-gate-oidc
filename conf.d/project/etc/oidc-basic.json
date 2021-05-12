@@ -15,11 +15,10 @@
       "api": "sgate",
       "info": "oidc secure gateway demo config",
       "globals": {
-          "info" : "Rodrigo demo uses a 'one-page' app",
+          "info" : "Relative location to HTML pages",
           "login": "/sgate/common/login.html",
           "register": "/sgate/common/register.html",
           "fedlink": "/sgate/common/fedlink.html",
-          "remove": "/sgate/common/remove.html",
           "error": "/sgate/common/error.html",
           "timeout": 600
       },
@@ -30,7 +29,7 @@
             "info": "OpenIdC free testing IDP (https://www.onelogin.com/developer-signup)",
             "credentials": {
                 "clientid": "1198ce80-9187-0139-6d83-06d14e293211189676",
-                "secret": "7a180580642702d7b271ba8901a9c3c1503e774dc0a6b5b922ebf4470adfface",
+                "secret": "7a180580642702d7b271ba8901a9c3c1503e774dc0a6b5b922ebf4470adfface"
             },
             "wellknown": {
                 "discovery": "https://iot-bzh-dev.onelogin.com/oidc/2/.well-known/openid-configuration",
@@ -51,6 +50,7 @@
             },
             "profils": [
                 {"uid":"basic", "loa":1, "scope":"openid profile"},
+                {"uid":"basic", "loa":2, "scope":"openid profile groups"}
             ]
         },
         {
@@ -79,45 +79,6 @@
             },
             "profils": [
                 {"uid":"basic", "loa":1, "scope":"openid profile"},
-            ]
-        },
-        {
-            "uid": "pam",
-            "info": "Linux local authentication",
-            "plugin": {
-              "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
-              "ldpath": "./package/lib/plugins/pam-auth.idpso:/usr/local/afb-oidc/lib/pam-auth.idpso",
-              "gids":16
-            },
-            "statics": {
-                "login": "/sgate/pam/login",
-                "logo": "/sgate/pam/logo-64px.png",
-                "timeout": 900
-            },
-            "profils": [
-                {"uid":"login", "loa":1, "scope":"login"}
-            ]
-        }, {
-            "uid": "ldap-iotbzh",
-            "type": "ldap",
-            "info": "Iot.bzh internal LDAP",
-            "statics": {
-                "login": "/sgate/ldap/login",
-                "logo": "/sgate/ldap/logo-64px.png",
-                "timeout": 900
-            },
-            "schema": {
-                "info": "generate a curl -u %userdn% %ldapuri%/%groupdn%?dn?sub?%filter%",
-                "uri": "ldap://ldap.ovh.iot",
-                "login": "uid=%login%,ou=People,dc=vannes,dc=iot",
-                "groups": "ou=groups,dc=vannes,dc=iot?dn?sub?(memberUid=%login%)",
-                "people": "ou=people,dc=vannes,dc=iot?uid,gecos,mail?sub?(cn=%login%)"
-            },
-            "wellknown": {
-                "tokenid": "/sgate/ldap/login.html"
-            },
-            "profils": [
-                {"uid":"login", "loa":1, "scope":"login"}
             ]
         }, {
             "uid": "github",

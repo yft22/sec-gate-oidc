@@ -21,7 +21,6 @@
             "login": "/sgate/common/oidc#login",
             "register": "/sgate/common/oidc#register",
             "fedlink": "/sgate/common/oidc#fedlink",
-            "remove": "/sgate/common/oidc#remove",
             "error": "/sgate/common/oidc#error",
             "timeout": 600
         },
