@@ -65,7 +65,7 @@ typedef struct {
 
 // dflt_xxxx config.json default options
 static ldapOptsT dfltLdap = {
-    .gidsMax = 16,
+    .gidsMax = 32,
     .timeout=5, // 5s default timeout
     .avatarAlias = "/sgate/ldap/avatar-dflt.png",
     .groups=NULL,
@@ -93,7 +93,7 @@ static void ldapRqtCtxFree (ldapRqtCtxT *ldapRqtCtx) {
     if (ldapRqtCtx->login) free (ldapRqtCtx->login);
     if (ldapRqtCtx->passwd) free (ldapRqtCtx->passwd);
     if (ldapRqtCtx->userdn) free(ldapRqtCtx->userdn);
-    if (ldapRqtCtx->loginJ) json_object_put(ldapRqtCtx->loginJ); 
+    if (ldapRqtCtx->loginJ) json_object_put(ldapRqtCtx->loginJ);
 }
 
 static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
@@ -116,7 +116,8 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
     static const char token[]=  "DN: ";
     idpRqtCtx->fedSocial->attrs = calloc (ldapOpts->gidsMax+1, sizeof (char *));
 	char *ptr = strtok(httpRqt->body, token);
-	for (int idx=0; ptr != NULL; idx++)	{      
+    int idx;
+	for (idx=0; ptr != NULL; idx++)	{
         static char cnString[]= "cn=";
         static int  cnLen=sizeof(cnString)-1;
         char *value= strcasestr (ptr, cnString);
@@ -140,6 +141,9 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
         // move to next cn= (next group)
         ptr = strtok(NULL, token);
 	}
+
+    // reduse groups attrs size to what ever is needed
+    idpRqtCtx->fedSocial->attrs = realloc(idpRqtCtx->fedSocial->attrs, idx+1);
 
     // query federation ldap groups are handle asynchronously
     err = fedidCheck (idpRqtCtx);

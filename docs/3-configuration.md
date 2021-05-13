@@ -18,7 +18,7 @@ The initial part of oidc-config.json is common to any afb-binder V4.
   "name": "afb-oidc",
   "verbose": 2,
   "port": 1234,
-  "https": false,
+  "https": true,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
   "extension": "./package/lib/afb-oidc-sgate.extso",
@@ -42,7 +42,7 @@ FedID-binding is a native afb-V4 binding, it configuration only required the pat
   ],
 ```
 
-*Note*: 
+*Note*:
 
 * At init time, fedid check for sqllite.db file. If not present it creates an empty DB with corresponding fedid schema. As a result dyring develop phase developer may safely delete the sqllite.db to restart test from a fresh empty identity federation data store.
 
@@ -93,20 +93,18 @@ A json array defining each authentication authority. Default authority are oAith
 
 ```json
 {
-    "uid": "github",
-    "info": "OpenIdC Social Authentication",
+    "uid": "onelogin",
+    "info": "Free OpenIdC testing authority (http://onelogin.com)",
     "credentials": {
-      "clientid": "7899e605a7c15ae42f07",
-      "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
+      "clientid": "---my-client-app--id----",
+      "secret": "---my-client-app-secret---",
     },
     "wellknown": {
-        "tokenid": "https://github.com/login/oauth/authorize",
-        "authorize": "https://github.com/login/oauth/access_token",
-        "userinfo": "https://api.github.com/user",
+        "discovery": "https://iot-bzh-dev.onelogin.com/oidc/2/.well-known/openid-configuration"
     },
     "statics": {
-        "login": "/sgate/github/login",
-        "logo": "/sgate/github/logo-64px.png",
+        "login": "/sgate/onelogin/login",
+        "logo": "/sgate/onelogin/logo-64px.png",
         "timeout": 600
     },
     "profils": [
@@ -117,7 +115,7 @@ A json array defining each authentication authority. Default authority are oAith
 ```
 * **uid**: IDP unique label
 * **info**: Misc text presented with IDP list page
-* **credientials**: This information should be provided from your external authority. OpenID-Connect typically requirer a ClientID and a Secret, but depending on the IDP you may have other form of credential. You may check OpenID-Connect generic protocol [here](https://openid.net/connect)  and github specifics [here](https://docs.github.com/en/developers/apps/authorizing-oauth-apps)
+* **credientials**: This information should be provided from your external authority. OpenID-Connect typically requirer a ClientID and a Secret, but depending on the IDP you may have other form of credential. You may check OpenID-Connect generic protocol [here](https://openid.net/connect)  and onelogin specifics [here](https://docs.onelogin.com/en/developers/apps/authorizing-oauth-apps)
 
 * **Wellknown**: remote IDP authority URLs, typically one URL to request the initial authentication token, then an other one to request the access token and final as many as needed URL for identity services provided by the authority.
 
@@ -125,7 +123,7 @@ A json array defining each authentication authority. Default authority are oAith
 
   * **authorize**: REST exchange authentication end-point. Provided an access-token from the authentication-token received from 'tokenid' SSO. The request to 'authorize' does not go through user browser, this avoid to expose IDP application secret to user browser.
 
-  * **userinfo**: REST authority identity service. Provide identity attributes matching requesting scope. Note that some authority as Github has multiple identity end point depending requested attributes. 
+  * **userinfo**: REST authority identity service. Provide identity attributes matching requesting scope. Note that some authority as onelogin has multiple identity end point depending requested attributes.
 
 * **statics**: define the REST/HTTP end point created on oid-sgate for IDPs protocol handshake.
 
@@ -137,15 +135,15 @@ A json array defining each authentication authority. Default authority are oAith
 
   * **uid**: unique profile label
   * **loa**: level of assurance attached to this IDP profile
-  * **scope**: scope request when requesting authentication 
-  * **label**: custom and specific to IDP label. It is used to request further identity information from IDP services. In the case of github 'organizations_url' is the json key name within return user attributes to request the list of organizations the user belows to.
+  * **scope**: scope request when requesting authentication
+  * **label**: custom and specific to IDP label. It is used to request further identity information from IDP services. In the case of onelogin 'organizations_url' is the json key name within return user attributes to request the list of organizations the user belows to.
 
 * **apis**: list of binding APIs that oidc-sgate should make visible to the external world as with '--ws-client' binder command line attribute. Note that WebSocket does not support redirect, when a request is refused the application only receive an "UNAUTHORIZED" error. User application should subscribe to oidc-sgate events to be notified of refusal/error messages.
   * **uid**: api name as exported on oidc-sgate external interface.
   * **info**: misc user info presented to application then an authentication is required.
   * **loa**: level of assurance requested to access this page. By depend any IDP with equal or greater LOA will let the request go thought. When LOA is negative then the IDP should exactly request LOA. This is a very simple model to force a specific IDP on a give set of resources.
   * **requirer**: a list of either/or security labels check again identity authority. This list vary from one IDP to an other. Warning: this list is a logical OR, one match is enough to pass the check.
-  * **prio**: access control priority list. The highest number being check first. Priority key might be use to implement complex access control as local AND case for security attributes. 
+  * **prio**: access control priority list. The highest number being check first. Priority key might be use to implement complex access control as local AND case for security attributes.
   * **uri**: which API to import. The "@api_name is the preferred method to import API from bindings running on the same Linux instance, to import API from binding running on the remote Linux instance use 'tcp:hostname:port/api' as with the --ws-client afb-binding command line option.
   * **lazy**: when true oidc-sgate will start even if API to import is not present.
 
@@ -153,5 +151,5 @@ A json array defining each authentication authority. Default authority are oAith
 
   * **uid**: alias name as exported on oidc-sgate external interface.
   * **info**: misc user info presented to application then an authentication is required.
-  * **loa**: level of assurance requested to access this page. 
-  * **prio**: access control priority list. 
+  * **loa**: level of assurance requested to access this page.
+  * **prio**: access control priority list.

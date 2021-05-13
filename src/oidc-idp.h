@@ -113,6 +113,7 @@ typedef struct {
 // request handle store federation attribute during multiple IDP async calls
 typedef struct {
     int ucount;
+    const char *uuid;
     oidcIdpT *idp;
     afb_hreq *hreq;
     struct afb_req_v4 *wreq;

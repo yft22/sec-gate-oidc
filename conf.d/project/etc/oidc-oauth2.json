@@ -46,7 +46,6 @@
                 "login": "/sgate/onelogin/login",
                 "logout": "/sgate/onelogin/logout",
                 "logo": "/sgate/onelogin/logo-64px.png",
-                "timeout": 600
             },
             "profils": [
                 {"uid":"basic", "loa":1, "scope":"openid profile"},

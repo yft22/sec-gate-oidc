@@ -6,14 +6,13 @@
     "configurations": [
         {
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-html5.json
-          "name": "oidc-html5",
+          "name": "oidc-oauth2",
           "type": "cppdbg",
           "request": "launch",
           "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-oidc",
-            "--binding=${workspaceFolder}/../fedid-binding/build/package/lib/fedid-binding.so",
-            "--config=${workspaceFolder}/conf.d/project/etc/oidc-html5.json",
+            "--config=${workspaceFolder}/conf.d/project/etc/oidc-oauth2.json",
             "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
             "--roothttp=.",
             "--verbose",
@@ -38,13 +37,13 @@
         {
 
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "oidc-basic",
+          "name": "oidc-local",
           "type": "cppdbg",
           "request": "launch",
           "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-oidc",
-            "--config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json",
+            "--config=${workspaceFolder}/conf.d/project/etc/oidc-local.json",
             "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
             "--roothttp=.",
             "--verbose",

@@ -37,6 +37,7 @@ typedef struct {
     const char *company;
     const char *email;
     const char *attrs;
+    const char *idpsid;
     char *auth64;
     json_object *jwksJ;
 } oidcSchemaT;

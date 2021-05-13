@@ -43,10 +43,19 @@
 #include <assert.h>
 #include <string.h>
 #include <locale.h>
+#include <uthash.h>
 
 // import idp authentication enum/label
 extern const nsKeyEnumT idpAuthMethods[];
 extern const nsKeyEnumT idpRespondTypes[];
+
+// idp session id hash table map sid with uuid
+typedef struct {
+    const char *uuid;
+    const char *sid;
+    UT_hash_handle hh;
+} sidMapT;
+static  sidMapT *sidHead=NULL;
 
 // make code easier to read
 enum {
@@ -69,7 +78,8 @@ static const oidcSchemaT dfltSchema = {
     .email= "email",
     .avatar="picture",
     .company="company",
-    .attrs="groups",
+    .idpsid="sid",
+    .attrs=NULL,
 };
 
 static const oidcWellknownT dfltWellknown = {
@@ -93,8 +103,8 @@ static httpOptsT dfltOpts = {
 
 static const oidcStaticsT dfltstatics = {
     .aliasLogin = "/sgate/oidc/login",
-    .aliasLogout= "/sgate/oidc/logout",
     .aliasLogo = "/sgate/oidc/logo-64px.png",
+    .aliasLogout= NULL,
     .sTimeout = 600
 };
 
@@ -166,19 +176,22 @@ static int oidcUserFederateId (idpRqtCtxT *rqtCtx, json_object *profilJ) {
     // build social fedkey from idp->uid+oidc->id
     fedSocial = calloc (1, sizeof (fedSocialRawT));
     fedSocial->fedkey = json_object_dup_key_value (profilJ, schema->fedid);
+    fedSocial->idpsid = json_object_dup_key_value (profilJ, schema->idpsid);
     fedSocial->idp = strdup (idp->uid);
     rqtCtx->fedSocial= fedSocial;
 
     // check groups as security attributs
-    json_object_object_get_ex (profilJ, schema->attrs, &attrsJ);
-    // fprintf (stderr, "fedid= %s ***\n", json_object_get_string(profilJ));
-    if (json_object_is_type(attrsJ, json_type_array)) {
-       int count= json_object_array_length (attrsJ);
-       fedSocial->attrs = calloc (count + 1, sizeof (char *));
-       for (int idx=0; idx < count; idx++) {
-        json_object *attrJ = json_object_array_get_idx (attrsJ, idx);
-        rqtCtx->fedSocial->attrs[idx] = strdup (json_object_get_string (attrJ));
-       }
+    if (schema->attrs) {
+        json_object_object_get_ex (profilJ, schema->attrs, &attrsJ);
+        fprintf (stderr, "fedid= %s ***\n", json_object_get_string(profilJ));
+        if (json_object_is_type(attrsJ, json_type_array)) {
+            size_t count= json_object_array_length (attrsJ);
+            fedSocial->attrs = calloc (count + 1, sizeof (char *));
+            for (int idx=0; idx < count; idx++) {
+                json_object *attrJ = json_object_array_get_idx (attrsJ, idx);
+                rqtCtx->fedSocial->attrs[idx] = strdup (json_object_get_string (attrJ));
+            }
+        }
     }
 
     fedUser = calloc (1, sizeof (fedUserRawT));
@@ -324,6 +337,16 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
         json_object* fedIdJ= oidcUserGetByJwt (schema, tokenId);
         err= oidcUserFederateId (rqtCtx, fedIdJ);
         if (err)  goto OnErrorExit;
+
+        // if logout registered then keep track of SID
+        if (rqtCtx->idp->statics->aliasLogout) {
+            sidMapT *sidMap= calloc (1,sizeof(sidMapT));
+            sidMap->sid= rqtCtx->fedSocial->idpsid;
+            sidMap->uuid= rqtCtx->uuid;
+            HASH_ADD_STR (sidHead, uuid, sidMap);
+            if (!sidMap) goto OnErrorExit;
+
+        }
     } else {
         // when no token id an extra request to user profil info endpoint requirer
         err= oidcUserGetByToken (rqtCtx);
@@ -350,6 +373,7 @@ static int oidcAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirec
     idpRqtCtxT *rqtCtx = calloc (1, sizeof (idpRqtCtxT));
     rqtCtx->hreq = hreq;
     rqtCtx->idp = idp;
+    rqtCtx->uuid =  afb_session_uuid (hreq->comreq.session);
     err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &rqtCtx->profil);
     if (err) goto OnErrorExit;
 
@@ -493,26 +517,36 @@ static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
 }
 
 // this check idp code and either wreq profil or redirect to idp login page
+// reference https://openid.net/specs/openid-connect-backchannel-1_0.html
 static int oidcLogoutCB (afb_hreq * hreq, void *ctx) {
     oidcIdpT *idp = (oidcIdpT *) ctx;
     oidcSchemaT *schema= (oidcSchemaT*) idp->userData;
     const char *sessionUid;
     struct afb_session *session;
+    sidMapT *sidMap;
     int err;
 
     // retreive nonce from tokenid to access targetted session
-    const char *tokenId = afb_hreq_get_argument (hreq, "id_token_hint");
+    const char *tokenId = afb_hreq_get_argument (hreq, "logout_token");
     json_object *fedIdJ= oidcUserGetByJwt (schema, (char*)tokenId);
     if (!fedIdJ) goto OnErrorExit;
 
     // tokenid nonce should match with the session uuid to reset
-    err= wrap_json_unpack (fedIdJ, "{ss}", "nonce", &sessionUid);
+    err= wrap_json_unpack (fedIdJ, "{ss}", "sid", &sessionUid);
     if (err) goto OnErrorExit;
+
+    // search for sid into hashtable
+    HASH_FIND_STR (sidHead, sessionUid, sidMap);
+    if (!sidMap) goto OnErrorExit;
 
     // search session uuid and close it when exist
     session= afb_session_search (sessionUid);
     if (!session) goto OnErrorExit;
-    fedidsessionReset (0, (void*)session);
+    fedidsessionReset (0, (void*)sidMap->uuid);
+
+    // remove sid from sidmap table
+    HASH_DEL(sidHead, sidMap);
+    free(sidMap);
 
     return 1;  // we're done (0 would search for an html page)
 
@@ -669,8 +703,9 @@ int oidcRegisterConfig (oidcIdpT * idp, json_object * configJ)
     // check is we have custom options
     json_object *schemaJ = json_object_object_get (configJ, "schema");
     if (schemaJ) {
-        err = wrap_json_unpack (schemaJ, "{s?o s?s s?s s?s s?s s?s s?s !}"
+        err = wrap_json_unpack (schemaJ, "{s?o s?s s?s s?s s?s s?s s?s s?s !}"
             , "signed", &schema->jwksJ
+            , "idpsid", &schema->idpsid
             , "fedid", &schema->fedid
             , "avatar", &schema->avatar
             , "pseudo",&schema->pseudo

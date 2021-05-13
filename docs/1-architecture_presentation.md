@@ -1,24 +1,29 @@
-# Architecture presentation
+# Introduction
 
 afb-oidc-sgate is an afb-binder-v4 extension. It leverages binder hooking capabilities to enforce authentication from an external authority (IDP) to allow/deny HTTP/REST/WEBsocket requests.
 
- * hooked input request can be checked again:
+Hooked input request can be checked again:
 
-    * LOA (Level Of Assurance) defines the level of trust you have in a given external authentication source. There is no standard to define LOA. Nevertheless most people loosely map it on NIST definition:
-    
-        * loa=0 public access
-        * loa=1 basic authentication (just better than nothing)
-        * loa=2 typical authentication (usually provided some trusted attributes as roles or groups.
-        * loa=3 more trusted authentication (two factors ?)
-        * loa=6 live critical authentication.
+* LOA (Level Of Assurance) defines the level of trust you have in a given external authentication source. There is no standard to define LOA. Nevertheless most people loosely map it on NIST definition:
 
-    * Security attributes, define a set of labels that should be provided by your IDP. Enterprise IDPs typically provide either groups or roles. An external authority as 'github' provides organizations, repositories, ... Each IDP has it own way to provide attributes.
+    * loa=0 public access
+    * loa=1 basic authentication (just better than nothing)
+    * loa=2 typical authentication (usually provided some trusted attributes as roles or groups.
+    * loa=3 more trusted authentication (two factors ?)
+    * loa=6 live critical authentication.
 
-    * Note: 
+* Security attributes: allows to add fine grain access controls. They define a set of labels that should be provided by your IDP.
 
-        * when requesting LOA=2 then any IDP with a higher LOA will be accepted. You should use LOA=-2 to enforce a specific level of LOA.
+    * Enterprise IDPs typically provide either groups or roles.
+    * github' provides organizations, repositories, ...
+    * onelogin map groups on local roles or ldap/AD memberof request
 
-        * security attributes array are processed as logical OR. If one of the list is accepted then the request is valid.
+    Each IDP has it own way to provide attributes. Idp security labels map to AFB-V4 privileged through an independant json configuration file, where security administrator may define a per IDP label/privilege mapping.
+
+Typical access control:
+``` json
+ {"uid": "geoloc","uri":"unix:@gps-api", "loa":1, "requirer":["geoloc-role"]},
+```
 
 ## Documentation
 

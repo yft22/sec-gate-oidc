@@ -49,7 +49,7 @@ typedef struct {
 
 // dflt_xxxx config.json default options
 static pamOptsT dfltOpts = {
-    .gidsMax = 64,
+    .gidsMax = 32,
     .avatarAlias = "/sgate/pam/avatar-dflt.png",
     .uidMin = 1000,
 };
