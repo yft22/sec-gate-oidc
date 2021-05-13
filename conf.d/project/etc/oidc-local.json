@@ -6,12 +6,12 @@
   "https": true,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
-  "extension": "./package/lib/afb-oidc-sgate.extso",
+  "extension": "./package/lib/afb-sgate-oidc.extso",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
   "binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
   "@extconfig": {
-    "oidc-sgate": {
+    "sgate-oidc": {
       "api": "sgate",
       "info": "oidc secure gateway local authentication sample config",
       "globals": {
@@ -35,7 +35,7 @@
                 "logo": "/sgate/pam/logo-64px.png",
                 "timeout": 900
             },
-            "profils": [
+            "profiles": [
                 {"uid":"login", "loa":1, "scope":"login"}
             ]
         }, {
@@ -58,7 +58,7 @@
             "wellknown": {
                 "tokenid": "/sgate/ldap/login.html"
             },
-            "profils": [
+            "profiles": [
                 {"uid":"login", "loa":1, "scope":"login"}
             ]
         }

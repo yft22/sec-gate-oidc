@@ -6,12 +6,12 @@
   "https": true,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
-  "extension": "./package/lib/afb-oidc-sgate.extso",
+  "extension": "./package/lib/afb-sgate-oidc.extso",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
   "binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
   "@extconfig": {
-    "oidc-sgate": {
+    "sgate-oidc": {
       "api": "sgate",
       "info": "oidc secure gateway demo config",
       "globals": {
@@ -47,7 +47,7 @@
                 "logout": "/sgate/onelogin/logout",
                 "logo": "/sgate/onelogin/logo-64px.png",
             },
-            "profils": [
+            "profiles": [
                 {"uid":"basic", "loa":1, "scope":"openid profile"},
                 {"uid":"basic", "loa":2, "scope":"openid profile groups"}
             ]
@@ -76,7 +76,7 @@
                 "logo": "/sgate/phantauth/logo-64px.png",
                 "timeout": 600
             },
-            "profils": [
+            "profiles": [
                 {"uid":"basic", "loa":1, "scope":"openid profile"},
             ]
         }, {
@@ -87,8 +87,8 @@
             "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
             },
             "wellknown": {
-                "authorize": "https://github.com/login/oauth/authorize",
                 "tokenid": "https://github.com/login/oauth/access_token",
+                "authorize": "https://github.com/login/oauth/authorize",
                 "userinfo": "https://api.github.com/user",
             },
             "statics": {
@@ -96,7 +96,7 @@
                 "logo": "/sgate/github/logo-64px.png",
                 "timeout": 600
             },
-            "profils": [
+            "profiles": [
                 {"uid":"basic", "loa":1, "scope":"user:email"},
                 {"uid":"teams", "loa":2, "scope":"read:org", "label":"organizations_url"}
             ]

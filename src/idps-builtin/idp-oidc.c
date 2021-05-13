@@ -66,7 +66,7 @@ enum {
 } tokenPart;
 #define ENCODED_URL 1
 
-static const oidcProfilsT dfltProfils[] = {
+static const oidcProfileT dfltProfiles[] = {
     {.loa = 1,.scope = "openid,profile"},
     {NULL}  // terminator
 };
@@ -162,7 +162,7 @@ OnErrorExit:
 }
 
 
-static int oidcUserFederateId (idpRqtCtxT *rqtCtx, json_object *profilJ) {
+static int oidcUserFederateId (idpRqtCtxT *rqtCtx, json_object *profileJ) {
     oidcIdpT *idp = rqtCtx->idp;
     oidcSchemaT *schema= (oidcSchemaT*) idp->userData;
     fedSocialRawT *fedSocial;
@@ -171,19 +171,19 @@ static int oidcUserFederateId (idpRqtCtxT *rqtCtx, json_object *profilJ) {
     int err;
 
     // no profile just ignore
-    if (!profilJ) return -1;
+    if (!profileJ) return -1;
 
     // build social fedkey from idp->uid+oidc->id
     fedSocial = calloc (1, sizeof (fedSocialRawT));
-    fedSocial->fedkey = json_object_dup_key_value (profilJ, schema->fedid);
-    fedSocial->idpsid = json_object_dup_key_value (profilJ, schema->idpsid);
+    fedSocial->fedkey = json_object_dup_key_value (profileJ, schema->fedid);
+    fedSocial->idpsid = json_object_dup_key_value (profileJ, schema->idpsid);
     fedSocial->idp = strdup (idp->uid);
     rqtCtx->fedSocial= fedSocial;
 
     // check groups as security attributs
     if (schema->attrs) {
-        json_object_object_get_ex (profilJ, schema->attrs, &attrsJ);
-        fprintf (stderr, "fedid= %s ***\n", json_object_get_string(profilJ));
+        json_object_object_get_ex (profileJ, schema->attrs, &attrsJ);
+        fprintf (stderr, "fedid= %s ***\n", json_object_get_string(profileJ));
         if (json_object_is_type(attrsJ, json_type_array)) {
             size_t count= json_object_array_length (attrsJ);
             fedSocial->attrs = calloc (count + 1, sizeof (char *));
@@ -195,11 +195,11 @@ static int oidcUserFederateId (idpRqtCtxT *rqtCtx, json_object *profilJ) {
     }
 
     fedUser = calloc (1, sizeof (fedUserRawT));
-    fedUser->pseudo = json_object_dup_key_value (profilJ, schema->pseudo);
-    fedUser->avatar = json_object_dup_key_value (profilJ, schema->avatar);
-    fedUser->name = json_object_dup_key_value (profilJ, schema->name);
-    fedUser->company = json_object_dup_key_value (profilJ, schema->company);
-    fedUser->email = json_object_dup_key_value (profilJ, schema->email);
+    fedUser->pseudo = json_object_dup_key_value (profileJ, schema->pseudo);
+    fedUser->avatar = json_object_dup_key_value (profileJ, schema->avatar);
+    fedUser->name = json_object_dup_key_value (profileJ, schema->name);
+    fedUser->company = json_object_dup_key_value (profileJ, schema->company);
+    fedUser->email = json_object_dup_key_value (profileJ, schema->email);
     rqtCtx->fedUser= fedUser;
 
     err = fedidCheck(rqtCtx);
@@ -213,7 +213,7 @@ OnErrorExit:
     return -1;
 }
 
-// call when IDP respond to user profil wreq
+// call when IDP respond to user profile wreq
 // reference: https://docs.oidc.com/en/rest/reference/users#get-the-authenticated-user
 static httpRqtActionT oidcUserGetByTokenCB (httpRqtT * httpRqt)
 {
@@ -223,23 +223,23 @@ static httpRqtActionT oidcUserGetByTokenCB (httpRqtT * httpRqt)
     // something when wrong
     if (httpRqt->status != 200) goto OnErrorExit;
 
-    // unwrap user profil
-    json_object *profilJ = json_tokener_parse (httpRqt->body);
-    if (!profilJ) goto OnErrorExit;
+    // unwrap user profile
+    json_object *profileJ = json_tokener_parse (httpRqt->body);
+    if (!profileJ) goto OnErrorExit;
 
-    err= oidcUserFederateId (rqtCtx, profilJ);
+    err= oidcUserFederateId (rqtCtx, profileJ);
     if (err)  goto OnErrorExit;
 
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
-    EXT_CRITICAL ("[oidc-fail-user-profil] Fail to get user profil from oidc status=%ld body='%s'", httpRqt->status, httpRqt->body);
+    EXT_CRITICAL ("[oidc-fail-user-profile] Fail to get user profile from oidc status=%ld body='%s'", httpRqt->status, httpRqt->body);
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
     idpRqtCtxFree(rqtCtx);
     return HTTP_HANDLE_FREE;
 }
 
-// from acces token wreq user profil
+// from acces token wreq user profile
 // reference https://docs.oidc.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
 static int oidcUserGetByToken (idpRqtCtxT * rqtCtx)
 {
@@ -251,8 +251,8 @@ static int oidcUserGetByToken (idpRqtCtxT * rqtCtx)
         {NULL}  // terminator
     };
 
-    // asynchronous wreq to IDP user profil https://docs.oidc.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
-    EXT_DEBUG ("[oidc-profil-get] curl -H 'Authorization: %s' %s\n", rqtCtx->token, idp->wellknown->userinfo);
+    // asynchronous wreq to IDP user profile https://docs.oidc.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
+    EXT_DEBUG ("[oidc-profile-get] curl -H 'Authorization: %s' %s\n", rqtCtx->token, idp->wellknown->userinfo);
     int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->userinfo, &dfltOpts, authToken, oidcUserGetByTokenCB, rqtCtx);
     if (err) goto OnErrorExit;
     return 0;
@@ -348,7 +348,7 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
 
         }
     } else {
-        // when no token id an extra request to user profil info endpoint requirer
+        // when no token id an extra request to user profile info endpoint requirer
         err= oidcUserGetByToken (rqtCtx);
     }
     json_object_put (responseJ);
@@ -374,7 +374,7 @@ static int oidcAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirec
     rqtCtx->hreq = hreq;
     rqtCtx->idp = idp;
     rqtCtx->uuid =  afb_session_uuid (hreq->comreq.session);
-    err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &rqtCtx->profil);
+    err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &rqtCtx->profile);
     if (err) goto OnErrorExit;
 
     switch (idp->wellknown->authMethod) {
@@ -435,12 +435,12 @@ static int oidcAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redirec
     return 1;
 }
 
-// this check idp code and either wreq profil or redirect to idp login page
+// this check idp code and either wreq profile or redirect to idp login page
 static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
     oidcIdpT *idp = (oidcIdpT *) ctx;
     assert (idp->magic == MAGIC_OIDC_IDP);
     char redirectUrl[EXT_HEADER_MAX_LEN];
-    const oidcProfilsT *profil = NULL;
+    const oidcProfileT *profile = NULL;
     const oidcAliasT *alias = NULL;
     int err, status, aliasLoa;
 
@@ -461,28 +461,28 @@ static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
         const char *scope = afb_hreq_get_argument (hreq, "scope");
 
         // search for a scope fiting wreqing loa
-        for (int idx = 0; idp->profils[idx].uid; idx++) {
-            if (idp->profils[idx].loa >= aliasLoa) {
+        for (int idx = 0; idp->profiles[idx].uid; idx++) {
+            if (idp->profiles[idx].loa >= aliasLoa) {
                 // if no scope take the 1st profile with valid LOA
-                if (scope && (strcmp (scope, idp->profils[idx].scope)))
+                if (scope && (strcmp (scope, idp->profiles[idx].scope)))
                     continue;
-                profil = &idp->profils[idx];
+                profile = &idp->profiles[idx];
                 break;
             }
         }
 
-        // if loa wreqed and no profil fit exit without trying authentication
-        if (!profil) goto OnErrorExit;
+        // if loa wreqed and no profile fit exit without trying authentication
+        if (!profile) goto OnErrorExit;
 
-        // store wreqed profil to retreive attached loa and role filter if login succeded
-        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profil, NULL, NULL);
+        // store wreqed profile to retreive attached loa and role filter if login succeded
+        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
 
         httpKeyValT query[] = {
             {.tag = "client_id",.value = idp->credentials->clientId},
             {.tag = "response_type",.value = idp->wellknown->respondLabel},
             {.tag = "state",.value = session},
             {.tag = "nonce",.value = session},
-            {.tag = "scope",.value = profil->scope},
+            {.tag = "scope",.value = profile->scope},
             {.tag = "redirect_uri",.value = redirectUrl},
             {.tag = "language",.value = setlocale (LC_CTYPE, "")},
             {NULL}              // terminator
@@ -516,7 +516,7 @@ static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
     return 1;
 }
 
-// this check idp code and either wreq profil or redirect to idp login page
+// this check idp code and either wreq profile or redirect to idp login page
 // reference https://openid.net/specs/openid-connect-backchannel-1_0.html
 static int oidcLogoutCB (afb_hreq * hreq, void *ctx) {
     oidcIdpT *idp = (oidcIdpT *) ctx;
@@ -689,7 +689,7 @@ int oidcRegisterConfig (oidcIdpT * idp, json_object * configJ)
         .wellknown = &dfltWellknown,
         .headers = dfltHeaders,
         .statics = &dfltstatics,
-        .profils = dfltProfils,
+        .profiles = dfltProfiles,
     };
 
     int err = idpParseOidcConfig (idp, configJ, &defaults, NULL);

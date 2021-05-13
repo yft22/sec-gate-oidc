@@ -54,7 +54,7 @@ static pamOptsT dfltOpts = {
     .uidMin = 1000,
 };
 
-static const oidcProfilsT dfltProfils[] = {
+static const oidcProfileT dfltProfiles[] = {
     {.loa = 1,.scope = "login"},
     {NULL}                      // terminator
 };
@@ -83,7 +83,7 @@ static int pamChalengeCB (int num_msg, const struct pam_message **msg, struct pa
 }
 
 // check pam login/passwd using scope as pam application
-static int pamAccessToken (oidcIdpT * idp, const oidcProfilsT * profil, const char *login, const char *passwd, fedSocialRawT ** social, fedUserRawT ** user)
+static int pamAccessToken (oidcIdpT * idp, const oidcProfileT * profile, const char *login, const char *passwd, fedSocialRawT ** social, fedUserRawT ** user)
 {
     int status = 0, err;
     pam_handle_t *pamh = NULL;
@@ -108,7 +108,7 @@ static int pamAccessToken (oidcIdpT * idp, const oidcProfilsT * profil, const ch
     // if passwd check passwd and retreive groups when login/passwd match
     if (passwd) {
         // init pam transaction using scope as pam application
-        status = pam_start (profil->scope, login, &conversion, &pamh);
+        status = pam_start (profile->scope, login, &conversion, &pamh);
         if (status != PAM_SUCCESS) goto OnErrorExit;
 
         status = pam_authenticate (pamh, 0);
@@ -161,7 +161,7 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
     oidcIdpT *idp = (oidcIdpT *) afb_req_v4_vcbdata (wreq);
     struct afb_data *args[nparams];
     const char *login, *passwd = NULL, *scope = NULL;
-    const oidcProfilsT *profil = NULL;
+    const oidcProfileT *profile = NULL;
     const oidcAliasT *alias = NULL;
     afb_data_t reply;
     const char *state;
@@ -181,23 +181,23 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
     if (alias) aliasLoa = alias->loa;
     else aliasLoa = 0;
 
-    // search for a matching profil if scope is selected then scope&loa should match
-    for (int idx = 0; idp->profils[idx].uid; idx++) {
-        profil = &idp->profils[idx];
-        if (idp->profils[idx].loa >= aliasLoa) {
-            if (scope && strcasecmp (scope, idp->profils[idx].scope)) continue;
-            profil = &idp->profils[idx];
+    // search for a matching profile if scope is selected then scope&loa should match
+    for (int idx = 0; idp->profiles[idx].uid; idx++) {
+        profile = &idp->profiles[idx];
+        if (idp->profiles[idx].loa >= aliasLoa) {
+            if (scope && strcasecmp (scope, idp->profiles[idx].scope)) continue;
+            profile = &idp->profiles[idx];
             break;
         }
     }
-    if (!profil) {
+    if (!profile) {
         EXT_NOTICE ("[pam-check-scope] scope=%s does not match wreqed loa=%d", scope, aliasLoa);
         goto OnErrorExit;
     }
     // check password
     fedUserRawT *fedUser = NULL;
     fedSocialRawT *fedSocial = NULL;
-    err = pamAccessToken (idp, profil, login, passwd, &fedSocial, &fedUser);
+    err = pamAccessToken (idp, profile, login, passwd, &fedSocial, &fedUser);
     if (err) goto OnErrorExit;
 
     // do no check federation when only login
@@ -232,7 +232,7 @@ int pamLoginCB (afb_hreq * hreq, void *ctx)
     oidcIdpT *idp = (oidcIdpT *) ctx;
     assert (idp->magic == MAGIC_OIDC_IDP);
     char redirectUrl[EXT_HEADER_MAX_LEN];
-    const oidcProfilsT *profil = NULL;
+    const oidcProfileT *profile = NULL;
     const oidcAliasT *alias = NULL;
     int err, status, aliasLoa;
 
@@ -254,29 +254,29 @@ int pamLoginCB (afb_hreq * hreq, void *ctx)
         char url[EXT_URL_MAX_LEN];
 
         // search for a scope fiting wreqing loa
-        for (int idx = 0; idp->profils[idx].uid; idx++) {
-            profil = &idp->profils[idx];
-            if (idp->profils[idx].loa >= aliasLoa) {
+        for (int idx = 0; idp->profiles[idx].uid; idx++) {
+            profile = &idp->profiles[idx];
+            if (idp->profiles[idx].loa >= aliasLoa) {
                 // if no scope take the 1st profile with valid LOA
-                if (scope && (strcmp (scope, idp->profils[idx].scope))) continue;
-                profil = &idp->profils[idx];
+                if (scope && (strcmp (scope, idp->profiles[idx].scope))) continue;
+                profile = &idp->profiles[idx];
                 break;
             }
         }
 
-        // if loa wreqed and no profil fit exit without trying authentication
-        if (!profil) goto OnErrorExit;
+        // if loa wreqed and no profile fit exit without trying authentication
+        if (!profile) goto OnErrorExit;
 
         httpKeyValT query[] = {
             {.tag = "state",.value = afb_session_uuid (hreq->comreq.session)},
-            {.tag = "scope",.value = profil->scope},
+            {.tag = "scope",.value = profile->scope},
             {.tag = "redirect_uri",.value = redirectUrl},
             {.tag = "language",.value = setlocale (LC_CTYPE, "")},
             {NULL}              // terminator
         };
 
-        // store wreqed profil to retreive attached loa and role filter if login succeded
-        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profil, NULL, NULL);
+        // store wreqed profile to retreive attached loa and role filter if login succeded
+        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
 
         // build wreq and send it
         err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->tokenid, query);
@@ -292,13 +292,13 @@ int pamLoginCB (afb_hreq * hreq, void *ctx)
         if (!state || strcmp (state, afb_session_uuid (hreq->comreq.session))) goto OnErrorExit;
 
         EXT_DEBUG ("[pam-auth-code] login=%s (pamLoginCB)", login);
-        afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &profil);
-        if (!profil) goto OnErrorExit;
+        afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &profile);
+        if (!profile) goto OnErrorExit;
 
         // Check received login/passwd
         fedUserRawT *fedUser;
         fedSocialRawT *fedSocial;
-        err = pamAccessToken (idp, profil, login, passwd, &fedSocial, &fedUser);
+        err = pamAccessToken (idp, profile, login, passwd, &fedSocial, &fedUser);
         if (err) goto OnErrorExit;
 
         // check if federated id is already present or not
@@ -357,9 +357,9 @@ static int pamRegisterConfig (oidcIdpT * idp, json_object * idpJ)
     int err;
     assert (idpCallbacks);
 
-    // only default profil is usefull
+    // only default profile is usefull
     oidcDefaultsT defaults = {
-        .profils = dfltProfils,
+        .profiles = dfltProfiles,
         .statics = &dfltstatics,
         .credentials = &noCredentials,
         .wellknown = &dfltWellknown,

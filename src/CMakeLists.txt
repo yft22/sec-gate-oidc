@@ -20,7 +20,7 @@ add_subdirectory(idps-builtin)
 add_subdirectory(idps-plugins)
 
 # Add target to project dependency list
-PROJECT_TARGET_ADD(oidc-sgate)
+PROJECT_TARGET_ADD(sgate-oidc)
 
 	# compile any C file starting with a lower case
 	file(GLOB CSOURCES [a-z]*.c)

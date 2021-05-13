@@ -74,8 +74,8 @@ static void userCheckAttrCB (void *ctx, int status, unsigned argc, const afb_dat
     static char freeMsg[] = "available";
     afb_data_t reply[1], argd[2];
     fedUserRawT *fedUser = NULL;
-    oidcProfilsT *profil = NULL;
-    json_object *profilJ;
+    oidcProfileT *profile = NULL;
+    json_object *profileJ;
 
     // return creation status to HTML5
     if (status < 0) goto OnErrorExit;
@@ -195,7 +195,7 @@ static void userRegisterCB (void *ctx, int status, unsigned argc, const afb_data
 {
     char *errorMsg = "[user-create-fail]  (idsvcuserRegisterCB)";
     afb_data_t reply[1], argd[2];
-    oidcProfilsT *profil = NULL;
+    oidcProfileT *profile = NULL;
     oidcAliasT *alias = NULL;
     json_object *aliasJ;
     afb_session *session = afb_req_v4_get_common (wreq)->session;
@@ -204,8 +204,8 @@ static void userRegisterCB (void *ctx, int status, unsigned argc, const afb_data
     if (status < 0) goto OnErrorExit;
 
     // return destination alias
-    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profil);
-    afb_session_set_loa (session, oidcSessionCookie, profil->loa);
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profile);
+    afb_session_set_loa (session, oidcSessionCookie, profile->loa);
     afb_session_cookie_get (session, oidcAliasCookie, (void **) &alias);
     wrap_json_pack (&aliasJ, "{ss}", "target", alias->url ? : "/");
     afb_create_data_raw (&reply[0], AFB_PREDEFINED_TYPE_JSON_C, aliasJ, 0, (void *) json_object_put, aliasJ);
@@ -223,7 +223,7 @@ static void userRegister (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
 {
     char *errorMsg = "[user-register-fail] invalid session/wreq";
     afb_event_t evtCookie = NULL;
-    const oidcProfilsT *profil = NULL;
+    const oidcProfileT *profile = NULL;
     const fedSocialRawT *fedSocial;
     int err;
 
@@ -237,8 +237,8 @@ static void userRegister (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
 
     // retrieve current wreq LOA from session (to be fixed by Jose)
     afb_session *session = afb_req_v4_get_common (wreq)->session;
-    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profil);
-    if (!profil) goto OnErrorExit;
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profile);
+    if (!profile) goto OnErrorExit;
 
     // retreive fedsocial from session
     afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
@@ -264,17 +264,17 @@ static void userFederateCB (void *ctx, int status, unsigned argc, const afb_data
     fedUserRawT *fedUser= (fedUserRawT*)ctx;
     fedidLinkT *fedBackup;
     afb_data_t reply[1];
-    oidcProfilsT *profil = NULL;
+    oidcProfileT *profile = NULL;
     oidcAliasT *alias = NULL;
     json_object *responseJ;
     int err;
 
     if (status < 0 || status == FEDID_ATTR_FREE) goto OnErrorExit;
 
-    // get used IDP profil to access oidc wellknown urls
+    // get used IDP profile to access oidc wellknown urls
     afb_session *session = afb_req_v4_get_common (wreq)->session;
-    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profil);
-    if (!profil) goto OnErrorExit;
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profile);
+    if (!profile) goto OnErrorExit;
 
     // copy current user social and registration data for further federation request
     fedBackup= malloc (sizeof(fedSocialRawT));
@@ -284,7 +284,7 @@ static void userFederateCB (void *ctx, int status, unsigned argc, const afb_data
 
     // force federation mode within fedidCheckCB
     afb_session_set_loa (session, oidcFedSocialCookie, FEDID_LINK_REQUESTED);
-    err = wrap_json_pack (&responseJ, "{ss}", "target", profil->idp->oidc->globals->fedlinkUrl);
+    err = wrap_json_pack (&responseJ, "{ss}", "target", profile->idp->oidc->globals->fedlinkUrl);
     if (err) goto OnErrorExit;
 
     afb_create_data_raw (reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void *) json_object_put, responseJ);
@@ -303,7 +303,7 @@ static void userFederate (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
 {
     char *errorMsg = "[user-federate-fail] invalid/missing query arguments";
     afb_event_t evtCookie = NULL;
-    const oidcProfilsT *profil = NULL;
+    const oidcProfileT *profile = NULL;
     const fedSocialRawT *fedSocial;
     json_object *responseJ;
     int err;
@@ -339,29 +339,29 @@ sessionReset (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
     return;
 }
 
-// Return all information we have on current session (profil, loa, idp, ...)
+// Return all information we have on current session (profile, loa, idp, ...)
 static void sessionGet (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     char *errorMsg = "[fail-session-get] no session running anonymous mode";
     afb_data_t reply[3];
     afb_event_t evtCookie = NULL;
-    const oidcProfilsT *profil = NULL;
+    const oidcProfileT *profile = NULL;
     fedUserRawT *fedUser;
     fedSocialRawT *fedSocial;
-    json_object *profilJ;
+    json_object *profileJ;
 
     // retrieve current wreq LOA from session (to be fixed by Jose)
     afb_session *session = afb_req_v4_get_common (wreq)->session;
-    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profil);
-    if (!profil) goto OnErrorExit;
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profile);
+    if (!profile) goto OnErrorExit;
 
-    wrap_json_pack (&profilJ, "{ss ss si}", "uid", profil->uid, "scope", profil->scope, "loa", profil->loa);
+    wrap_json_pack (&profileJ, "{ss ss si}", "uid", profile->uid, "scope", profile->scope, "loa", profile->loa);
 
     afb_session_cookie_get (session, oidcFedUserCookie, (void **) &fedUser);
     afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedSocial);
     afb_create_data_raw (&reply[0], fedUserObjType, fedUser, 0, NULL, NULL);
     afb_create_data_raw (&reply[1], fedSocialObjType, fedSocial, 0, NULL, NULL);        // keep feduser
-    afb_create_data_raw (&reply[2], AFB_PREDEFINED_TYPE_JSON_C, profilJ, 0, (void *) json_object_put, profilJ);
+    afb_create_data_raw (&reply[2], AFB_PREDEFINED_TYPE_JSON_C, profileJ, 0, (void *) json_object_put, profileJ);
 
     afb_req_reply (wreq, 0, 3, reply);
     return;
@@ -512,7 +512,7 @@ static afb_verb_t idsvcVerbs[] = {
     {.verb = "url-query-conf",.callback = urlQuery,.info = "wreq wellknown url list/tag"},
     {.verb = "idp-query-conf",.callback = idpQueryConf,.info = "wreq idp list/scope for a given LOA level"},
     {.verb = "idp-query-user",.callback = idpQueryUser,.info = "return pseudo/email idps list before linking user multiple IDPs"},
-    {.verb = "session-get",.callback = sessionGet,.info = "retrieve current client session [profil, user, social]"},
+    {.verb = "session-get",.callback = sessionGet,.info = "retrieve current client session [profile, user, social]"},
     {.verb = "session-subscribe",.callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
     {.verb = "session-reset",.callback = sessionReset,.info = "reset current session [set loa=0]"},
     {.verb = "usr-register",.callback = userRegister,.info = "register federated user profile into local fedid store"},

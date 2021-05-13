@@ -75,7 +75,7 @@ typedef struct {
     unsigned long tCache;
     unsigned long sTimeout;
     oidcIdpT *idp;
-} oidcProfilsT;
+} oidcProfileT;
 
 typedef struct oidcStaticsS {
     int loa;
@@ -93,9 +93,9 @@ typedef struct oidcIdpS {
     const oidcCredentialsT *credentials;
     const oidcWellknownT *wellknown;
     const httpKeyValT *headers;
-    const oidcProfilsT *scopes;
+    const oidcProfileT *scopes;
     const oidcStaticsT *statics;
-    const oidcProfilsT *profils;
+    const oidcProfileT *profiles;
     void *ctx;
     const idpPluginT *plugin;
     oidcCoreHdlT *oidc;
@@ -106,7 +106,7 @@ typedef struct {
     const oidcCredentialsT *credentials;
     const oidcStaticsT *statics;
     const oidcWellknownT *wellknown;
-    const oidcProfilsT *profils;
+    const oidcProfileT *profiles;
     const httpKeyValT *headers;
 } oidcDefaultsT;
 
@@ -119,7 +119,7 @@ typedef struct {
     struct afb_req_v4 *wreq;
     fedSocialRawT *fedSocial;
     fedUserRawT *fedUser;
-    const oidcProfilsT *profil;
+    const oidcProfileT *profile;
     char *token;
     void *userData;
 } idpRqtCtxT;

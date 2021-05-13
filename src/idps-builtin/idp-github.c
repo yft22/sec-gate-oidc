@@ -45,7 +45,7 @@ static const httpKeyValT dfltHeaders[] = {
     {NULL}                      // terminator
 };
 
-static const oidcProfilsT dfltProfils[] = {
+static const oidcProfileT dfltProfiles[] = {
     {.loa = 1,.scope = "user,email"},
     {NULL}                      // terminator
 };
@@ -68,7 +68,7 @@ static httpOptsT dfltOpts = {
     .agent = HTTP_DFLT_AGENT,
     .headers = dfltHeaders,
     .follow = 1,
-    .timeout= 10, // default authentication timeout 
+    .timeout= 10, // default authentication timeout
     // .verbose=1
 };
 
@@ -82,7 +82,7 @@ static char *json_object_dup_key_value (json_object * objJ, const char *key)
     return value;
 }
 
-// call when IDP respond to user profil wreq
+// call when IDP respond to user profile wreq
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
 static httpRqtActionT githubAttrsGetByTokenCB (httpRqtT * httpRqt)
 {
@@ -92,7 +92,7 @@ static httpRqtActionT githubAttrsGetByTokenCB (httpRqtT * httpRqt)
     // something when wrong
     if (httpRqt->status != 200) goto OnErrorExit;
 
-    // unwrap user profil
+    // unwrap user profile
     json_object *orgsJ = json_tokener_parse (httpRqt->body);
     if (!orgsJ || !json_object_is_type (orgsJ, json_type_array)) goto OnErrorExit;
     size_t count = json_object_array_length (orgsJ);
@@ -126,14 +126,14 @@ static void githubGetAttrsByToken (idpRqtCtxT * rqtCtx, const char *orgApiUrl)
         {NULL} // terminator
     };
 
-    // asynchronous wreq to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
+    // asynchronous wreq to IDP user profile https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
     EXT_DEBUG ("[github-attrs-get] curl -H 'Authorization: %s' %s\n", tokenVal, orgApiUrl);
     int err = httpSendGet (idp->oidc->httpPool, orgApiUrl, &dfltOpts, authToken, githubAttrsGetByTokenCB, rqtCtx);
     if (err) EXT_ERROR ("[github-attrs-fail] curl -H 'Authorization: %s' %s\n", tokenVal, orgApiUrl);
     return;
 }
 
-// call when IDP respond to user profil wreq
+// call when IDP respond to user profile wreq
 // reference: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
 static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
 {
@@ -145,28 +145,28 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
     if (httpRqt->status != 200)
         goto OnErrorExit;
 
-    // unwrap user profil
-    json_object *profilJ = json_tokener_parse (httpRqt->body);
-    if (!profilJ)
+    // unwrap user profile
+    json_object *profileJ = json_tokener_parse (httpRqt->body);
+    if (!profileJ)
         goto OnErrorExit;
 
     // build social fedkey from idp->uid+github->id
     fedSocialRawT *fedSocial = calloc (1, sizeof (fedSocialRawT));
-    fedSocial->fedkey = json_object_dup_key_value (profilJ, "id");
+    fedSocial->fedkey = json_object_dup_key_value (profileJ, "id");
     fedSocial->idp = strdup (idp->uid);
     rqtCtx->fedSocial= fedSocial;
 
     fedUserRawT *fedUser = calloc (1, sizeof (fedUserRawT));
-    fedUser->pseudo = json_object_dup_key_value (profilJ, "login");
-    fedUser->avatar = json_object_dup_key_value (profilJ, "avatar_url");
-    fedUser->name = json_object_dup_key_value (profilJ, "name");
-    fedUser->company = json_object_dup_key_value (profilJ, "company");
-    fedUser->email = json_object_dup_key_value (profilJ, "email");
+    fedUser->pseudo = json_object_dup_key_value (profileJ, "login");
+    fedUser->avatar = json_object_dup_key_value (profileJ, "avatar_url");
+    fedUser->name = json_object_dup_key_value (profileJ, "name");
+    fedUser->company = json_object_dup_key_value (profileJ, "company");
+    fedUser->email = json_object_dup_key_value (profileJ, "email");
     rqtCtx->fedUser= fedUser;
 
     // user is ok, let's map user organisation onto security attributes
-    if (rqtCtx->profil->label) {
-        const char *organizationsUrl = json_object_get_string (json_object_object_get (profilJ, rqtCtx->profil->label));
+    if (rqtCtx->profile->label) {
+        const char *organizationsUrl = json_object_get_string (json_object_object_get (profileJ, rqtCtx->profile->label));
         if (organizationsUrl) {
             githubGetAttrsByToken (rqtCtx, organizationsUrl);
         }
@@ -178,7 +178,7 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
-    EXT_CRITICAL ("[github-fail-user-profil] Fail to get user profil from github status=%ld body='%s'", httpRqt->status, httpRqt->body);
+    EXT_CRITICAL ("[github-fail-user-profile] Fail to get user profile from github status=%ld body='%s'", httpRqt->status, httpRqt->body);
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
     idpRqtCtxFree(rqtCtx);
     fedSocialFreeCB(fedSocial);
@@ -186,7 +186,7 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
     return HTTP_HANDLE_FREE;
 }
 
-// from acces token wreq user profil
+// from acces token wreq user profile
 // reference https://docs.github.com/en/developers/apps/authorizing-oauth-apps#web-application-flow
 static void githubUserGetByToken (idpRqtCtxT * rqtCtx)
 {
@@ -199,8 +199,8 @@ static void githubUserGetByToken (idpRqtCtxT * rqtCtx)
         {NULL}                  // terminator
     };
 
-    // asynchronous wreq to IDP user profil https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
-    EXT_DEBUG ("[github-profil-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->userinfo);
+    // asynchronous wreq to IDP user profile https://docs.github.com/en/rest/reference/orgs#list-organizations-for-the-authenticated-user
+    EXT_DEBUG ("[github-profile-get] curl -H 'Authorization: %s' %s\n", tokenVal, idp->wellknown->userinfo);
     int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->userinfo,
                            &dfltOpts, authToken, githubUserGetByTokenCB,
                            rqtCtx);
@@ -231,7 +231,7 @@ static httpRqtActionT githubAccessTokenCB (httpRqtT * httpRqt)
     if (!rqtCtx->token)
         goto OnErrorExit;
 
-    // we have our wreq token let's try to get user profil
+    // we have our wreq token let's try to get user profile
     githubUserGetByToken (rqtCtx);
 
     // callback is responsible to free wreq & context
@@ -264,7 +264,7 @@ static int githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redir
     // afb_hreq_addref (hreq); // prevent automatic href liberation
     rqtCtx->hreq = hreq;
     rqtCtx->idp = idp;
-    err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &rqtCtx->profil);
+    err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &rqtCtx->profile);
     if (err)
         goto OnErrorExit;
 
@@ -283,12 +283,12 @@ static int githubAccessToken (afb_hreq * hreq, oidcIdpT * idp, const char *redir
     return 1;
 }
 
-// this check idp code and either wreq profil or redirect to idp login page
+// this check idp code and either wreq profile or redirect to idp login page
 static int githubLoginCB (afb_hreq * hreq, void *ctx) {
     oidcIdpT *idp = (oidcIdpT *) ctx;
     assert (idp->magic == MAGIC_OIDC_IDP);
     char redirectUrl[EXT_HEADER_MAX_LEN];
-    const oidcProfilsT *profil = NULL;
+    const oidcProfileT *profile = NULL;
     const oidcAliasT *alias = NULL;
     int err, status, aliasLoa;
 
@@ -312,28 +312,28 @@ static int githubLoginCB (afb_hreq * hreq, void *ctx) {
         const char *scope = afb_hreq_get_argument (hreq, "scope");
 
         // search for a scope fiting wreqing loa
-        for (int idx = 0; idp->profils[idx].uid; idx++) {
-            if (idp->profils[idx].loa >= aliasLoa) {
+        for (int idx = 0; idp->profiles[idx].uid; idx++) {
+            if (idp->profiles[idx].loa >= aliasLoa) {
                 // if no scope take the 1st profile with valid LOA
-                if (scope && (strcmp (scope, idp->profils[idx].scope)))
+                if (scope && (strcmp (scope, idp->profiles[idx].scope)))
                     continue;
-                profil = &idp->profils[idx];
+                profile = &idp->profiles[idx];
                 break;
             }
         }
 
-        // if loa wreqed and no profil fit exit without trying authentication
-        if (!profil)
+        // if loa wreqed and no profile fit exit without trying authentication
+        if (!profile)
             goto OnErrorExit;
 
-        // store wreqed profil to retreive attached loa and role filter if login succeded
-        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profil, NULL, NULL);
+        // store wreqed profile to retreive attached loa and role filter if login succeded
+        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
 
         httpKeyValT query[] = {
             {.tag = "client_id",.value = idp->credentials->clientId},
             {.tag = "response_type",.value = "code"},
             {.tag = "state",.value = session},
-            {.tag = "scope",.value = profil->scope},
+            {.tag = "scope",.value = profile->scope},
             {.tag = "redirect_uri",.value = redirectUrl},
             {.tag = "language",.value = setlocale (LC_CTYPE, "")},
             {NULL}              // terminator
@@ -391,13 +391,13 @@ int githubRegisterConfig (oidcIdpT * idp, json_object * configJ)
         .credentials = NULL,
         .statics = &dfltstatics,
         .wellknown = &dfltWellknown,
-        .profils = dfltProfils,
+        .profiles = dfltProfiles,
         .headers = dfltHeaders,
     };
     int err = idpParseOidcConfig (idp, configJ, &defaults, NULL);
     if (err) goto OnErrorExit;
 
-    // if timeout defined 
+    // if timeout defined
     if (idp->credentials->timeout) dfltOpts.timeout= idp->credentials->timeout;
 
     return 0;

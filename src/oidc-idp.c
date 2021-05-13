@@ -82,13 +82,13 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
 
     for (int idx = 0; oidc->idps[idx].uid; idx++) {
         oidcIdpT *idp = &oidc->idps[idx];
-        json_object *profilsJ = NULL;
+        json_object *profilesJ = NULL;
 
-        // search for requested LOA within idp existing profils
-        for (int jdx = 0; idp->profils[jdx].uid; jdx++) {
+        // search for requested LOA within idp existing profile
+        for (int jdx = 0; idp->profiles[jdx].uid; jdx++) {
 
             // if loa does not fir ignore IDP
-            if (idp->profils[jdx].loa < loa)
+            if (idp->profiles[jdx].loa < loa)
                 continue;
 
             // idp is not within idps list excluse it from list
@@ -102,20 +102,19 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
                     continue;
             }
 
-            json_object *profilJ;
-            if (!profilsJ)
-                profilsJ = json_object_new_array ();
-            wrap_json_pack (&profilJ, "{si ss ss* ss}"
-                , "loa",  idp->profils[jdx].loa
-                , "uid", idp->profils[jdx].uid
-                , "info", idp->profils[jdx].info
-                , "scope", idp->profils[jdx].scope
+            json_object *profileJ;
+            if (!profilesJ)  profilesJ = json_object_new_array ();
+            wrap_json_pack (&profileJ, "{si ss ss* ss}"
+                , "loa",  idp->profiles[jdx].loa
+                , "uid", idp->profiles[jdx].uid
+                , "info", idp->profiles[jdx].info
+                , "scope", idp->profiles[jdx].scope
                 );
-            json_object_array_add (profilsJ, profilJ);
+            json_object_array_add (profilesJ, profileJ);
         }
 
         // only return IDP with a corresponding loa/scope
-        if (profilsJ) {
+        if (profilesJ) {
             json_object *idpJ;
             if (!idpsJ) idpsJ = json_object_new_array ();
             wrap_json_pack (&idpJ, "{ss ss* ss* ss* ss* so}"
@@ -124,7 +123,7 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
                 , "logo", idp->statics->aliasLogo
                 , "client-id", idp->credentials->clientId
                 , "login-url", idp->statics->aliasLogin
-                , "profils", profilsJ
+                , "profiles", profilesJ
             );
 
             json_object_array_add (idpsJ, idpJ);
@@ -187,7 +186,7 @@ idpParseOneHeader (oidcIdpT * idp, json_object * headerJ, httpKeyValT * header)
     int err = wrap_json_unpack (headerJ, "{ss,ss}", "tag", &header->tag, "value",
                                 &header->value);
     if (err) {
-        EXT_CRITICAL ("[idp-header-error] idp=%s parsing fail profil expect: tag,value (idpParseOneHeader)", idp->uid);
+        EXT_CRITICAL ("[idp-header-error] idp=%s parsing fail profile expect: tag,value (idpParseOneHeader)", idp->uid);
         goto OnErrorExit;
     }
     return 0;
@@ -236,16 +235,16 @@ static const httpKeyValT *idpParseHeaders (oidcIdpT * idp, json_object * headers
 }
 
 static int
-idpParseOneProfil (oidcIdpT * idp, json_object * profileJ, oidcProfilsT * profil)
+idpParseOneProfil (oidcIdpT * idp, json_object * profileJ, oidcProfileT * profile)
 {
-    profil->sTimeout = idp->statics->sTimeout;
-    profil->idp = idp;
+    profile->sTimeout = idp->statics->sTimeout;
+    profile->idp = idp;
     int err = wrap_json_unpack (profileJ, "{ss,s?s,si,ss,s?s, s?i}", "uid",
-                                &profil->uid, "info", &profil->info, "loa",
-                                &profil->loa, "scope", &profil->scope, "label",
-                                &profil->label, "timeout", &profil->sTimeout);
+                                &profile->uid, "info", &profile->info, "loa",
+                                &profile->loa, "scope", &profile->scope, "label",
+                                &profile->label, "timeout", &profile->sTimeout);
     if (err) {
-        EXT_CRITICAL ("[idp-profile-error] idp=%s parsing fail profil expect: loa,scope (idpParseOneProfil)", idp->uid);
+        EXT_CRITICAL ("[idp-profile-error] idp=%s parsing fail profile expect: loa,scope (idpParseOneProfil)", idp->uid);
         goto OnErrorExit;
     }
     return 0;
@@ -254,45 +253,45 @@ idpParseOneProfil (oidcIdpT * idp, json_object * profileJ, oidcProfilsT * profil
     return 1;
 }
 
-static const oidcProfilsT *idpParseProfils (oidcIdpT * idp, json_object * profilsJ, const oidcProfilsT * defaults)
+static const oidcProfileT *idpParseProfils (oidcIdpT * idp, json_object * profilesJ, const oidcProfileT * defaults)
 {
-    oidcProfilsT *profils = NULL;
+    oidcProfileT *profile = NULL;
     int err;
 
     // no config use defaults
-    if (!profilsJ)
+    if (!profilesJ)
         return defaults;
 
-    switch (json_object_get_type (profilsJ)) {
+    switch (json_object_get_type (profilesJ)) {
         int count;
 
     case json_type_array:
-        count = (int) json_object_array_length (profilsJ);
-        profils = calloc (count + 1, sizeof (oidcProfilsT));
+        count = (int) json_object_array_length (profilesJ);
+        profile = calloc (count + 1, sizeof (oidcProfileT));
 
         for (int idx = 0; idx < count; idx++) {
-            json_object *profilJ = json_object_array_get_idx (profilsJ, idx);
-            err = idpParseOneProfil (idp, profilJ, &profils[idx]);
+            json_object *profileJ = json_object_array_get_idx (profilesJ, idx);
+            err = idpParseOneProfil (idp, profileJ, &profile[idx]);
             if (err)
                 goto OnErrorExit;
         }
         break;
 
     case json_type_object:
-        profils = calloc (2, sizeof (oidcProfilsT));
-        err = idpParseOneProfil (idp, profilsJ, &profils[0]);
+        profile = calloc (2, sizeof (oidcProfileT));
+        err = idpParseOneProfil (idp, profilesJ, &profile[0]);
         if (err)
             goto OnErrorExit;
         break;
 
     default:
-        EXT_CRITICAL ("[idp-profil-error] idp=%s should be json_array|json_object", idp->uid);
+        EXT_CRITICAL ("[idp-profile-error] idp=%s should be json_array|json_object", idp->uid);
         goto OnErrorExit;
     }
-    return (profils);
+    return (profile);
 
   OnErrorExit:
-    free (profils);
+    free (profile);
     return NULL;
 }
 
@@ -366,14 +365,14 @@ int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * d
         goto OnErrorExit;
     }
     // unpack main IDP config
-    json_object *credentialsJ = NULL, *staticJ = NULL, *wellknownJ = NULL, *headersJ = NULL, *profilsJ;
+    json_object *credentialsJ = NULL, *staticJ = NULL, *wellknownJ = NULL, *headersJ = NULL, *profilesJ;
     int err = wrap_json_unpack (configJ, "{ss s?s s?s s?o s?o s?o s?o}"
         , "uid", &idp->uid
         , "info", &idp->info
         , "type", &idp->type
         , "credentials", &credentialsJ
         , "statics", &staticJ
-        , "profils", &profilsJ
+        , "profiles", &profilesJ
         , "wellknown", &wellknownJ
         , "headers", &headersJ
         );
@@ -390,7 +389,7 @@ int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * d
     idp->ctx = ctx;
     idp->credentials = idpParseCredentials (idp, credentialsJ, defaults->credentials);
     idp->statics = idpParsestatic (idp, staticJ, defaults->statics);
-    idp->profils = idpParseProfils (idp, profilsJ, defaults->profils);
+    idp->profiles = idpParseProfils (idp, profilesJ, defaults->profiles);
     idp->wellknown = idpParseWellknown (idp, wellknownJ, defaults->wellknown);
     idp->headers = idpParseHeaders (idp, headersJ, defaults->headers);
 

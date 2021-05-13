@@ -106,7 +106,7 @@ apisParseOne (oidcCoreHdlT * oidc, json_object * apiJ, oidcApisT * api)
         wrap_json_unpack (apiJ, "{ss,s?s,s?s,s?i,s?i,s?o}", "uid", &api->uid, "info", &api->info, "uri", &api->uri, "loa", &api->loa, "lazy", &api->lazy,
                           "requirer", &requirerJ);
     if (err) {
-        EXT_CRITICAL ("[idp-api-error] idpmake=%s parsing fail profil expect: uid,uri,loa,role (apisParseOne)", oidc->uid);
+        EXT_CRITICAL ("[idp-api-error] idpmake=%s parsing fail profile expect: uid,uri,loa,role (apisParseOne)", oidc->uid);
         goto OnErrorExit;
     }
     // provide some defaults value based on uid

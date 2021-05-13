@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8" />
-	<title>oidc-sgate-login</title>
+	<title>sgate-oidc-login</title>
 	<link rel="stylesheet" href="/jscss/sgate-binding.css">
 	<link rel="icon" type="image/x-icon" href="/assets/favicon.ico">
 	<script type="text/javascript" src="/jscss/afb-websock.js"></script>
@@ -11,10 +11,10 @@
 </head>
 
 <body class="page-content" onload="init();">
-	<h1 class="center">oidc/sgate private sample page</h1> 
+	<h1 class="center">oidc/sgate private sample page</h1>
 	<button id="afb_link"  class="sgate_button" onclick="init()">Binder WS Fail</button>
-    <button id="afb_ping"  class="sgate_button" onclick="callbinder('sgate','ping' ,{});">oidc-sgate/ping</button>
-    <button id="afb_close" class="sgate_button" onclick="callbinder('sgate','session-reset' ,{});window.location.replace('/')">oidc-sgate/session-reset</button>
+    <button id="afb_ping"  class="sgate_button" onclick="callbinder('sgate','ping' ,{});">sgate-oidc/ping</button>
+    <button id="afb_close" class="sgate_button" onclick="callbinder('sgate','session-reset' ,{});window.location.replace('/')">sgate-oidc/session-reset</button>
     <br>
 	<img src="/assets/iot-bzh-korigan.png" style="width: 30%;">
 

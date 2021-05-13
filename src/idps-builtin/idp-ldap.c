@@ -72,7 +72,7 @@ static ldapOptsT dfltLdap = {
     .login=NULL,
 };
 
-static const oidcProfilsT dfltProfils[] = {
+static const oidcProfileT dfltProfiles[] = {
     {.loa = 1,.scope = "login"},
     {NULL}                      // terminator
 };
@@ -192,7 +192,7 @@ static void ldapAccessAttrs (idpRqtCtxT *idpRqtCtx) {
 // call after user authenticate
 static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
 {
-    static char errorMsg[]= "[ldap-fail-user-profil] Fail to get user profil from ldap (login/passwd ?)";
+    static char errorMsg[]= "[ldap-fail-user-profile] Fail to get user profile from ldap (login/passwd ?)";
     idpRqtCtxT *idpRqtCtx= (idpRqtCtxT*)httpRqt->userData;
     ldapRqtCtxT *ldapRqtCtx = (ldapRqtCtxT *) idpRqtCtx->userData;
     ldapOptsT *ldapOpts= (ldapOptsT*)idpRqtCtx->idp->userData;
@@ -332,7 +332,7 @@ static int ldapAccessProfile (oidcIdpT * idp, const char *login, const char *pas
     };
 
     // asynchronous wreq to LDAP to check passwd and retreive user groups
-    EXT_DEBUG ("[curl-ldap-profil] curl -u '%s:my_secret_passwd' '%s'\n", ldapRqtCtx->userdn, curlQuery);
+    EXT_DEBUG ("[curl-ldap-profile] curl -u '%s:my_secret_passwd' '%s'\n", ldapRqtCtx->userdn, curlQuery);
     err = httpSendGet (ldapRqtCtx->httpPool, curlQuery, &curlOpts, NULL, ldapAccessProfileCB, idpRqtCtx);
     if (err) goto OnErrorExit;
 
@@ -353,7 +353,7 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
     oidcIdpT *idp = (oidcIdpT *) afb_req_v4_vcbdata (wreq);
     struct afb_data *args[nparams];
     const char *login, *passwd = NULL, *scope = NULL;
-    const oidcProfilsT *profil = NULL;
+    const oidcProfileT *profile = NULL;
     const oidcAliasT *alias = NULL;
     afb_data_t reply;
     const char *state;
@@ -373,16 +373,16 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
     if (alias) aliasLoa = alias->loa;
     else aliasLoa = 0;
 
-    // search for a matching profil if scope is selected then scope&loa should match
-    for (int idx = 0; idp->profils[idx].uid; idx++) {
-        profil = &idp->profils[idx];
-        if (idp->profils[idx].loa >= aliasLoa) {
-            if (scope && strcasecmp (scope, idp->profils[idx].scope)) continue;
-            profil = &idp->profils[idx];
+    // search for a matching profile if scope is selected then scope&loa should match
+    for (int idx = 0; idp->profiles[idx].uid; idx++) {
+        profile = &idp->profiles[idx];
+        if (idp->profiles[idx].loa >= aliasLoa) {
+            if (scope && strcasecmp (scope, idp->profiles[idx].scope)) continue;
+            profile = &idp->profiles[idx];
             break;
         }
     }
-    if (!profil) {
+    if (!profile) {
         EXT_NOTICE ("[ldap-check-scope] scope=%s does not match wreqed loa=%d", scope, aliasLoa);
         goto OnErrorExit;
     }
@@ -406,7 +406,7 @@ static int ldapLoginCB (afb_hreq * hreq, void *ctx)
     oidcIdpT *idp = (oidcIdpT *) ctx;
     assert (idp->magic == MAGIC_OIDC_IDP);
     char redirectUrl[EXT_HEADER_MAX_LEN];
-    const oidcProfilsT *profil = NULL;
+    const oidcProfileT *profile = NULL;
     const oidcAliasT *alias = NULL;
     int err, status, aliasLoa;
 
@@ -428,29 +428,29 @@ static int ldapLoginCB (afb_hreq * hreq, void *ctx)
         char url[EXT_URL_MAX_LEN];
 
         // search for a scope fiting wreqing loa
-        for (int idx = 0; idp->profils[idx].uid; idx++) {
-            profil = &idp->profils[idx];
-            if (idp->profils[idx].loa >= aliasLoa) {
+        for (int idx = 0; idp->profiles[idx].uid; idx++) {
+            profile = &idp->profiles[idx];
+            if (idp->profiles[idx].loa >= aliasLoa) {
                 // if no scope take the 1st profile with valid LOA
-                if (scope && (strcmp (scope, idp->profils[idx].scope))) continue;
-                profil = &idp->profils[idx];
+                if (scope && (strcmp (scope, idp->profiles[idx].scope))) continue;
+                profile = &idp->profiles[idx];
                 break;
             }
         }
 
-        // if loa wreqed and no profil fit exit without trying authentication
-        if (!profil) goto OnErrorExit;
+        // if loa wreqed and no profile fit exit without trying authentication
+        if (!profile) goto OnErrorExit;
 
         httpKeyValT query[] = {
             {.tag = "state",.value = afb_session_uuid (hreq->comreq.session)},
-            {.tag = "scope",.value = profil->scope},
+            {.tag = "scope",.value = profile->scope},
             {.tag = "redirect_uri",.value = redirectUrl},
             {.tag = "language",.value = setlocale (LC_CTYPE, "")},
             {NULL}              // terminator
         };
 
-        // store wreqed profil to retreive attached loa and role filter if login succeded
-        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profil, NULL, NULL);
+        // store wreqed profile to retreive attached loa and role filter if login succeded
+        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
 
         // build wreq and send it
         err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->tokenid, query);
@@ -466,8 +466,8 @@ static int ldapLoginCB (afb_hreq * hreq, void *ctx)
         if (!state || strcmp (state, afb_session_uuid (hreq->comreq.session))) goto OnErrorExit;
 
         EXT_DEBUG ("[ldap-auth-code] login=%s (ldapRegisterAlias)", login);
-        afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &profil);
-        if (!profil) goto OnErrorExit;
+        afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &profile);
+        if (!profile) goto OnErrorExit;
 
         // Check received login/passwd
         err = ldapAccessProfile (idp, login, passwd, hreq, NULL /*wreq*/);
@@ -515,9 +515,9 @@ int ldapRegsterConfig (oidcIdpT * idp, json_object * idpJ)
 {
     int err;
     const char *people, *groups;
-    // only default profil is usefull
+    // only default profile is usefull
     oidcDefaultsT defaults = {
-        .profils = dfltProfils,
+        .profiles = dfltProfiles,
         .statics = &dfltstatics,
         .credentials = &noCredentials,
         .wellknown = &dfltWellknown,
