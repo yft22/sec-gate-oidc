@@ -46,7 +46,7 @@ function getConfigIdps() {
         sgate_div.className="sgate_box";
 
         if (sgate_div === null) {
-            window.alert("getConfigIdps() requirer <div id='sgate_data'> in page");
+            window.alert("getConfigIdps() require <div id='sgate_data'> in page");
             return;
         }
 
@@ -94,7 +94,7 @@ function getUserIdps() {
         sgate_div.className="sgate_box";
 
         if (sgate_div === null) {
-            window.alert("getConfigIdps() requirer <div id='sgate_data'> in page");
+            window.alert("getConfigIdps() require <div id='sgate_data'> in page");
             return;
         }
 
@@ -141,7 +141,7 @@ function getSession() {
 
         var form= document.getElementById ("sgate_form");
         if (form === null) {
-            window.alert("getSession() requirer <form id='sgate_form'> in page");
+            window.alert("getSession() require <form id='sgate_form'> in page");
            return;
         }
 
@@ -161,7 +161,7 @@ function getSession() {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("getSession() requirer <form id='sgate_error'> in page");
+            window.alert("getSession() require <form id='sgate_error'> in page");
            return;
         }
         info.innerText=err.response;
@@ -177,7 +177,7 @@ function sgateCheckAttr(label) {
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
-        window.alert("registerUser() requirer <form id='sgate_form'> in page");
+        window.alert("registerUser() require <form id='sgate_form'> in page");
         return;
     }
 
@@ -207,7 +207,7 @@ function sgateCheckAttr(label) {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("checkAttribute() requirer <form id='sgate_error'> in page");
+            window.alert("checkAttribute() require <form id='sgate_error'> in page");
            return;
         }
         info.innerText=err.response;
@@ -241,13 +241,13 @@ function sgateSubmit() {
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
-        window.alert("registerUser() requirer <form id='sgate_form'> in page");
+        window.alert("registerUser() require <form id='sgate_form'> in page");
         return;
     }
 
     var register= document.getElementById ("sgate_register");
     if (register === null) {
-        window.alert("registerUser() requirer <button id='sgate_register'> in page");
+        window.alert("registerUser() require <button id='sgate_register'> in page");
         return;
     }
 
@@ -278,7 +278,7 @@ function sgateSubmit() {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("sgateSubmit() requirer <form id='sgate_error'> in page");
+            window.alert("sgateSubmit() require <form id='sgate_error'> in page");
         return;
         }
         info.innerText=err.response;
@@ -290,7 +290,7 @@ function passwordUser(verb) {
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
-        window.alert("passwordUser() requirer <form id='sgate_form'> in page");
+        window.alert("passwordUser() require <form id='sgate_form'> in page");
         return;
     }
 
@@ -317,7 +317,7 @@ function passwordUser(verb) {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("passwordUser() requirer <form id='sgate_error'> in page");
+            window.alert("passwordUser() require <form id='sgate_error'> in page");
            return;
         }
         info.innerText=err.response;

@@ -542,7 +542,7 @@ int ldapRegsterConfig (oidcIdpT * idp, json_object * idpJ)
             , "timeout", &ldapOpts->timeout
             );
         if (err) {
-            EXT_ERROR ("[ldap-config-opts] json parse fail 'schema' requirer json keys: uri,login,groups,people");
+            EXT_ERROR ("[ldap-config-opts] json parse fail 'schema' require json keys: uri,login,groups,people");
             goto OnErrorExit;
         }
 

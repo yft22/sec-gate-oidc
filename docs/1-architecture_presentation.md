@@ -22,12 +22,12 @@ Hooked input request can be checked again:
 
 Typical access control:
 ``` json
- {"uid": "geoloc","uri":"unix:@gps-api", "loa":1, "requirer":["geoloc-role"]},
+ {"uid": "geoloc","uri":"unix:@gps-api", "loa":1, "require":["geoloc-role"]},
 ```
 
 ## workflow
 
-sgate-oidc handshake relies on openid-connect specification. Any non openid authentication authority as to fake an official openid-c IDP. Social oAuh2 authority as github or Facebook are very close of OpenID requirer little customization, some other as PAM or LDAP requirer a specific adapter plugin.
+sgate-oidc handshake relies on openid-connect specification. Any non openid authentication authority as to fake an official openid-c IDP. Social oAuh2 authority as github or Facebook are very close of OpenID require little customization, some other as PAM or LDAP require a specific adapter plugin.
 
 To make a long story short:
 * When user try to access a protected resource (loa > 0), sgate intercepts the request and check for current session LOA(Level of Assurance) and security attributes(groups/roles). When session does not hold enough privileges to access requested resource, sgate redirects client browser toward a list of configured IDPs that match resource requested LOA.

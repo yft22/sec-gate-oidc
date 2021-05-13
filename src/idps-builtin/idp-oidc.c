@@ -348,7 +348,7 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
 
         }
     } else {
-        // when no token id an extra request to user profile info endpoint requirer
+        // when no token id an extra request to user profile info endpoint require
         err= oidcUserGetByToken (rqtCtx);
     }
     json_object_put (responseJ);

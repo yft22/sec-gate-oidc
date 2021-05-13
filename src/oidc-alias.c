@@ -239,7 +239,7 @@ idpParseOneAlias (oidcCoreHdlT * oidc, json_object * aliasJ, oidcAliasT * alias)
 
     int err =
         wrap_json_unpack (aliasJ, "{ss,s?s,s?s,s?s,s?i,s?i,s?i,s?o}", "uid", &alias->uid, "info", &alias->info, "url", &alias->url, "path", &alias->path,
-                          "prio", &alias->priority, "loa", &alias->loa, "cache", &alias->tCache, "requirer", &requirerJ);
+                          "prio", &alias->priority, "loa", &alias->loa, "cache", &alias->tCache, "require", &requirerJ);
     if (err) {
         EXT_CRITICAL ("[idp-alias-error] oidc=%s parsing fail profile expect: uid,url,fullpath,prio,loa,role (idpParseOneAlias)", oidc->uid);
         goto OnErrorExit;

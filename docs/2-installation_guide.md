@@ -46,14 +46,14 @@ Connect your browser to your sgate-oidc service with ```https://target:port``` t
 
 * Note:
 
-    * HTTPS requirer SSL certificates. Check $PROJECT/conf.d/project/ssl/gen-cert.sh to generated self signed SSL certificates. For development you may also choose remove SSL. To remove SSL simply set 'HTTPS':false within your oidc-config.json
+    * HTTPS require SSL certificates. Check $PROJECT/conf.d/project/ssl/gen-cert.sh to generated self signed SSL certificates. For development you may also choose remove SSL. To remove SSL simply set 'HTTPS':false within your oidc-config.json
 
     * Warning: most IDPs impose HTTPS connection when using anything different from localhost as redirect login URL.
 
 
 ## Rebuild 'afb-sgate-oidc' from sources
 
-**Notice**: recompiling afb-sgate-oidc is not requirer to implement your own set rules. You should recompile 'afb-sgate-oidc' when:
+**Notice**: recompiling afb-sgate-oidc is not require to implement your own set rules. You should recompile 'afb-sgate-oidc' when:
 
 * targeting a not supported environment/distribution.
 * changing code to fix bug or propose improvement *(contributions are more than welcome)*
