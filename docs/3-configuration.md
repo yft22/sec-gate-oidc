@@ -21,7 +21,7 @@ The initial part of oidc-config.json is not specific to the secure-gateway and i
   "https": true,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
-  "extension": "./package/lib/afb-sgate.extso",
+  "extension": "./package/lib/afb-sgate-ext.so",
   "rootdir":  "../conf.d/project/htdocs",
   "roothttp": ".",
 }

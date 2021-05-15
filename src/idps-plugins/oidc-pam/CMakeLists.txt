@@ -12,8 +12,8 @@ PROJECT_TARGET_ADD(pam-auth)
 	# Alsa Plugin properties
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
 			LABELS "PLUGIN"
-			PREFIX ""
-			SUFFIX ".idpso"
+			PREFIX "libidp-sgate-"
+			SUFFIX ".so"
 			OUTPUT_NAME ${TARGET_NAME}
 	)
 

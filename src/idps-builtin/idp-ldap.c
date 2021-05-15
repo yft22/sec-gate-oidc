@@ -365,7 +365,7 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
     err = wrap_json_unpack (queryJ, "{ss ss s?s s?s s?s}", "login", &login, "state", &state, "passwd", &passwd, "password", &passwd, "scope", &scope);
     if (err) goto OnErrorExit;
 
-    // search for a scope fiting wreqing loa
+    // search for a scope fiting matching loa
     afb_session *session = afb_req_v4_get_common (wreq)->session;
     if (!state || strcmp (state, afb_session_uuid (session))) goto OnErrorExit;
 
@@ -532,7 +532,9 @@ int ldapRegsterConfig (oidcIdpT * idp, json_object * idpJ)
     // check is we have custom options
     json_object *ldapJ = json_object_object_get (idpJ, "schema");
     if (ldapJ) {
-        err = wrap_json_unpack (ldapJ, "{ss ss ss ss s?s s?i s?i}"
+        const char * info;
+        err = wrap_json_unpack (ldapJ, "{s?s ss ss ss ss s?s s?i s?i !}"
+            , "info", &info
             , "uri", &ldapOpts->uri
             , "login", &ldapOpts->login
             , "groups",&groups

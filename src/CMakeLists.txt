@@ -41,11 +41,11 @@ PROJECT_TARGET_ADD(sgate-oidc)
 
 	# Binder exposes a unique public entry point
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
-		PREFIX "afb-"
+		PREFIX "libafb-"
 		LABELS "LIBRARY"
-        SUFFIX ".extso"
+        SUFFIX "-ext.so"
 		# LINK_FLAGS "-Wl,--version-script=${PROJECT_SOURCE_DIR}/conf.d/cmake/afb-ext-link.flags"
-		IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/afb-${TARGET_NAME}.extso
+		IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libafb-${TARGET_NAME}-ext.so
 		OUTPUT_NAME ${TARGET_NAME}
 	)
 

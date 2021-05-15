@@ -6,7 +6,7 @@
   "https": true,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
-  "extension": "./package/lib/afb-sgate-oidc.extso",
+  "extension": "./package/lib/libafb-sgate-oidc-ext.so",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
   "binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],

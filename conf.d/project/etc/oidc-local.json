@@ -6,7 +6,7 @@
   "https": true,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
-  "extension": "./package/lib/afb-sgate-oidc.extso",
+  "extension": "libafb-sgate-oidc-ext.so",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
   "binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
@@ -27,7 +27,7 @@
             "info": "Linux local authentication",
             "plugin": {
               "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
-              "ldpath": "./package/lib/plugins/pam-auth.idpso:/usr/local/afb-oidc/lib/pam-auth.idpso",
+              "ldpath": "libidp-sgate-pam-auth.so",
               "gids":16
             },
             "statics": {
@@ -53,7 +53,6 @@
                 "login": "uid=%login%,ou=People,dc=vannes,dc=iot",
                 "groups": "ou=groups,dc=vannes,dc=iot?dn?sub?(memberUid=%login%)",
                 "people": "ou=people,dc=vannes,dc=iot?uid,gecos,mail?sub?(cn=%login%)",
-                "signed": true,
             },
             "wellknown": {
                 "tokenid": "/sgate/ldap/login.html"

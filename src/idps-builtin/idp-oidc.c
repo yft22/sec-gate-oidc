@@ -703,7 +703,9 @@ int oidcRegisterConfig (oidcIdpT * idp, json_object * configJ)
     // check is we have custom options
     json_object *schemaJ = json_object_object_get (configJ, "schema");
     if (schemaJ) {
-        err = wrap_json_unpack (schemaJ, "{s?o s?s s?s s?s s?s s?s s?s s?s !}"
+        const char *info;
+        err = wrap_json_unpack (schemaJ, "{s?s s?o s?s s?s s?s s?s s?s s?s s?s s?s!}"
+            , "info", &info
             , "signed", &schema->jwksJ
             , "idpsid", &schema->idpsid
             , "fedid", &schema->fedid
@@ -712,6 +714,7 @@ int oidcRegisterConfig (oidcIdpT * idp, json_object * configJ)
             , "name", &schema->name
             , "email", &schema->email
             , "company", &schema->company
+            , "attrs", &schema->attrs
             );
         if (err) {
             EXT_ERROR ("[iodc-config-schema] json error 'schema' support json keys: signed,fedid,avatar,pseudo,email,name");

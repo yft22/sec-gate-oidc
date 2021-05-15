@@ -8,7 +8,7 @@ afb-sgate-oidc is an afb-binder-v4 extension and cannot work work with afb-binde
 * you should write or copy a sample oidc-config.json
 * you should known the path to:
 
-  * 'afb-sgate-oidc.extso' extention
+  * 'libafb-sgate-oidc-ext.so' extention
   * 'fedid-binding.so' binding
   * 'libfedid-types.so' type converters
 
@@ -28,7 +28,7 @@ Generated certificate should be declare with "https-cert" and "https-key" of afb
   "https": true,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
-  "extension": "./package/lib/afb-sgate-oidc.extso",
+  "extension": "./package/lib/libafb-sgate-oidc-ext.so",
 ```
 
 ## make visible your HTML pages/applications
