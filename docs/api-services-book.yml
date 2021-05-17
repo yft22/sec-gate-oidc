@@ -1,16 +1,18 @@
 type: books
 books:
 -
-    id: oidc_binding
+    id: oidc-binding
     title: afb-sgate-oidc
     description: afb-sgate-oidc binding documentation
     keywords:
     chapters:
-    - url: 1-architecture_presentation.md
+    - url: 1-architecture-presentation.md
       name: Architecture presentation
-    - url: 2-installation_guide.md
+    - url: 2-installation-guide.md
       name: Installation Guide
     - url: 3-configuration.md
       name: Configuration
-    - url: 4-running_and_testing.md
+    - url: 4-running-and-testing.md
       name: Running and Testing
+    - url: 5-sgate-service-api.md
+      name: sgate UI api

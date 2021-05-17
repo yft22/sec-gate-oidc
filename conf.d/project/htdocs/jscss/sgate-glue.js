@@ -215,7 +215,7 @@ function sgateCheckAttr(label) {
     });
 }
 
-function sgateCancel() {
+function sgateReset() {
     var api="sgate";
     var query={};
 

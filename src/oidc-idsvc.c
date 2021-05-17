@@ -332,11 +332,27 @@ static void userFederate (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
 static void
 sessionReset (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
+    json_object *responseJ;
     afb_session *session = afb_req_v4_get_common (wreq)->session;
+    const oidcProfileT *profile = NULL;
     fedidsessionReset (0, (void *) session);
-    afb_req_reply (wreq, 0, 0, NULL);
+    afb_data_t reply;
+
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profile);
+    if (!profile) goto OnErrorExit;
+
+    wrap_json_pack (&responseJ, "{ss ss* ss*}"
+        , "home", profile->idp->oidc->globals->homeUrl ? : "/"
+        , "login", profile->idp->oidc->globals->loginUrl
+        , "error", profile->idp->oidc->globals->errorUrl
+    );
+    afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void *) json_object_put, responseJ);
+    afb_req_reply (wreq, 0, 1, &reply);
 
     return;
+
+OnErrorExit:
+    afb_req_reply (wreq, -1, 0, NULL);
 }
 
 // Return all information we have on current session (profile, loa, idp, ...)

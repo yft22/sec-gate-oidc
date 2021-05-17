@@ -296,8 +296,6 @@ static json_object * oidcUserGetByJwt (oidcSchemaT *schema, char *tokenId) {
         if (!token[TKN_HEADER] || !token[TKN_SIGN]) goto OnErrorExit;
         bodyJ= oidcJwtCheck (schema, token);
     }
-    free (token[TKN_HEADER]);
-    free (token[TKN_BODY]);
     return bodyJ;
 
 OnErrorExit:
@@ -313,6 +311,7 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
     assert (httpRqt->magic == MAGIC_HTTP_RQT);
     idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
     oidcSchemaT *schema = (oidcSchemaT*) rqtCtx->idp->userData;
+    json_object *responseJ=NULL;
     int err;
 
     // free old post data
@@ -321,12 +320,12 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
     if (httpRqt->status != 200) goto OnErrorExit;
 
     // we should have a valid token or something when wrong
-    json_object *responseJ = json_tokener_parse (httpRqt->body);
+    responseJ = json_tokener_parse (httpRqt->body);
     if (!responseJ) goto OnErrorExit;
 
     err= wrap_json_unpack (responseJ, "{ss ss s?s}"
-        , "access_token", & tokenVal
-        , "token_type", & tokenType
+        , "access_token", &tokenVal
+        , "token_type", &tokenType
         , "id_token", &tokenId
         );
     if (err) goto OnErrorExit;
@@ -350,14 +349,15 @@ static httpRqtActionT oidcAccessTokenCB (httpRqtT * httpRqt)
     } else {
         // when no token id an extra request to user profile info endpoint require
         err= oidcUserGetByToken (rqtCtx);
+        if (err) goto OnErrorExit;
     }
-    json_object_put (responseJ);
-    if (err) goto OnErrorExit;
 
     // callback is responsible to free wreq & context
+    json_object_put (responseJ);
     return HTTP_HANDLE_FREE;
 
   OnErrorExit:
+    if (responseJ) json_object_put (responseJ);
     EXT_CRITICAL ("[fail-access-token] Fail to process response from oidc status=%ld body='%s' (oidcAccessTokenCB)", httpRqt->status, httpRqt->body);
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
     return HTTP_HANDLE_FREE;
