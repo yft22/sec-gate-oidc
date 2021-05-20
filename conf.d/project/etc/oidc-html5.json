@@ -6,7 +6,7 @@
     "https": false,
     "https-cert": "../conf.d/project/ssl/devel-cert.pem",
     "https-key": "../conf.d/project/ssl/devel-key.pem",
-    "extension": "./package/lib/afb-oidc-sgate.extso",
+    "extension": "./package/lib/sec-gate-oidc.extso",
     "roothttp": ".",
     "rootdir":  "../conf.d/project/htdocs",
     "alias": [

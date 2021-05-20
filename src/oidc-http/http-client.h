@@ -20,7 +20,7 @@
 #define MAGIC_HTTP_RQT 951357
 #define MAGIC_HTTP_POOL 583498
 #define DFLT_HEADER_MAX_LEN 1024
-#define HTTP_DFLT_AGENT "afb-oidc-sgate/1.0"
+#define HTTP_DFLT_AGENT "sec-gate-oidc/1.0"
 
 
 typedef struct httpPoolS httpPoolT;

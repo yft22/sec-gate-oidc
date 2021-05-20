@@ -1,6 +1,6 @@
 # Configuration
 
-## afb-oidc-sgate AFB binder config
+## sec-gate-oidc AFB binder config
 
 oidc-sgate uses the new V4 afb-binder config file.  *It is highly recommended to check your config.json with a json linter after any modification.*
 
@@ -21,7 +21,7 @@ The initial part of oidc-config.json is common to any afb-binder V4.
   "https": false,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
-  "extension": "./package/lib/afb-oidc-sgate.extso",
+  "extension": "./package/lib/sec-gate-oidc.extso",
   "rootdir":  "../conf.d/project/htdocs",
   "roothttp": ".",
 }

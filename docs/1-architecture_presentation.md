@@ -1,6 +1,6 @@
 # Architecture presentation
 
-afb-oidc-sgate is an afb-binder-v4 extension. It leverages binder hooking capabilities to enforce authentication from an external authority (IDP) to allow/deny HTTP/REST/WEBsocket requests.
+sec-gate-oidc is an afb-binder-v4 extension. It leverages binder hooking capabilities to enforce authentication from an external authority (IDP) to allow/deny HTTP/REST/WEBsocket requests.
 
  * hooked input request can be checked again:
 
@@ -28,10 +28,10 @@ afb-oidc-sgate is an afb-binder-v4 extension. It leverages binder hooking capabi
 
 ## Support/sources
 
-afb-oidc-sgate is part of redpesk-common and relies on [redpesk-core]({% chapter_link apis-services-doc.services-list %})
+sec-gate-oidc is part of redpesk-common and relies on [redpesk-core]({% chapter_link apis-services-doc.services-list %})
 
 * Community support [#redpesk-core:matrix.org]( {% chapter_link community-doc.support %})
 * source code: [github/redpesk-common](https://github.com/redpesk-common)
 
 ## HTML5 test page
-![afb-oidc-sgate-html5](assets/afb-oidc-sgate-test.jpg)
+![sec-gate-oidc-html5](assets/sec-gate-oidc-test.jpg)

@@ -1,12 +1,12 @@
 {
-  "name": "afb-oidc",
+  "name": "sec-gate-oidc",
   "tracereq": "none",
   "verbose": 2,
   "port": 1234,
   "https": false,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
-  "extension": "./package/lib/afb-oidc-sgate.extso",
+  "extension": "./package/lib/sec-gate-oidc.extso",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
   "binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
@@ -30,10 +30,10 @@
             "info": "OpenIdC testing authority (https://phantauth.net/)",
             "credentials": {
                 "clientid": "sgate-oidc-iotbzh",
-                "secret": "3ON5yAxX",
+                "secret": "3ON5yAxX"
             },
             "wellknown": {
-                "discovery": "https://phantauth.net/.well-known/openid-configuration",
+                "discovery": "https://phantauth.net/.well-known/openid-configuration"
             },
             "schema": {
                 "fedid" :"sub",
@@ -41,7 +41,7 @@
                 "pseudo":"preferred_username",
                 "name": "name",
                 "company": "company",
-                "email": "email",
+                "email": "email"
             },
             "statics": {
                 "login": "/sgate/phantauth/login",
@@ -49,7 +49,7 @@
                 "timeout": 600
             },
             "profils": [
-                {"uid":"basic", "loa":1, "scope":"openid,profile"},
+                {"uid":"basic", "loa":1, "scope":"openid,profile"}
             ]
         },
         {
@@ -95,12 +95,12 @@
             "info": "Github Social Authentication",
             "credentials": {
             "clientid": "7899e605a7c15ae42f07",
-            "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
+            "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970"
             },
             "wellknown": {
                 "authorize": "https://github.com/login/oauth/authorize",
                 "tokenid": "https://github.com/login/oauth/access_token",
-                "userinfo": "https://api.github.com/user",
+                "userinfo": "https://api.github.com/user"
             },
             "statics": {
                 "login": "/sgate/github/login",
@@ -128,7 +128,7 @@
         {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },
         {"uid": "private", "info": "Required basic authentication", "url":"/private",  "loa":1, "path":"private" },
         {"uid": "confidential", "info": "Required teams authentication", "url":"/confidential", "loa":2, "path":"confidential" },
-        {"uid": "admin", "info": "Required admin security attribute", "url":"/admin", "loa":1, "path":"admin", "requirer": ["wheel","iotbzh","sudo"]},
+        {"uid": "admin", "info": "Required admin security attribute", "url":"/admin", "loa":1, "path":"admin", "requirer": ["wheel","iotbzh","sudo"]}
       ]
     }
   }

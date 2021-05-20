@@ -2,10 +2,10 @@
 
 ## Redpesk
 
-afb-oidc-sgate is part of redpesk-common and is available on any redpesk installation.
+sec-gate-oidc is part of redpesk-common and is available on any redpesk installation.
 
 ```bash
-sudo dnf install afb-oidc-sgate afb-oidc-webui
+sudo dnf install sec-gate-oidc afb-oidc-webui
 ```
 
 ## Other Linux Distributions
@@ -14,13 +14,13 @@ sudo dnf install afb-oidc-sgate afb-oidc-webui
 
 ```bash
 # Fedora
-sudo dnf install afb-oidc-sgate fedid-binding afb-oidc-webui 
+sudo dnf install sec-gate-oidc fedid-binding afb-oidc-webui 
 
 # OpenSuse
-sudo zypper install afb-oidc-sgate fedid-binding afb-oidc-webui 
+sudo zypper install sec-gate-oidc fedid-binding afb-oidc-webui 
 
 # Ubuntu
-sudo apt-get install afb-oidc-sgate-bin fedid-binding afb-oidc-webui  afb-oidc-webui
+sudo apt-get install sec-gate-oidc-bin fedid-binding afb-oidc-webui  afb-oidc-webui
 ```
 
 Note: 
@@ -31,7 +31,7 @@ Note:
 
 # Quick test
 
-## start afb-oidc-sgate samples
+## start sec-gate-oidc samples
 Use one of the default config template to write your own one and start the binder with your own oidc-config.json
 
 ```
@@ -43,9 +43,9 @@ Copy `localhost:1234` or what ever is your target host:port in your browser addr
 
 *Note: to use HTTPS check ../conf.d/project/ssl/gen-cert.sh to generated self signed SSL development SSL certificates. Then set 'HTTPS':true within your oidc-config.json.*
 
-## Rebuild 'afb-oidc-sgate' from sources
+## Rebuild 'sec-gate-oidc' from sources
 
-**Notice**: recompiling afb-oidc-sgate is not requirer to implement your own set rules. You should recompile 'afb-oidc-sgate' when:
+**Notice**: recompiling sec-gate-oidc is not requirer to implement your own set rules. You should recompile 'sec-gate-oidc' when:
 
 * targeting a not supported environment/distribution.
 * changing code to fix bug or propose improvement *(contributions are more than welcome)*
@@ -65,7 +65,7 @@ Copy `localhost:1234` or what ever is your target host:port in your browser addr
 
 >Note: For Ubuntu/OpenSuse/Fedora specific instructions check [redpesk-developer-guide]({% chapter_link host-configuration-doc.setup-your-build-host#install-the-application-framework-1 %})
 
-#### Install afb-oidc-sgate specific dependencies
+#### Install sec-gate-oidc specific dependencies
 
 * libpam-devel
 * libcurl-devel
@@ -75,7 +75,7 @@ Copy `localhost:1234` or what ever is your target host:port in your browser addr
 ### Download source from git
 
 ```bash
-git clone https://github.com/redpesk-common/afb-oidc-sgate.git
+git clone https://github.com/redpesk-common/sec-gate-oidc.git
 ```
 
 ### Build your binding

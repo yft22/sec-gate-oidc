@@ -17,4 +17,4 @@ makedir build & cd build
 cmake ..
 make
 
-![oidc-biding-html5](docs/assets/afb-oidc-sgate-archi.jpg)
+![oidc-biding-html5](docs/assets/sec-gate-oidc-archi.jpg)

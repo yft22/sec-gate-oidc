@@ -20,7 +20,7 @@ set(CMAKE_INSTALL_SO_NO_EXE 0)
 
 # Project Info
 # ------------------
-set(PROJECT_NAME afb-oidc-sgate)
+set(PROJECT_NAME sec-gate-oidc)
 set(PROJECT_VERSION "1.0")
 set(PROJECT_PRETTY_NAME "OpenID Connect Extention for AFB-binder")
 set(PROJECT_DESCRIPTION "Provide authentication through OpenID")
@@ -75,6 +75,8 @@ set (PKG_REQUIRED_LIST
 	libafb
 	libcurl
     fedid-types
+	afb-binding
+	afb-libhelpers
 )
 
 # Print a helper message when every thing is finished
