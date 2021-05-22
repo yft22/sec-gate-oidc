@@ -64,6 +64,31 @@
             }
           ],
           "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
+          "name": "pcsc-test",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "${workspaceFolder}/build/package/bin/pcsc-test",
+          "args": [
+            "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
+            "--verbose",
+          ],
+          "stopAtEntry": true,
+          "cwd": "${workspaceFolder}/build",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
         }
+
     ]
 }

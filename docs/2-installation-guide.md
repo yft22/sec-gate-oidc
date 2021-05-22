@@ -95,7 +95,7 @@ Connect your browser to your sgate-oidc service with ```https://target:port``` t
 
 ### Build your fedid binding and sgate binder extention
 
-Build and install fedid-binding first, as the secure gateway extension depends on fedid types converters ship as part of fedid-binding.
+Build and install fedid-binding first, as the secure gate extension depends on fedid types converters ship as part of fedid-binding.
 
 Both should compile with standard AGL cmake template.
 

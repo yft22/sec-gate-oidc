@@ -6,7 +6,7 @@ PROJECT_TARGET_ADD(idps-builtin)
 	# Define project Targets
 	add_library(${TARGET_NAME} STATIC ${CSOURCES})
 
-	# Alsa Plugin properties
+	# oidc Plugin properties
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
 			OUTPUT_NAME ${TARGET_NAME}
 	)

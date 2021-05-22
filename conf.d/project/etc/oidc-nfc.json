@@ -12,6 +12,7 @@
   "binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
   "@extconfig": {
     "sgate-oidc": {
+
       "api": "sgate",
       "info": "oidc secure gate local authentication sample config",
       "globals": {
@@ -21,47 +22,43 @@
           "error": "/sgate/common/error.html",
           "timeout": 600
       },
-      "idps": [
-        {
-            "uid": "pam",
-            "info": "Linux local authentication",
+
+      "idps": {
+            "uid": "nfc-scard",
+            "type": "nfc-pcsc",
+            "info": "Authentication via NFC Mifare or smart-card http://downloads.acs.com.hk/drivers/en/API-ACR122U-2.02.pdf",
+            "statics": {
+                "login": "/sgate/nfc/login",
+                "logo": "/sgate/nfc/logo-64px.png",
+                "timeout": 900
+            },
             "plugin": {
-              "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
-              "ldpath": "libidp-sgate-pam-auth.so",
-              "gids":16
+                "info": "provide pluging path and reader name/id",
+                "ldpath": "libidp-sgate-nfc-auth.so"
             },
-            "statics": {
-                "login": "/sgate/pam/login",
-                "logo": "/sgate/pam/logo-64px.png",
-                "timeout": 900
-            },
-            "profiles": [
-                {"uid":"login", "loa":1, "scope":"login"}
-            ]
-        }, {
-            "uid": "ldap-iotbzh",
-            "type": "ldap",
-            "info": "Iot.bzh internal LDAP",
-            "statics": {
-                "login": "/sgate/ldap/login",
-                "logo": "/sgate/ldap/logo-64px.png",
-                "timeout": 900
-            },
-            "schema": {
-                "info": "generate a curl -u %userdn% %ldapuri%/%groupdn%?dn?sub?%filter%",
-                "uri": "ldap://ldap.ovh.iot",
-                "login": "uid=%login%,ou=People,dc=vannes,dc=iot",
-                "groups": "ou=groups,dc=vannes,dc=iot?dn?sub?(memberUid=%login%)",
-                "people": "ou=people,dc=vannes,dc=iot?uid,gecos,mail?sub?(cn=%login%)",
+            "schema":     {
+                "info" : "NFC command list",
+                "reader": "acr122",
+                "keys": [
+                    {"uid":"dflt-A", "idx": 0, "value": ["0xFF","0xFF","0xFF","0xFF","0xFF","0xFF"]},
+                    {"uid":"dflt-B", "idx": 1, "value": ["0xFF","0xFF","0xFF","0xFF","0xFF","0xFF"]}
+                ],
+                "cmds": [
+                    {"uid":"fedid", "action":"uuid"},
+                    {"uid":"user", "action":"read", "blk":1, "len":16, "key":"dflt-A"},
+                    {"uid":"admin", "action":"read", "blk":2, "len":16, "key":"dflt-A"}
+                ]
             },
             "wellknown": {
-                "tokenid": "/sgate/ldap/login.html"
+                "tokenid": "/sgate/nfc/login.html"
             },
             "profiles": [
-                {"uid":"login", "loa":1, "scope":"login"}
+                {"uid":"basic", "loa":1, "scope":"fedid"},
+                {"uid":"roles", "loa":2, "scope":"fedid, user"},
+                {"uid":"roles", "loa":3, "scope":"fedid, user, admin"}
             ]
-        }
-      ],
+        },
+
       "apis": [
         {"uid": "fedid","info":"embedded social federated user identity svc","loa":0,"uri":"@fedid"},
         {"uid": "test1","lazy":1},
@@ -73,7 +70,7 @@
         {"uid": "idp-common", "url":"/sgate/common", "path":"idps/common" },
         {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "path":"idps/github" },
         {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "path":"idps/pam" },
-        {"uid": "idp-ldap"    , "url":"/sgate/ldap"   ,"loa":0, "path":"idps/ldap" },
+        {"uid": "idp-nfc"    , "url":"/sgate/nfc"   ,"loa":0, "path":"idps/nfc" },
         {"uid": "idp-phantauth" , "url":"/sgate/phantauth"   ,"loa":0, "path":"idps/phantauth" },
         {"uid": "idp-onelogin" , "url":"/sgate/onelogin"   ,"loa":0, "path":"idps/onelogin" },
         {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },

@@ -13,7 +13,7 @@
   "@extconfig": {
     "sgate-oidc": {
       "api": "sgate",
-      "info": "oidc secure gateway demo config",
+      "info": "oidc secure gate demo config",
       "globals": {
           "info" : "Relative location to HTML pages",
           "login": "/sgate/common/login.html",

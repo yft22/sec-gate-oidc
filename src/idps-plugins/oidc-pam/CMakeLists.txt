@@ -9,7 +9,7 @@ PROJECT_TARGET_ADD(pam-auth)
 	add_library(${TARGET_NAME} MODULE ${CSOURCES})
 	target_link_libraries(${TARGET_NAME} pam)
 
-	# Alsa Plugin properties
+	# Pam Plugin properties
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
 			LABELS "PLUGIN"
 			PREFIX "libidp-sgate-"

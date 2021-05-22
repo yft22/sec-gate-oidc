@@ -20,6 +20,8 @@
         "*.tcc": "cpp",
         "type_traits": "cpp",
         "afb-http.h": "c",
-        "condition_variable": "cpp"
+        "condition_variable": "cpp",
+        "winscard.h": "c",
+        "verbose.h": "c"
     }
 }

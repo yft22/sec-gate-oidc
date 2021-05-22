@@ -1,6 +1,6 @@
-# OpenID-Connect Secure-Gateway AFB-Extension
+# OpenID-Connect Secure-gate AFB-Extension
 
-sgate-oidc is an openid-connect/oAuth2 compliant extension to the application framework binder. It provides a secure filtering gateway for REST and websocket incoming requests.
+sgate-oidc is an openid-connect/oAuth2 compliant extension to the application framework binder. It provides a secure filtering gate for REST and websocket incoming requests.
 
 On the external Internet interface is leverage OpenID user profile services to map incoming browser to profile and roles as defined by the identity authority. On the backend level (micro-service APIs) it respond to Cynagora privilege request for lower micro-service API to accept or deny a given request.
 

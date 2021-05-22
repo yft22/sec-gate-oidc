@@ -11,7 +11,7 @@ jq < oidc-config.json
 
 ### Binder standard config
 
-The initial part of oidc-config.json is not specific to the secure-gateway and is common for any afb-binder V4. It configure basic afb-binder options as port,ssl,rootdir,...
+The initial part of oidc-config.json is not specific to the secure-gate and is common for any afb-binder V4. It configure basic afb-binder options as port,ssl,rootdir,...
 
 ```json
 {
@@ -68,7 +68,7 @@ Define where user should be redirected when hitting a protected resource. Note t
 "@extconfig": {
     "sgate": {
       "api": "sgate",
-      "info": "oidc secure gateway demo config",
+      "info": "oidc secure gate demo config",
       "globals": {
           "info" : "some misc useful info",
           "login": "/sgate/common/login.html",
@@ -127,13 +127,13 @@ A json array defining each authentication authority. Default authority are oAith
 
         When available wellknown URI will be query as sgate startup time and will automatically populate all following parameters. *Note that wellknown URI is require by openid-connect specification. Using a static definition in place of wellknown may save few seconds at sgate service startup time.*
 
-      * **tokenid**: HTTP page to retrieve authentication tokenid code. When an authentication is require, the sgate redirects client UI to this URL. Then if needed the authority prompts user for authentication, in all the other case authority should automatically redirect back sgate in SSO(Single-Sign-On). When authentication is successful IDP redirects back client UI to the secure gateway 'login' alias defined later within the 'statics' section of your oidc-config.json
+      * **tokenid**: HTTP page to retrieve authentication tokenid code. When an authentication is require, the sgate redirects client UI to this URL. Then if needed the authority prompts user for authentication, in all the other case authority should automatically redirect back sgate in SSO(Single-Sign-On). When authentication is successful IDP redirects back client UI to the secure gate 'login' alias defined later within the 'statics' section of your oidc-config.json
 
       * **authorize**: REST exchange authentication end-point. Provided an access-token from the authentication tokenid received from 'tokenid' SSO. The request to 'authorize' does not go through user browser, this avoid to expose IDP application secret to user browser.
 
       * **userinfo**: REST authority identity service. Provide identity attributes matching requesting scope. Note that some authority as onelogin has multiple identity end point depending requested attributes.
 
-* **statics**: define the REST/HTTP end point created by the secure-gateway for IDPs protocol handshake.
+* **statics**: define the REST/HTTP end point created by the secure-gate for IDPs protocol handshake.
 
   * **login**: this is where remote IDP should redirect user after a valid HTTP authentication. When this page is called without a valid code from the authority user HTML application is redirect back to corresponding authority.
   * **logout**: where IDP should post a back-channel logout when user session timeout. For further information about global logout check [openid-logout-spec](https://openid.net/specs/openid-connect-backchannel-1_0.html)
