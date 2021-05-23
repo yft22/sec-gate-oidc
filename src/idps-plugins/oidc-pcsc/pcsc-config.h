@@ -47,4 +47,4 @@ typedef struct {
 
 pcscConfigT *pcscParseConfig (json_object *configJ, const int verbosity);
 pcscCmdT *pcscCmdByUid (pcscConfigT *config, const char *cmdUid);
-int pcscCmdExec(pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data);
+int pcscExecOneCmd(pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data);

@@ -371,7 +371,7 @@ pcscCmdT *pcscCmdByUid (pcscConfigT *config, const char *cmdUid) {
     return cmd;
 }
 
-int pcscCmdExec (pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data) {
+int pcscExecOneCmd (pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data) {
     int err;
     unsigned long dlen= cmd->dlen;
 

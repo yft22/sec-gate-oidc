@@ -71,9 +71,10 @@ int pcscDisconnect (pcscHandleT *handle);
 
 int pcscReaderCheck (pcscHandleT *handle, int ticks);
 int pcscCardReady (pcscHandleT *handle);
-int pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
+pthread_t pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
 
 int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer);
 int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key);
 int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long *dlen, const pcscKeyT *key);
 u_int64_t pcscGetCardUuid (pcscHandleT *handle);
+void* pcscGetCtx (pcscHandleT *handle);

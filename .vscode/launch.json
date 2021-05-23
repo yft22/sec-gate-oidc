@@ -67,7 +67,7 @@
         },
         {
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "pcsc-group-0",
+          "name": "sync-group-0",
           "type": "cppdbg",
           "request": "launch",
           "program": "${workspaceFolder}/build/package/bin/pcsc-test",
@@ -91,7 +91,32 @@
         },
         {
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "pcsc-group-1",
+          "name": "async-group-0",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "${workspaceFolder}/build/package/bin/pcsc-test",
+          "args": [
+            "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
+            "--verbose",
+            "--async",
+          ],
+          "stopAtEntry": true,
+          "cwd": "${workspaceFolder}/build",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
+          "name": "sync-group-1",
           "type": "cppdbg",
           "request": "launch",
           "program": "${workspaceFolder}/build/package/bin/pcsc-test",

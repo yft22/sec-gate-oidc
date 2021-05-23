@@ -28,7 +28,7 @@
 #include <signal.h>
 
 #include <winscard.h>
-
+#include <pcsclite.h>
 
 
 typedef union {
@@ -446,30 +446,62 @@ static void *pcscThreadMonitor (void *ptr) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     long rv;
 
+    SCARD_READERSTATE rgReaderStates;
+    rgReaderStates.szReader = handle->readerName; // reader ID to test
+    rgReaderStates.dwCurrentState = SCARD_STATE_UNAWARE;
+
     // loop forever until reader is disconnected
     while (1) {
-            // wait for card to be inserted
-            SCARD_READERSTATE rgReaderStates;
-            rgReaderStates.szReader = handle->readerName; // reader ID to test
-            rgReaderStates.dwCurrentState = SCARD_STATE_UNAWARE;
-
             // wait timeout second for card to be inserted
             rv = SCardGetStatusChange(handle->hContext, handle->timeout*1000, &rgReaderStates, 1);
-            if (rv != SCARD_S_SUCCESS)  goto OnErrorExit;
+            if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
-            if (handle->verbose) fprintf (stderr, "callback reader=%s status changed", handle->readerName);
+            if (rgReaderStates.dwCurrentState != rgReaderStates.dwEventState) {
+                rgReaderStates.dwCurrentState = rgReaderStates.dwEventState;
+            }
+
+            // card was inserted retreive uuid/atr
+            if (rgReaderStates.dwEventState & SCARD_STATE_PRESENT) {
+
+           	    rv = SCardConnect(handle->hContext, handle->readerName, SCARD_SHARE_SHARED,
+            		SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &handle->hCard, &handle->activeProtocol);
+                if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+
+                // set up the io request
+                switch(handle->activeProtocol)
+                {
+                    case SCARD_PROTOCOL_T0:
+                        handle->pioSendPci = SCARD_PCI_T0;
+                        break;
+                    case SCARD_PROTOCOL_T1:
+                        handle->pioSendPci = SCARD_PCI_T1;
+                        break;
+                    default:
+                        EXT_CRITICAL("[pcsc-sccard-check] SCARD_PCI Unknown protocol (SCardConnect)");
+                        goto OnErrorExit;
+                }
+
+            }
+
+            if (handle->verbose) fprintf (stderr, "\n -- async: reader=%s status=0x%lx\n", handle->readerName, rgReaderStates.dwEventState);
             handle->callback (handle, rgReaderStates.dwEventState);
+
+            // card was removed cleanup UUID/ATR
+            if (rgReaderStates.dwEventState & SCARD_STATE_EMPTY) {
+                handle->uuid=0;
+                handle->cardId=ATR_UNKNOWN;
+            }
     }
     return NULL;
 
 OnErrorExit:
     handle->error= pcsc_stringify_error(rv);
-    EXT_CRITICAL ("[pcsc-thread-monitor] Reader not avaliable thread exited err=%s", pcsc_stringify_error(rv));
+    EXT_CRITICAL ("[pcsc-thread-monitor] Reader not avaliable thread exited err=%s", handle->error);
     return NULL;
 }
 
 // start a posix thread to monitor reader status
-int pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx) {
+pthread_t pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     handle->ctx= ctx;
     handle->callback=callback;
@@ -477,12 +509,12 @@ int pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx) {
 
     err= pthread_create (&handle->threadId, NULL, pcscThreadMonitor, (void*) handle);
     if (err) goto OnErrorExit;
-    return 0;
+    return handle->threadId;
 
 OnErrorExit:
     handle->error= strerror(errno);
     EXT_CRITICAL ("[pcsc-sccard-monitor] Fail start monitoring thread reader=%s. (pcscReaderMonitor err=%s)", handle->readerName, strerror(errno)) ;
-    return -1;
+    return 0;
 }
 
 int pcscDisconnect (pcscHandleT *handle) {
@@ -600,16 +632,6 @@ OnErrorExit:
     return -1;
 }
 
-const char* pcscReaderName (pcscHandleT *handle) {
-    assert (handle->magic == PCSC_HANDLE_MAGIC);
-    return (handle->readerName);
-}
-
-const char* pcscErrorMsg (pcscHandleT *handle) {
-    assert (handle->magic == PCSC_HANDLE_MAGIC);
-    return (handle->error);
-}
-
 // check card UUID
 u_int64_t pcscGetCardUuid (pcscHandleT *handle) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
@@ -706,4 +728,19 @@ int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_in
 
 OnErrorExit:
     return -1;
+}
+
+const char* pcscReaderName (pcscHandleT *handle) {
+    assert (handle->magic == PCSC_HANDLE_MAGIC);
+    return (handle->readerName);
+}
+
+const char* pcscErrorMsg (pcscHandleT *handle) {
+    assert (handle->magic == PCSC_HANDLE_MAGIC);
+    return (handle->error);
+}
+
+void* pcscGetCtx (pcscHandleT *handle) {
+    assert (handle->magic == PCSC_HANDLE_MAGIC);
+    return (handle->ctx);
 }
