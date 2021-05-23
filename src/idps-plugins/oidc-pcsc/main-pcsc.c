@@ -31,6 +31,7 @@
 static struct option options[] = {
 	{"verbose", optional_argument, 0,  'v' },
 	{"config", required_argument, 0,  'c' },
+	{"group", optional_argument, 0,  'g' },
 	{0, 0, 0, 0 } // trailer
 };
 
@@ -38,6 +39,7 @@ typedef struct {
     const char*cnfpath;
     int verbose;
     int index;
+    int group;
 } pcscParamsT;
 
 pcscParamsT *parseArgs(int argc, char *argv[]) {
@@ -45,7 +47,7 @@ pcscParamsT *parseArgs(int argc, char *argv[]) {
  	int index;
 
 	for (int done=0; !done;) {
-		int option = getopt_long(argc, argv, "v::c:", options, &index);
+		int option = getopt_long(argc, argv, "v::c:g:", options, &index);
 		if (option == -1) {
 			params->index= optind;
 			break;
@@ -62,6 +64,10 @@ pcscParamsT *parseArgs(int argc, char *argv[]) {
 				params->cnfpath=optarg;
 				break;
 
+			case 'g':
+				params->group=atoi(optarg);
+				break;
+
 			default:
 				goto OnErrorExit;
 		}
@@ -70,7 +76,7 @@ pcscParamsT *parseArgs(int argc, char *argv[]) {
     return params;
 
 OnErrorExit:
-	fprintf (stderr, "usage: pcsc-main --config=... [--verbose]\n");
+	fprintf (stderr, "usage: pcsc-main --config=... [--group=xx] [--verbose]\n");
 	return NULL;
 }
 
@@ -118,73 +124,37 @@ int main (int argc, char *argv[])
     }
     fprintf (stderr, " -- Reader=%s smart uuid=%ld\n", config->reader, uuid);
 
-    u_int8_t trailer[16];
-    // http://calc.gmss.ru/Mifare1k/ (too complex to build by hand !!!)
-    // ---
-    // blk-0:   (C10 C20 C30)= 000 (|C10|C20|C30)= 111 (transport config)
-    // blk-1:   (C11 C21 C31)= 000 (|C11|C21|C31)= 111
-    // blk-2:   (C12 C22 C32)= 000 (|C12|C22|C32)= 111
-    // trailer: (C13 C23 C33)= 001 (|C13|C23|C33)= 110 (transport config)
-    // ---
-    // Byte-6 |C23|C22|C21|C20 0xFF 1111-1111  |C13|C12|C11|C10
-    // Byte-7  C13,C12,C11,C10 0x07 0000-0111  |C33|C32|C31|C30
-    // Byte-8  C33,C32,C31,C30 0x80 1000-0000   C23,C22,C21,C20
-    // ----
-
-    // loop on commands
+    // loop on defined commands
+    int jump=0;
     for (int idx=0; config->cmds[idx].uid; idx++) {
         const pcscCmdT *cmd= &config->cmds[idx];
-        unsigned long dlen= cmd->dlen;
-        pcscKeyT *keyA, *keyB;
-        u_int8_t data[dlen];
+        u_int8_t data[cmd->dlen];
 
-        switch (cmd->action) {
-
-            case PCSC_ACTION_READ:
-                err= pcscReadBlock (handle, cmd->uid, cmd->sec, cmd->blk, data, &dlen, cmd->key);
-                if (err) goto OnErrorExit;
-                if (!params->verbose) {
-                    printf ("cmd=%s len=%ld", cmd->uid, dlen);
-                    for (int idx=0; idx < dlen; idx++) printf("%02X ", data[idx]);
-                    printf ("\n");
-                }
-                break;
-
-            case PCSC_ACTION_WRITE:
-                err= pcsWriteBlock (handle, cmd->uid, cmd->sec, cmd->blk, cmd->data, cmd->dlen, cmd->key);
-                if (err) goto OnErrorExit;
-                break;
-
-            case PCSC_ACTION_ADMIN: {
-                // read=keyA write=keyB online ACL calculator http://calc.gmss.ru/Mifare1k/
-                u_int8_t acls[]= {0xF0,0xF7,0x80,0x56};
-                keyA= pcscKeyByUid(config,"key-a");
-                keyB= pcscKeyByUid(config,"key-b");
-
-                if (!keyA || !keyB) {
-                   fprintf (stderr, "Fatal: key-a & key-b should be defined before setting ACLs bits\n");
-                   goto OnErrorExit;
-                }
-
-                err= pcscMifareTrailer (handle, keyA, acls, keyB, trailer);
-                if (err) goto OnErrorExit;
-
-                err= pcsWriteBlock (handle, cmd->uid, cmd->sec, cmd->blk, trailer, cmd->dlen, cmd->key);
-                if (err) goto OnErrorExit;
-                } break;
-
-            default:
+        if (cmd->group == params->group) {
+            jump=1;
+            err= pcscCmdExec (handle, cmd, data);
+            if (err) {
+                fprintf (stderr, " -- Fail Executing command uid=%s error=%s\n", cmd->uid, pcscErrorMsg(handle));
                 goto OnErrorExit;
+            }
+        } else {
+            if (params->verbose) {
+                if (jump) {
+                    fprintf (stderr, "\n");
+                    jump=0;
+                }
+                fprintf (stderr, " -- Ignoring cmd=%s group=%d\n", cmd->uid, cmd->group);
+            }
         }
     }
 
     err= pcscDisconnect (handle);
     if (err) goto OnErrorExit;
 
-    if (params->verbose) fprintf (stderr, "OK: Success Exit\n");
+    if (params->verbose) fprintf (stderr, "OK: Success Exit\n\n");
     exit (0);
 
 OnErrorExit:
-    if (params->verbose) fprintf (stderr, "FX: Error Exit\n");
+    fprintf (stderr, "FX: Error Exit\n\n");
     exit (1);
 }

@@ -53,9 +53,15 @@ typedef struct {
     u_int8_t kidx;
 } pcscKeyT;
 
+typedef struct {
+    u_int8_t *acls;
+    u_int8_t alen;
+    pcscKeyT *keyA;
+    pcscKeyT *keyB;
+} pcscTrailerT;
+
 typedef struct pcscHandleS pcscHandleT; // opaque handle for client apps
 typedef int (*pcscStatusCbT) (pcscHandleT *handle, unsigned long state);
-int pcscMifareTrailer (pcscHandleT *handle, pcscKeyT *keyA, u_int8_t *acls, pcscKeyT *keyB, u_int8_t *data);
 
 pcscHandleT *pcscConnect (const char *readerName);
 int pcscSetOpt (pcscHandleT *handle, pcscOptsE opt, unsigned long value);
@@ -67,6 +73,7 @@ int pcscReaderCheck (pcscHandleT *handle, int ticks);
 int pcscCardReady (pcscHandleT *handle);
 int pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
 
+int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer);
 int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key);
 int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long *dlen, const pcscKeyT *key);
 u_int64_t pcscGetCardUuid (pcscHandleT *handle);

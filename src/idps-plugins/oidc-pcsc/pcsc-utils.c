@@ -97,38 +97,41 @@ typedef struct pcscHandleS {
 static long pcscSendCmd (pcscHandleT *handle, const char *cmdUid, const char *action, const u_int8_t *cmdBuf, long cmdLen, u_int8_t *dataBuf, long unsigned *dataLen)
 {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
+    long unsigned bufferLen= *dataLen;
     long rv;
 
     if (handle->verbose) {
-	    printf("\n -- cmd=%s action=%s scard=%ld\n -- len=%lu sending:[", cmdUid, action, handle->uuid, cmdLen);
+	    printf("\n -- action=%s\n -- len=%lu sending:[", action, cmdLen);
 	    for (int i=0; i<cmdLen; i++) printf("0x%02X,", cmdBuf[i]);
 	    printf("]\n");
     }
 
 	rv = SCardTransmit(handle->hCard, handle->pioSendPci, cmdBuf, cmdLen, NULL, dataBuf, dataLen);
-    if (rv !=  SCARD_S_SUCCESS) goto OnErrorExit;
+    if (rv !=  SCARD_S_SUCCESS) {
+        handle->error= pcsc_stringify_error(rv);
+        goto OnErrorExit;
+    }
 
     if (handle->verbose) {
-    	printf(" -- len=%lu received: [", *dataLen);
+    	printf(" -- len=%lu/%lu received: [", *dataLen, bufferLen);
 	    for (int idx=0; idx< *dataLen; idx++) printf("0x%02X,", dataBuf[idx]);
 	    printf("]\n");
     }
 
     // checked smartcard is happy response and by 0x90,x00
     if (dataBuf[*dataLen-2] != 0x90 || dataBuf[*dataLen-1] != 0x00) {
-        rv= SCARD_STATE_UNKNOWN;
+        handle->error= "Smartcard CMD refused (auth?)";
+        rv= SCARD_STATE_INUSE;
         goto OnErrorExit;
     }
 
     // close buffer in case it would be used as ascii and remove Mifare status from readlen
     dataBuf[*dataLen-PCSC_MIFARE_STATUS_LEN]='\0';
-    *dataLen= *dataLen - PCSC_MIFARE_STATUS_LEN;
 
     return rv;
 
 OnErrorExit:
-    EXT_DEBUG ("[pcsc-transmit-error] uid=%s action=%s error=%s (pcscSendCmd)\n", cmdUid, action, pcsc_stringify_error(rv));
-    handle->error= pcsc_stringify_error(rv);
+    EXT_DEBUG ("[pcsc-transmit-error] uid=%s action=%s error=%s (pcscSendCmd)\n", cmdUid, action, handle->error);
     return rv;
 }
 
@@ -202,7 +205,7 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
     BYTE status[32];
     unsigned long lenToRead = *dlen-PCSC_MIFARE_STATUS_LEN;
 
-    if (handle->verbose) fprintf (stderr, "\n# pcscReadBlock reader=%s cmd=%s scard=%ld blk=%d\n", handle->readerName, uid, handle->uuid, blkIdx);
+    if (handle->verbose) fprintf (stderr, "\n# pcscReadBlock reader=%s cmd=%s scard=%ld blk=%d dlen=%ld\n", handle->readerName, uid, handle->uuid, blkIdx, *dlen);
     switch (handle->cardId) {
 
         case ATR_MIFARE_1K:
@@ -235,7 +238,7 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 	        if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
             // send authentication block
-            const u_int8_t authCmd[] = {0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, secIdx, blkIdx, 0x60+keyIdx, 0x00};
+            const u_int8_t authCmd[] = {0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, secIdx, blkIdx, 0x60|keyIdx, 0x00};
             unsigned long authStatusLen= sizeof(status);
             rv= pcscSendCmd (handle, uid, "authent", authCmd, sizeof(authCmd), status, &authStatusLen);
 	        if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
@@ -277,7 +280,7 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
     u_int8_t keyIdx;
     BYTE status[32];
 
-    if (handle->verbose) fprintf (stderr, "\n# pcsWriteBlock reader=%s cmd=%s scard=%ld blk=%d\n", handle->readerName, uid, handle->uuid, blkIdx);
+    if (handle->verbose) fprintf (stderr, "\n# pcsWriteBlock reader=%s cmd=%s scard=%ld blk=%d dlen=%ld\n", handle->readerName, uid, handle->uuid, blkIdx, dataLen);
     switch (handle->cardId) {
 
         case ATR_MIFARE_1K:
@@ -307,7 +310,7 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
             if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
             // send authentication block
-            BYTE authCmd[] = {0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, secIdx, blkIdx, 0x60+keyIdx, 0x00};
+            BYTE authCmd[] = {0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, secIdx, blkIdx, 0x60|keyIdx, 0x00};
             unsigned long authStatusLen= sizeof(status);
             rv= pcscSendCmd (handle, uid, "authent", authCmd, sizeof(authCmd), status, &authStatusLen);
             if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
@@ -343,51 +346,6 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
 OnErrorExit:
     EXT_ERROR("[pcsc-writeblk-fail] cmd=%s action=write err=%s", uid, handle->error);
-    return -1;
-}
-
-// help to write trailer (warning data should be 16bytes minimum) http://calc.gmss.ru/Mifare1k/
-int pcscMifareTrailer (pcscHandleT *handle, pcscKeyT *keyA, u_int8_t *acls, pcscKeyT *keyB, u_int8_t *data)
-{
-    // reference doc NXP:MF1S70YYX_V1 P38 http://calc.gmss.ru/Mifare1k/
-    // Default ALCS (|=inverted value)
-    // blk-0:   (C10 C20 C30)= 000 (|C10|C20|C30)= 111 (transport config)
-    // blk-1:   (C11 C21 C31)= 000 (|C11|C21|C31)= 111
-    // blk-2:   (C12 C22 C32)= 000 (|C12|C22|C32)= 111
-    // trailer: (C13 C23 C33)= 001 (|C13|C23|C33)= 110 (transport config)
-    // ---
-    // Byte-6 |C23|C22|C21|C20 0xFF 1111-1111  |C13|C12|C11|C10
-    // Byte-7  C13,C12,C11,C10 0x07 0000-0111  |C33|C32|C31|C30
-    // Byte-8  C33,C32,C31,C30 0x80 1000-0000   C23,C22,C21,C20
-    assert (handle->magic == PCSC_HANDLE_MAGIC);
-    assert (keyA);
-    u_int8_t dfltAcls[]={0xFF,0x07,0x80,0x69};
-
-    if (keyA->klen != PCSC_MIFARE_KEY_LEN || (keyB && keyB->klen != PCSC_MIFARE_KEY_LEN)) {
-        handle->error= "Mifare Keylen should equal PCSC_MIFARE_KEY_LEN(6)";
-        goto OnErrorExit;
-    }
-
-    // default reset data to NULL and write KEYA
-    memset (data,0, 2*PCSC_MIFARE_KEY_LEN + PCSC_MIFARE_ACL_LEN);
-    memcpy (&data[0], keyA->kval, PCSC_MIFARE_KEY_LEN);
-
-    if (acls) memcpy (&data[PCSC_MIFARE_KEY_LEN], acls, PCSC_MIFARE_ACL_LEN);
-    else memcpy (&data[PCSC_MIFARE_KEY_LEN], dfltAcls, PCSC_MIFARE_ACL_LEN);
-
-    if (keyB) memcpy (&data[PCSC_MIFARE_KEY_LEN+PCSC_MIFARE_ACL_LEN], keyB->kval, PCSC_MIFARE_KEY_LEN);
-
-    if (handle->verbose) {
-    	printf("\n -- Trailer block : [");
-	    for (int idx=0; idx< 2*PCSC_MIFARE_KEY_LEN + PCSC_MIFARE_ACL_LEN; idx++) printf("0x%02X,", data[idx]);
-	    printf("]\n");
-    }
-
-
-    return 0;
-
-OnErrorExit:
-    EXT_ERROR("[pcsc-trailer-fail] cmd=Mifare action=MkTrailer err=%s", handle->error);
     return -1;
 }
 
@@ -669,4 +627,83 @@ u_int64_t pcscGetCardUuid (pcscHandleT *handle) {
 
 OnErrorExit:
     return 0;
+}
+
+// Create access control bit trailer https://www.nxp.com/docs/en/data-sheet/MF1S70YYX_V1.pdf
+static size_t pcscMifareTrailer (pcscHandleT *handle, const pcscTrailerT *trailer, u_int8_t *dataBuf, size_t dataLen)
+{
+    static size_t dlen= 2*PCSC_MIFARE_KEY_LEN + PCSC_MIFARE_ACL_LEN;
+    u_int8_t dfltAcls[]={0xFF,0x07,0x80,0x69};
+
+    if (trailer->keyA->klen != PCSC_MIFARE_KEY_LEN || (trailer->keyB && trailer->keyB->klen != PCSC_MIFARE_KEY_LEN)) {
+        handle->error= "Mifare Keylen should equal PCSC_MIFARE_KEY_LEN(len:6)";
+        goto OnErrorExit;
+    }
+
+    if (dataLen < dlen) {
+        handle->error= "Mifare Header data buffer too small (min:16)";
+        goto OnErrorExit;
+    }
+
+    if (!trailer->keyA) {
+        handle->error= "Mifare trailer keyA mandatory";
+        goto OnErrorExit;
+    }
+
+    // default reset data to NULL and write KEYA
+    memset (dataBuf,0, dlen);
+    memcpy (&dataBuf[0], trailer->keyA->kval, PCSC_MIFARE_KEY_LEN);
+
+    if (trailer->acls) memcpy (&dataBuf[PCSC_MIFARE_KEY_LEN], trailer->acls, PCSC_MIFARE_ACL_LEN);
+    else memcpy (&dataBuf[PCSC_MIFARE_KEY_LEN], dfltAcls, PCSC_MIFARE_ACL_LEN);
+
+    if (trailer->keyB) memcpy (&dataBuf[PCSC_MIFARE_KEY_LEN+PCSC_MIFARE_ACL_LEN], trailer->keyB->kval, PCSC_MIFARE_KEY_LEN);
+
+    return dlen;
+
+OnErrorExit:
+    EXT_ERROR("[pcsc-trailer-fail] cmd=Mifare action=MkTrailer err=%s", handle->error);
+    return 0;
+}
+
+// Write trailer access control key/bits
+int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer)
+{
+    assert (handle->magic == PCSC_HANDLE_MAGIC);
+    u_int8_t data[16];
+    int err;
+
+    if (handle->verbose) fprintf (stderr, "\n# pcsWriteTrailer reader=%s cmd=%s scard=%ld blk=%d\n", handle->readerName, uid, handle->uuid, blkIdx);
+    switch (handle->cardId) {
+
+        case ATR_MIFARE_1K:
+        case ATR_MIFARE_4K:
+
+            // WARNING !!! invalid keys/acls may bick your smart card check  http://calc.gmss.ru/Mifare1k/
+            if (!trailer || !trailer->acls || !trailer->keyA || !trailer->keyB) {
+                handle->error = "Fatal: Trailer with KEYS[A+B]/ACLS mandatory for access control header\n";
+                goto OnErrorExit;
+            }
+
+            // check blockIdx is a trailer
+            if (blkIdx % 4 != 3) {
+                handle->error = "Fatal: Trailer Mifare invalid block (should be last sector one)\n";
+                goto OnErrorExit;
+            }
+
+            size_t dlen= pcscMifareTrailer (handle, trailer, data, sizeof(data));
+            if (dlen == 0) goto OnErrorExit;
+
+            err= pcsWriteBlock (handle, uid, secIdx, blkIdx, data, dlen, key);
+            if (err) goto OnErrorExit;
+            break;
+
+        default:
+            handle->error = "Trailer access bits unsupported smart card model";
+            goto OnErrorExit;
+    }
+    return 0;
+
+OnErrorExit:
+    return -1;
 }

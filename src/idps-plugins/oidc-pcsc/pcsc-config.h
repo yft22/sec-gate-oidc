@@ -13,12 +13,13 @@
 #include "pcsc-utils.h"
 
 #define PCSC_MAX_DEV 16 // default max connected readers
+#define PCSC_CONFIG_MAGIC 789654123
 
 typedef enum {
     PCSC_ACTION_UNKNOWN=0,
     PCSC_ACTION_READ,
     PCSC_ACTION_WRITE,
-    PCSC_ACTION_ADMIN,
+    PCSC_ACTION_TRAILER,
 } pcscActionE;
 
 typedef struct {
@@ -29,9 +30,12 @@ typedef struct {
     unsigned long dlen;
     const pcscKeyT *key;
     pcscActionE action;
+    pcscTrailerT *trailer;
+    int group;
 } pcscCmdT;
 
 typedef struct {
+    unsigned long magic;
     const char *reader;
     int maxdev;
     int verbose;
@@ -42,4 +46,5 @@ typedef struct {
 } pcscConfigT;
 
 pcscConfigT *pcscParseConfig (json_object *configJ, const int verbosity);
-pcscKeyT *pcscKeyByUid (pcscConfigT *config, const char *keyUid);
+pcscCmdT *pcscCmdByUid (pcscConfigT *config, const char *cmdUid);
+int pcscCmdExec(pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data);

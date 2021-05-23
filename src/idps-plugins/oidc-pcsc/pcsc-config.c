@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 #include <wrap-json.h>
 
 typedef struct {
@@ -42,9 +43,9 @@ typedef struct {
 } pcscKeyEnumT;
 
 static const pcscKeyEnumT pcscActionsE[] = {
-    {"read"  , PCSC_ACTION_READ},
-    {"write" , PCSC_ACTION_WRITE},
-    {"admin" , PCSC_ACTION_ADMIN},
+    {"read"   , PCSC_ACTION_READ},
+    {"write"  , PCSC_ACTION_WRITE},
+    {"trailer", PCSC_ACTION_TRAILER},
     {NULL} // terminator
 };
 
@@ -65,9 +66,25 @@ OnDefaultExit:
     return keyvals[0].value;
 }
 
-// parse keys or command value as asci string or hexa array
-static int pcscParseOneValue (json_object *valueJ, u_int8_t **value, unsigned long *len) {
 
+// search a key from its uid
+static pcscKeyT *pcscKeyByUid (pcscConfigT *config, const char *keyUid) {
+    pcscKeyT *key=NULL;
+
+    if (config->keys) {
+        for (int idx=0; config->keys[idx].uid; idx++) {
+            if (!strcasecmp ( config->keys[idx].uid, keyUid)) {
+                key= &config->keys[idx];
+                break;
+            }
+        }
+    }
+    return key;
+}
+
+// parse keys or command value as asci string or hexa array
+static int pcscParseOneValue (json_object *valueJ, u_int8_t **value, unsigned long *len)
+{
     switch (json_object_get_type (valueJ)) {
         const char *byteS, *valueS;
         u_int8_t *valueB;
@@ -135,29 +152,53 @@ OnErrorExit:
     return -1;
 }
 
-// search a key from its uid
-pcscKeyT *pcscKeyByUid (pcscConfigT *config, const char *keyUid) {
-    pcscKeyT *key=NULL;
+static int pcscParseOneTrailer (pcscConfigT *config, json_object *trailerJ, pcscTrailerT **trailer)
+{
+    int err;
+    json_object *valueJ=NULL;
+    const char *keyA, *keyB;
+    pcscTrailerT *response= calloc (1, sizeof(pcscTrailerT));
 
-    if (config->keys) {
-        for (int idx=0; config->keys[idx].uid; idx++) {
-            if (!strcasecmp ( config->keys[idx].uid, keyUid)) {
-                key= &config->keys[idx];
-                break;
-            }
-        }
+    // "trailer": {"keys": ["key-a","keyb"], "acls":["0xF0","0xF7","0x80","0x00"]}
+    err= wrap_json_unpack (trailerJ, "{ss,ss,so !}"
+        ,"keyA", &keyA
+        ,"keyB", &keyB
+        ,"acls", &valueJ
+    );
+    if (err) {
+        EXT_CRITICAL ("[pcsc-onetrailer-fail] json mandatory keys:[keyA,keyA,acls] (pcscParseOneKey)");
+        goto OnErrorExit;
     }
-    return key;
+
+    response->keyA = pcscKeyByUid (config, keyA);
+    response->keyB = pcscKeyByUid (config, keyB);
+    if (!response->keyA  || !response->keyB) {
+        EXT_CRITICAL ("[pcsc-onetrailer-fail] KeyA=%s keyB=%s not found", keyA, keyB);
+        goto OnErrorExit;
+    }
+
+    // value should be an asci string or an array of hexa valueB
+    unsigned long alen;
+    err= pcscParseOneValue (valueJ, &response->acls, &alen);
+    if (err || alen != 4) goto OnErrorExit;
+    response->alen= (uint8_t)alen;
+
+    *trailer= response;
+    return 0;
+
+OnErrorExit:
+    free (response);
+    return -1;
 }
 
 static int pcscParseOneCmd (pcscConfigT *config, json_object *cmdJ, pcscCmdT *cmd)
 {
     int err;
-    json_object *dataJ=NULL;
+    json_object *dataJ=NULL, *trailerJ=NULL;
     const char *keyUid=NULL, *cmdAction;
 
     // {"uid":"zzz", "action":"write", "blk": xx, "key":"kuid","data": ["0xab", "0x01", ....]},
-    err= wrap_json_unpack (cmdJ, "{ss,ss,s?i,s?i,s?i,s?s,s?o !}"
+    err= wrap_json_unpack (cmdJ, "{ss,ss,s?i,s?i,s?i,s?s,s?o,s?o,s?i !}"
         ,"uid", &cmd->uid
         ,"action", &cmdAction
         ,"sec", &cmd->sec
@@ -165,6 +206,8 @@ static int pcscParseOneCmd (pcscConfigT *config, json_object *cmdJ, pcscCmdT *cm
         ,"len", &cmd->dlen
         ,"key", &keyUid
         ,"data", &dataJ
+        ,"trailer", &trailerJ
+        ,"group", &cmd->group
     );
     if (err) {
         EXT_CRITICAL ("[pcsc-onecmd-fail] json supported keys:[uid,action,blk,key,data,len] (pcscParseOneCmd)");
@@ -191,11 +234,14 @@ static int pcscParseOneCmd (pcscConfigT *config, json_object *cmdJ, pcscCmdT *cm
             if (err) goto OnErrorExit;
             break;
 
-        case PCSC_ACTION_ADMIN:
-            if (dataJ) {
-                err= pcscParseOneValue (dataJ, &cmd->data, &cmd->dlen);
-                if (err) goto OnErrorExit;
+        case PCSC_ACTION_TRAILER:
+            if (dataJ || cmd->dlen || !trailerJ) {
+                EXT_CRITICAL ("[pcsc-onecmd-fail] uid=%s action=%s trailer mandary len+data forbiden (pcscParseOneCmd)", cmd->uid,cmdAction);
+                goto OnErrorExit;
             }
+
+            err= pcscParseOneTrailer (config, trailerJ, &cmd->trailer);
+            if (err) goto OnErrorExit;
             break;
 
         default:
@@ -244,7 +290,6 @@ pcscConfigT *pcscParseConfig (json_object *configJ, const int verbosity)
         EXT_CRITICAL ("[pcsc-config-fail] key 'cmds' mandatory when 'keys' present (pcscParseConfig)");
         goto OnErrorExit;
     }
-
 
     // parse keys and create a hash table
     switch (json_object_get_type (keysJ)) {
@@ -303,8 +348,55 @@ pcscConfigT *pcscParseConfig (json_object *configJ, const int verbosity)
             EXT_CRITICAL ("[pcsc-config-fail] cmds should be json object or array of object (pcscParseConfig)");
             goto OnErrorExit;
     }
+    config->magic= PCSC_CONFIG_MAGIC;
     return  config;
 
 OnErrorExit:
     return NULL;
+}
+
+// get a command from its uid
+pcscCmdT *pcscCmdByUid (pcscConfigT *config, const char *cmdUid) {
+    assert (config->magic == PCSC_CONFIG_MAGIC);
+    pcscCmdT *cmd=NULL;
+
+    if (config->cmds) {
+        for (int idx=0; config->cmds[idx].uid; idx++) {
+            if (!strcasecmp ( config->cmds[idx].uid, cmdUid)) {
+                cmd= &config->cmds[idx];
+                break;
+            }
+        }
+    }
+    return cmd;
+}
+
+int pcscCmdExec (pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data) {
+    int err;
+    unsigned long dlen= cmd->dlen;
+
+    switch (cmd->action) {
+
+        case PCSC_ACTION_READ:
+            err= pcscReadBlock (handle, cmd->uid, cmd->sec, cmd->blk, data, &dlen, cmd->key);
+            if (err) goto OnErrorExit;
+            break;
+
+        case PCSC_ACTION_WRITE:
+            err= pcsWriteBlock (handle, cmd->uid, cmd->sec, cmd->blk, cmd->data, cmd->dlen, cmd->key);
+            if (err) goto OnErrorExit;
+            break;
+
+        case PCSC_ACTION_TRAILER:
+            err= pcsWriteTrailer (handle, cmd->uid, cmd->sec, cmd->blk, cmd->key, cmd->trailer);
+            if (err) goto OnErrorExit;
+            break;
+
+        default:
+            goto OnErrorExit;
+    }
+    return 0;
+
+OnErrorExit:
+    return -1;
 }

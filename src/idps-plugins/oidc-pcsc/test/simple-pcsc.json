@@ -2,17 +2,17 @@
     "info" : "Basic PCSC test for Mifare Classic",
     "reader": "ACR122U",
     "keys": [
+        {"uid":"dfltA", "idx": 0, "value":["0xFF","0xFF","0xFF","0xFF","0xFF","0xFF"]},
         {"uid":"key-a", "idx": 0, "value":["0x01","0x02","0x03","0x04","0x05","0x06"]},
         {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]}
     ],
     "cmds": [
-        //{"uid":"public-read" , "action":"read", "blk": 1, "len": 32},
-        //{"uid":"public-write", "action":"write","blk": 2, "data": "abcdefghijklmnop"},
-        //{"uid":"public-read" , "action":"read", "blk": 2, "len": 16},
+        {"uid":"public-read" , "group": 0, "action":"read", "blk": 1, "len": 16},
+        {"uid":"public-write", "group": 0, "action":"write","blk": 2, "data": "abcdefghijklmnop"},
+        {"uid":"public-read" , "group": 0, "action":"read", "blk": 2, "len": 16},
 
-        {"uid":"acl-write" , "action":"admin", "blk": 19, "len":16},
-        {"uid":"keyA-read", "action":"read","blk": 18, "key":"key-a", "len": 16},
-        {"uid":"keyB-write", "action":"write","blk": 18, "key":"key-b", "data": "abcdefghijklmnop"},
-        {"uid":"keyA-write", "action":"write","blk": 18, "key":"key-a", "data": "abcdefghijklmnop"},
+        {"uid":"acl-write"   , "group": 1, "action":"trailer", "blk": 27, "key":"dfltA", "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0xF0","0xF7","0x80","0x00"]}},
+        {"uid":"keyB-write"  , "group": 1, "action":"write","blk": 26, "key":"key-b", "data": "abcdefghijklmnop"},
+        {"uid":"keyA-read"   , "group": 1, "action":"read","blk": 26, "key":"key-a", "len": 16},
     ]
 }
