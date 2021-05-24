@@ -70,7 +70,6 @@ const char* pcscErrorMsg (pcscHandleT *handle);
 int pcscDisconnect (pcscHandleT *handle);
 
 int pcscReaderCheck (pcscHandleT *handle, int ticks);
-int pcscCardReady (pcscHandleT *handle);
 pthread_t pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
 
 int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer);

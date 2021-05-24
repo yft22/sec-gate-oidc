@@ -13,7 +13,7 @@
  */
 #define _GNU_SOURCE
 
-#include "pcsc-utils.h"
+#include "pcsc-glue.h"
 
 #include <libafb/sys/verbose.h>
 

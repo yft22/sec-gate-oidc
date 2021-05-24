@@ -12,7 +12,7 @@
 
 #define _GNU_SOURCE
 
-#include "pcsc-utils.h"
+#include "pcsc-glue.h"
 #include "pcsc-config.h"
 
 #include <sys/types.h>
@@ -115,7 +115,7 @@ static int execGroupCmd (pcscHandleT *handle, pcscParamsT *params) {
         const pcscCmdT *cmd= &config->cmds[idx];
         u_int8_t data[cmd->dlen];
 
-        if (params->group >= cmd->group  || abs(params->group) == cmd->group) {
+        if (params->group >= abs(cmd->group)  || params->group == abs(cmd->group)) {
             jump=1;
             err= pcscExecOneCmd (handle, cmd, data);
             if (err) {

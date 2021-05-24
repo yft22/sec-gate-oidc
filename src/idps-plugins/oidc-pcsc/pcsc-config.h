@@ -10,7 +10,7 @@
 
 #include <sys/types.h>
 #include <wrap-json.h>
-#include "pcsc-utils.h"
+#include "pcsc-glue.h"
 
 #define PCSC_MAX_DEV 16 // default max connected readers
 #define PCSC_CONFIG_MAGIC 789654123
