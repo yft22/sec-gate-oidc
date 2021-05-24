@@ -20,7 +20,7 @@ add_subdirectory(idps-builtin)
 add_subdirectory(idps-plugins)
 
 # Add target to project dependency list
-PROJECT_TARGET_ADD(oidc-sgate)
+PROJECT_TARGET_ADD(oidc)
 
 	# compile any C file starting with a lower case
 	file(GLOB CSOURCES [a-z]*.c)
@@ -41,11 +41,11 @@ PROJECT_TARGET_ADD(oidc-sgate)
 
 	# Binder exposes a unique public entry point
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
-		PREFIX "afb-"
+		PREFIX "sec-gate-"
 		LABELS "LIBRARY"
         SUFFIX ".extso"
 		# LINK_FLAGS "-Wl,--version-script=${PROJECT_SOURCE_DIR}/conf.d/cmake/afb-ext-link.flags"
-		IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/afb-${TARGET_NAME}.extso
+		IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/sec-gate-${TARGET_NAME}.extso
 		OUTPUT_NAME ${TARGET_NAME}
 	)
 

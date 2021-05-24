@@ -24,7 +24,7 @@ set(PROJECT_NAME sec-gate-oidc)
 set(PROJECT_VERSION "1.0")
 set(PROJECT_PRETTY_NAME "OpenID Connect Extention for AFB-binder")
 set(PROJECT_DESCRIPTION "Provide authentication through OpenID")
-set(PROJECT_URL "https://github.com/redpesk-common/afb-oidc")
+set(PROJECT_URL "https://github.com/redpesk-common/sec-gate-oidc")
 set(PROJECT_ICON "icon.jpg")
 set(PROJECT_AUTHOR "Iot-Team")
 set(PROJECT_AUTHOR_MAIL "secretariat@iot.bzh")
@@ -84,7 +84,7 @@ set (PKG_REQUIRED_LIST
 if(IS_DIRECTORY $ENV{HOME}/opt/afb-monitoring)
 set(MONITORING_ALIAS "--alias=/monitoring:$ENV{HOME}/opt/afb-monitoring")
 endif()
-set( CLOSING_MESSAGE "Debug: afb-binder --name=afb-oidc --config=../conf.d/project/etc/oidc-config.json --rootdir=../conf.d/project/htdocs --verbose # http://localhost:1234/devtools/index.html")
+set( CLOSING_MESSAGE "Debug: afb-binder --name=sec-gate-oidc --config=../conf.d/project/etc/oidc-config.json --rootdir=../conf.d/project/htdocs --verbose # http://localhost:1234/devtools/index.html")
 set(PACKAGE_MESSAGE "Install widget file using in the target : afm-util install ${PROJECT_NAME}.wgt")
 
 # Customize link option
@@ -141,7 +141,7 @@ set(WIDGET_TYPE application/vnd.agl.service)
 # This is the file that will be executed, loaded,
 # at launch time by the application framework.
 #
-set(WIDGET_ENTRY_POINT lib/afb-oidc.so)
+set(WIDGET_ENTRY_POINT lib/sec-gate-oidc.so)
 
 # Optional dependencies order
 # ---------------------------
