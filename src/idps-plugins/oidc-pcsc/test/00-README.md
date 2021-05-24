@@ -1,11 +1,13 @@
 # oidc-pcsc plugin
 
-## object
+## Object
 This plugin provides a sample implementation for Smartcard/NFC-token authentication based on [pcsc-lite](https://pcsclite.apdu.fr/).
 
 
 
-## dependencies
+## Dependencies
+
+Relies on use-space pcscd resource manager to read/write NFC scard/token.
 
  * Libraries (with xxx-devel when building from sources)
 
@@ -24,52 +26,47 @@ This plugin provides a sample implementation for Smartcard/NFC-token authenticat
    * foreground: sudo /usr/sbin/pcscd -f
    * background: systemctl start pcscd.service
 
-## check supported reader
+## Supported readers/cards
 
-The code was testing with Mifare classic tokens but pcsc-lite should support most of CCID compliant tokens.
+The code was testing with Mifare classic tokens but pcsc-lite supports most of CCID compliant tokens. Nevertheless note that each scard/token has it own flavor or API and data organization which may require config/code customization.
 
 https://ccid.apdu.fr/ccid/supported.html
 
-## testing
+## Testing
 
-Create your own config and check pcsc-test command
+The simplest way to test your reader/token it to use pcsc-test with a custom config.json. Note that pcsc-test should be available for major Linux distributions.
 
 ```dotnetcli
-    ~/$SOURCES/sec-gate-oidc/build> ./package/bin/pcsc-test --config=../src/idps-plugins/oidc-pcsc/test/simple-pcsc.json --group=0 --async --verbose
-     -- Waiting: 1s events for reader=ACS ACR122U PICC Interface 00 00 (ctrl-C to quit)
-     -- async: reader=ACS ACR122U PICC Interface 00 00 status=0x5e0012
-     -- event: reader=ACS ACR122U PICC Interface 00 00 removed (waiting for new card)
-    ^C
-    Ctrl-C received
-    On Signal Exit
+ ~/$SOURCES/sec-gate-oidc/build> ./package/bin/pcsc-test --config=../src/idps-plugins/oidc-pcsc/test/simple-pcsc.json --group=0 --async --verbose
+ -- Waiting: 1s events for reader=ACS ACR122U PICC Interface 00 00 (ctrl-C to quit)
+ -- async: reader=ACS ACR122U PICC Interface 00 00 status=0x5e0012
+ -- event: reader=ACS ACR122U PICC Interface 00 00 removed (waiting for new card)
+ ^C
+ Ctrl-C received
+ On Signal Exit
 ```
 
-## config
+## Config.json
 
-Configuration is organized in sections:
+Json configuration is organized in sections:
 
-* **reader**: is a subset of reader full name
-* **keys**: defined keys used when command require authentication
-* **cmds**: your list of commands
+* **reader**: a subset of reader full name
+* **keys**: defined keys used when a command require authentication
+* **cmds**: your commands list
 * **verbose**: level of verbosity when not passed from API with --verbose
 
-### reader
+### Reader
 
-It is a subset of reader name. When multiple reader respond to the subset first reader found is used. When no reader name is provided, oidc-pcsc will take first available reader. As a result is your have only one reader you do not have to know its name.
+It is a subset of reader name. When multiple reader respond to the subset first reader found is used. When no reader name is provided, oidc-pcsc uses first available reader. As a result is your have only one reader you do not have to know its name.
 
 ```json
     // "ACR122U" for "ACS ACR122U PICC Interface 00 00"
     "reader": "ACR122U",
 ```
 
-### keys
+### Keys
 
 Keys are only needed when your commands require authentication. This is typically the case when using scard/token data for authentication.
-
-Mifare-Classic support two keys A/B and they should have 6 bytes. Default keys on new cards is 0xFFFFFF for both keys. When a command does not specify a key default keysA is used for both read and write operation. Default should work with any new card.
-
-* key-A -> idx:0
-* key-B -> idx:1
 
 ```json
     "keys": [
@@ -78,51 +75,57 @@ Mifare-Classic support two keys A/B and they should have 6 bytes. Default keys o
         {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]}
     ],
 ```
+* **key-A** -> idx:0
+* **key-B** -> idx:1
+* **value**: ASCII or Hexa key value.
 
-### cmds
+Mifare-Classic support two keys A/B where both should have 6 bytes. Default keys on new cards is 0xFFFFFF for both keys. When a command does not specify a key default keysA is used for both read and write operation. Default should work with any new card.
 
-Each scard model has a private physical organization (page, sector, blocs, ...) as well as it own authentication and API capabilities. As said before oidc-pcsc was tested with Mifare-Classic, if you need to support a different card model you may have to tweak configuration and code. Note that command are store in order and pcsc-test execute then on config order.
+### Commands
 
-Each command should have:
-* **uid**: [mandatory] information only use to identify command within your config
-* **group**: [optional] use to class command in config. pscsc-test command use --group=xx to only execute command from a given group. (default:0)
-* **action**: [mandatory]
-    * **read**: read one/multiple blocs
-    * **write** read one/multiple blocs
-    * **trailer**: write access control bit and authentication keys for a given sector.
-* **sec**: [optional] not use with Mifare type. Some token as NFC/type-2 requires a sector index. (default:0)
-* **blk**: [mandatory] block index for read and write commands.
-* **len**: [mandatory for read] specify amount of data to read. Warning: it is application responsibility to provided a buffer big enough to hold data.
-* **value**: [mandatory for write/trailer] provide information to write on the scard. The information may by provided in hexa or ascii form. Warning: depending on token/scard model writable size diverge. Mifare only support 0x10,0x20,x30 value length. Last bloc written with trailer command being reserved for access control bits/keys.
+Each scard model has a private physical organization (page, sector, blocs, ...) as well as it own authentication and API capabilities. As said before oidc-pcsc was tested with Mifare-Classic, if you need to support a different card model you may have to tweak configuration and code. Note that command are store in order and pcsc-test execute then from config order.
 
 ```json
     "cmds": [
         {"uid":"cmd-1" , "group": 0, "action":"read", "blk": 1, "len": 16},
-        {"uid":"cmd-2" , "group": 0, "action":"read", "blk": 4, "len": 16},
+        {"uid":"cmd-2" , "group": 0, "action":"read", "blk": 3, "len": 16},
         ....
         {"uid":"cmd-n" , "group":x, "action":xxxx, "blk":xx, "len":xx},
     ]
 ```
 
+Each command should have:
+* **uid**: [mandatory] information use to identify command within your config
+* **group**: [optional] use to class command in config. pscsc-test command use --group=xx to only execute command from a given group. (default:0)
+* **action**: [mandatory]
+    * **read**: read one/multiple blocs
+    * **write** read one/multiple blocs
+    * **trailer**: write access control bit and authentication keys for a given sector.
+* **sec**: [optional] unuse with Mifare. Some token as NFC/type-2 requires a sector index. (default:0)
+* **blk**: [mandatory] block index for read and write commands.
+* **len**: [mandatory for read] specify amount of data to read. *Warning: it is application responsibility to provided a buffer big enough to hold data.*
+* **value**: [mandatory for write/trailer] provide information to write on the scard. The information may by provided in hexa or ascii form. Warning: depending on token/scard model writable size diverge. Mifare only support 0x10,0x20,x30 value length. Last bloc written with trailer command is reserved for access control bits/keys.
+
+
 ## Trailer
 
 Trailer is a specialized version of write command used to simplify access control bit/keys writing.
 
-**WARNING**: trailer command can brick you scard/token. Writing a wrong ACL/keys will kill concerned block. Double, triple check your command on a single block/card before provisioning a set of card.
+```json
+{"uid":"set-acls", "group": 2, "action":"trailer", "blk": 27, "key":"dfltA", "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0xF0","0xF7","0x80","0x00"]}},
+```
 
-* **group**: [recommended] while not mandatory 'trailer' command are usually isolated in a private group, as they change access control and usually cannot execute twice.
-* **blk**: [mandatory] with Myfare/classic block index should match the last bloc of a given sector/page with blocIdx modulo 4 => 3.
-* **key**: [optional] authentication key. When not provided trailer command will used default (0xFFFFFF) which should work with any new Mifare/classic card. After changing ACLs the new key depends on your config.
-* **key-a/b**: [mandatory] The new access control key. Key-a/b should match a predefined key-uid from your 'keys' config section. Key-a/b are going to be written with your acls bloc and will be require for further action on concerned blocs.
-* **acls**: [mandatory] The acls control bits of you trailer block. **WARNING** invalid acls data will brick your sector. Check further note to create a valid acls blocs.
+***WARNING: trailer command can brick you scard/token.*** Writing a wrong ACL/keys will kill concerned block. Double, triple check your command on a single block/card before provisioning a set of cards.
+
+* **group**: [recommended] while not mandatory 'trailer' command are usually isolated in a private group, as they change access control and usually cannot be executed twice.
+* **blk**: [mandatory] with Myfare/classic block index should match the last bloc of a given sector/page with blocIdx modulo 4 == 3.
+* **key**: [optional] authentication key. When not provided trailer command uses default (0xFFFFFF) which should work with any new Mifare/classic card. After changing ACLs authentication key depends on your config.
+* **key-a/b**: [mandatory] The new access control key. Key-a/b should match a predefined key-uid from your 'keys' config section. Key-a/b are written with your acls bloc and will be required for further action on concerned blocs.
+* **acls**: [mandatory] The acls control bits of you trailer block. **WARNING** invalid acls data will brick all blocks from targeted page/sector. Check further note to create a valid acls blocs.
     * references: https://www.nxp.com/docs/en/data-sheet/MF1S70YYX_V1.pdf
     * online acl: http://calc.gmss.ru/Mifare1k/
     * example: "acls":["0xF0","0xF7","0x80","0x00"]} key-A readable, key-B writable
 
-
-```json
-    {"uid":"set-acls", "group": 2, "action":"trailer", "blk": 27, "key":"dfltA", "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0xF0","0xF7","0x80","0x00"]}},
-```
 
 **ACLs control bits**
 
@@ -177,9 +180,11 @@ Note: the 'set-acls' command (group=2) should work for a new card. But after 1st
 }
 ```
 
-## oidc-pcsc C/APIs
+## OIDC-pcsc C/APIs
 
 ## Config APIs
+
+High level API, hopefully match most application requirement.
 
 ```c
  #include <pcsc-config.h>
