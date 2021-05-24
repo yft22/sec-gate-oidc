@@ -405,11 +405,11 @@ int pcscReaderCheck (pcscHandleT *handle, int ticks)
 
             if (rgReaderStates.dwCurrentState != rgReaderStates.dwEventState) {
                 rgReaderStates.dwCurrentState = rgReaderStates.dwEventState;
-            }
 
-            // card is present
-            if (rgReaderStates.dwEventState & SCARD_STATE_PRESENT) break;
-            if (handle->verbose) fprintf (stderr, ".");
+                // card is present
+                if (rgReaderStates.dwEventState & SCARD_STATE_PRESENT) break;
+                if (handle->verbose) fprintf (stderr, ".");
+            }
         }
         if (handle->verbose) fprintf (stderr, "\n");
    	    rv = SCardConnect(handle->hContext, handle->readerName, SCARD_SHARE_SHARED,
@@ -458,39 +458,39 @@ static void *pcscThreadMonitor (void *ptr) {
 
             if (rgReaderStates.dwCurrentState != rgReaderStates.dwEventState) {
                 rgReaderStates.dwCurrentState = rgReaderStates.dwEventState;
-            }
 
-            // card was inserted retreive uuid/atr
-            if (rgReaderStates.dwEventState & SCARD_STATE_PRESENT) {
+                // card was inserted retreive uuid/atr
+                if (rgReaderStates.dwEventState & SCARD_STATE_PRESENT) {
 
-           	    rv = SCardConnect(handle->hContext, handle->readerName, SCARD_SHARE_SHARED,
-            		SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &handle->hCard, &handle->activeProtocol);
-                if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+                    rv = SCardConnect(handle->hContext, handle->readerName, SCARD_SHARE_SHARED,
+                        SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &handle->hCard, &handle->activeProtocol);
+                    if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
-                // set up the io request
-                switch(handle->activeProtocol)
-                {
-                    case SCARD_PROTOCOL_T0:
-                        handle->pioSendPci = SCARD_PCI_T0;
-                        break;
-                    case SCARD_PROTOCOL_T1:
-                        handle->pioSendPci = SCARD_PCI_T1;
-                        break;
-                    default:
-                        EXT_CRITICAL("[pcsc-sccard-check] SCARD_PCI Unknown protocol (SCardConnect)");
-                        goto OnErrorExit;
+                    // set up the io request
+                    switch(handle->activeProtocol)
+                    {
+                        case SCARD_PROTOCOL_T0:
+                            handle->pioSendPci = SCARD_PCI_T0;
+                            break;
+                        case SCARD_PROTOCOL_T1:
+                            handle->pioSendPci = SCARD_PCI_T1;
+                            break;
+                        default:
+                            EXT_CRITICAL("[pcsc-sccard-check] SCARD_PCI Unknown protocol (SCardConnect)");
+                            goto OnErrorExit;
+                    }
                 }
-
-            }
-
-            if (handle->verbose) fprintf (stderr, "\n -- async: reader=%s status=0x%lx\n", handle->readerName, rgReaderStates.dwEventState);
-            handle->callback (handle, rgReaderStates.dwEventState);
 
             // card was removed cleanup UUID/ATR
             if (rgReaderStates.dwEventState & SCARD_STATE_EMPTY) {
                 handle->uuid=0;
                 handle->cardId=ATR_UNKNOWN;
             }
+
+            if (handle->verbose) fprintf (stderr, "\n -- async: reader=%s status=0x%lx\n", handle->readerName, rgReaderStates.dwEventState);
+            handle->callback (handle, rgReaderStates.dwEventState);
+        }
+
     }
     return NULL;
 
@@ -560,7 +560,7 @@ pcscHandleT *pcscConnect (const char *readerName) {
     LPSTR readerListStr= NULL;
   	rv = SCardListReaders(handle->hContext, NULL, (LPSTR)&readerListStr, &readerLiStatusLen);
   	if (rv != SCARD_S_SUCCESS) {
-        EXT_CRITICAL ("[pcsc-reader-scan] Fail to list pcscd reader [check pcsc-ccid]. (SCardListReaders=%s)", pcsc_stringify_error(rv));
+        EXT_CRITICAL ("[pcsc-reader-scan] Fail to list pcscd reader [check pcsc-ccid supported reader]. (SCardListReaders=%s)", pcsc_stringify_error(rv));
         goto OnErrorExit;
     }
 
@@ -579,6 +579,7 @@ pcscHandleT *pcscConnect (const char *readerName) {
     if (readerName) {
         handle->readerId=-1;
         for (int idx=0; idx < readerCount; idx++) {
+            EXT_DEBUG ("reader[%d]=%s", idx, readerList[idx]);
             if (strcasestr (readerList[idx], readerName)) {
             handle->readerId= idx;
             handle->readerName= strdup(readerList[idx]);

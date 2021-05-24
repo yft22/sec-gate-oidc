@@ -161,6 +161,16 @@ OnErrorExit:
 // signal handler
 static jmp_buf  JumpBuffer;
 void  sigHandlerCB(int  sig) {
+    switch (sig) {
+      case SIGINT:
+        fprintf (stderr, "\nCtrl-C received\n");
+        break;
+      case SIGSEGV:
+        fprintf (stderr, "\n(Hoops!) Sigfault check config.json with jq < my-config.json\n");
+        break;
+      default:
+        return;
+    }
     longjmp(JumpBuffer, 1);
 }
 
@@ -243,6 +253,6 @@ OnErrorExit:
     exit (1);
 
 OnSignalExit:
-    fprintf (stderr, "\nFX: On Signal Exit\n\n");
+    fprintf (stderr, "On Signal Exit\n\n");
     exit (1);
 }

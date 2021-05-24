@@ -8,3 +8,6 @@ Need to blacklist default NFC kernel module
 
 Run pcsc manager in debug/foreground mode
   sudo /usr/sbin/pcscd -f
+
+# check supported reader
+https://ccid.apdu.fr/ccid/supported.html
