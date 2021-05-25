@@ -220,17 +220,19 @@ High level API, hopefully match most application requirement.
 ```c
  #include <pcsc-glue.h>
  int pcscReaderCheck (pcscHandleT *handle, int ticks);
- pthread_t pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
+ unsigned long pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
+ int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action);
  void* pcscGetCtx (pcscHandleT *handle);
+
  typedef int (*pcscStatusCbT) (pcscHandleT *handle, unsigned long state);
  u_int64_t pcscGetCardUuid (pcscHandleT *handle);
 ```
 * **pcscReaderCheck**: in synchronous mode wait xx ticks for reader to be ready. Default ticks is 60s, and can be changed with timeout option.
-* **pcscReaderMonitor**: start monitoring thread and register callback and and context. Unfortunatly pcsc-lite does not support asynchronous operation and application should register a dedicated thread to run pcsc operations in background.
-
-* **pcscGetCtx**: return handle context provided by pcscReaderMonitor.
-* **pcscStatusCbT** monitoring callback signature register by pcscReaderMonitor. This callback is call each time reader status change. Typically when a scard is inserted/removed. As callback get pcsc handle it can run any commands. Check main-pcsc.c for sample.
+* **pcscMonitorReader**: start monitoring thread and register callback and and context. Unfortunately pcsc-lite does not support asynchronous operation and application should register a dedicated thread to run pcsc operations in background.
+* **pcscMonitorWait**: wait for monitor thread to finish. Action=PCSC_MONITOR_WAIT|PCSC_MONITOR_TERMINATE
+* **pcscGetCtx**: return handle context provided by pcscMonitorReader.
 * **pcscGetCardUuid**: check scard ATR and return UUID. If card is not supported this return an error.
+* **pcscStatusCbT** monitoring callback signature register by pcscMonitorReader. This callback is call each time reader status change. Typically when a scard is inserted/removed. As callback get pcsc handle it can run any commands. Check main-pcsc.c for sample.
 
 
 ### Reading/Writing to scard/token
@@ -239,11 +241,15 @@ Low level commands, most user may prefer to rather pcscExecOneCmd.
 
 ```c
  #include <pcsc-glue.h>
+ const pcscKeyT *pcscNewKey (const char *uid, u_int8_t *value, size_t len);
  int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key);
  int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long *dlen, const pcscKeyT *key);
  int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer);
 ```
 
+* **pcscNewKey**: create a new key. 
+    * value: uint8 array, buffer should remain valid after api call.
+    * len: buffer len, if len=0 then strlen(value) is used.
 * **pcsWriteBlock**: write bloc on scard/token.
     * uuid: is used only for debug purpose.
     * secIdx: sector index. Use with NFC-type2 but not with MiFare
@@ -265,4 +271,4 @@ Low level commands, most user may prefer to rather pcscExecOneCmd.
     * secIdx: sector index. Use with NFC-type2 but not with MiFare
     * blkIdx: block index. Block index should match last bloc of a given page/sector.
     * key: key handle to be use for operation authentication.
-    * trailer: trailer handle as created from pcscTrailerT or pcscParseOneTrailer hight level command.
+    * trailer: trailer handle as created from pcscNewKey api.

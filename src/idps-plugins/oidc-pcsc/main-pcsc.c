@@ -214,13 +214,14 @@ int main (int argc, char *argv[])
         pthread_t tid;
 
         // start smartcard reader monitoring pass params as context to handle option in CB
-        tid= pcscReaderMonitor (handle, readerMonitorCB, (void*)params);
+        tid= pcscMonitorReader (handle, readerMonitorCB, (void*)params);
         if (!tid) {
             fprintf (stderr, " -- Fail monitoring reader reader=%s error=%s\n", pcscReaderName(handle), pcscErrorMsg(handle));
             if (!params->forced) goto OnErrorExit;
         }
         fprintf (stderr, " -- Waiting: %ds events for reader=%s (ctrl-C to quit)\n", params->async, pcscReaderName(handle));
-        pthread_join(tid, NULL); // infinit wait for monitor to quit
+        err= pcscMonitorWait (handle, PCSC_MONITOR_WAIT);
+        if (err) goto OnErrorExit;
 
     } else {
 

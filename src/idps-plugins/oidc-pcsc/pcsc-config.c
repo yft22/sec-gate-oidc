@@ -258,6 +258,9 @@ static int pcscParseOneCmd (pcscConfigT *config, json_object *cmdJ, pcscCmdT *cm
         }
     }
 
+    // add command to cmd hash table
+    HASH_ADD_KEYPTR (hh, config->hTable, cmd->uid, strlen(cmd->uid), cmd);
+
     return 0;
 
 OnErrorExit:
@@ -355,19 +358,12 @@ OnErrorExit:
     return NULL;
 }
 
-// get a command from its uid
-pcscCmdT *pcscCmdByUid (pcscConfigT *config, const char *cmdUid) {
+// get a command from its uid using uthash table
+pcscCmdT *pcscCmdByUid (pcscConfigT *config, const char *uid) {
     assert (config->magic == PCSC_CONFIG_MAGIC);
-    pcscCmdT *cmd=NULL;
+    pcscCmdT *cmd;
 
-    if (config->cmds) {
-        for (int idx=0; config->cmds[idx].uid; idx++) {
-            if (!strcasecmp ( config->cmds[idx].uid, cmdUid)) {
-                cmd= &config->cmds[idx];
-                break;
-            }
-        }
-    }
+    HASH_FIND_STR(config->hTable, uid, cmd);
     return cmd;
 }
 

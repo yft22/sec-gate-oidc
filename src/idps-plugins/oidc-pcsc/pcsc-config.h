@@ -8,9 +8,11 @@
  */
 #pragma once
 
+#include "pcsc-glue.h"
+
 #include <sys/types.h>
 #include <wrap-json.h>
-#include "pcsc-glue.h"
+#include <uthash.h>
 
 #define PCSC_MAX_DEV 16 // default max connected readers
 #define PCSC_CONFIG_MAGIC 789654123
@@ -32,17 +34,19 @@ typedef struct {
     pcscActionE action;
     pcscTrailerT *trailer;
     int group;
+    UT_hash_handle hh;
 } pcscCmdT;
 
 typedef struct {
     unsigned long magic;
     const char *reader;
+    unsigned long timeout;
     int maxdev;
     int verbose;
     const char *info;
     pcscCmdT *cmds;
     pcscKeyT *keys;
-    unsigned long timeout;
+    pcscCmdT *hTable;
 } pcscConfigT;
 
 pcscConfigT *pcscParseConfig (json_object *configJ, const int verbosity);

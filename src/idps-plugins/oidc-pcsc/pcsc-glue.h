@@ -46,6 +46,12 @@ typedef enum {
     ATR_FELICA_424K,
 } atrCardidEnumT;
 
+typedef enum {
+    PCSC_MONITOR_UNKNOWN=0,
+    PCSC_MONITOR_WAIT,
+    PCSC_MONITOR_TERMINATE,
+} pcscMonitorActionE;
+
 typedef struct {
     const char *uid;
     u_int8_t *kval;
@@ -64,16 +70,18 @@ typedef struct pcscHandleS pcscHandleT; // opaque handle for client apps
 typedef int (*pcscStatusCbT) (pcscHandleT *handle, unsigned long state);
 
 pcscHandleT *pcscConnect (const char *readerName);
+int pcscDisconnect (pcscHandleT *handle);
 int pcscSetOpt (pcscHandleT *handle, pcscOptsE opt, unsigned long value);
 const char* pcscReaderName (pcscHandleT *handle);
 const char* pcscErrorMsg (pcscHandleT *handle);
-int pcscDisconnect (pcscHandleT *handle);
+u_int64_t pcscGetCardUuid (pcscHandleT *handle);
 
 int pcscReaderCheck (pcscHandleT *handle, int ticks);
-pthread_t pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
+unsigned long pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
+int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action);
+void* pcscGetCtx (pcscHandleT *handle);
 
+const pcscKeyT *pcscNewKey (const char *uid, u_int8_t *value, size_t len);
 int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer);
 int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key);
 int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long *dlen, const pcscKeyT *key);
-u_int64_t pcscGetCardUuid (pcscHandleT *handle);
-void* pcscGetCtx (pcscHandleT *handle);

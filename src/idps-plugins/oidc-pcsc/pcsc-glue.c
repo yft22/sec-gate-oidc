@@ -441,7 +441,7 @@ OnErrorExit:
 }
 
 // thread monitoring reader status change
-static void *pcscThreadMonitor (void *ptr) {
+static void *pcscMonitorThread (void *ptr) {
     pcscHandleT *handle = (pcscHandleT*)ptr;
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     long rv;
@@ -501,21 +501,47 @@ OnErrorExit:
 }
 
 // start a posix thread to monitor reader status
-pthread_t pcscReaderMonitor (pcscHandleT *handle, pcscStatusCbT callback, void *ctx) {
+unsigned long pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     handle->ctx= ctx;
     handle->callback=callback;
     int err;
 
-    err= pthread_create (&handle->threadId, NULL, pcscThreadMonitor, (void*) handle);
+    err= pthread_create (&handle->threadId, NULL, pcscMonitorThread, (void*) handle);
     if (err) goto OnErrorExit;
     return handle->threadId;
 
 OnErrorExit:
     handle->error= strerror(errno);
-    EXT_CRITICAL ("[pcsc-sccard-monitor] Fail start monitoring thread reader=%s. (pcscReaderMonitor err=%s)", handle->readerName, strerror(errno)) ;
+    EXT_CRITICAL ("[pcsc-sccard-monitor] Fail start monitoring thread reader=%s. (pcscMonitorReader err=%s)", handle->readerName, strerror(errno)) ;
     return 0;
 }
+
+// start a posix thread to monitor reader status
+int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action) {
+    assert (handle->magic == PCSC_HANDLE_MAGIC);
+
+    switch (action) {
+        case PCSC_MONITOR_WAIT:
+            pthread_join(handle->threadId, NULL); // infinit wait for monitor to quit
+            break;
+
+        case PCSC_MONITOR_TERMINATE:
+            pthread_kill (handle->threadId, SIGTERM); 
+            break;
+
+        default: 
+            goto OnErrorExit;
+    }
+
+    return (int)handle->threadId;
+
+OnErrorExit:
+    handle->error= strerror(errno);
+    EXT_CRITICAL ("[pcsc-sccard-monitor] Unknown action on monitor reader=%s. (pcscMonitorWait err=%s)", handle->readerName, strerror(errno)) ;
+    return 0;
+}
+
 
 int pcscDisconnect (pcscHandleT *handle) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
@@ -687,6 +713,16 @@ static size_t pcscMifareTrailer (pcscHandleT *handle, const pcscTrailerT *traile
 OnErrorExit:
     EXT_ERROR("[pcsc-trailer-fail] cmd=Mifare action=MkTrailer err=%s", handle->error);
     return 0;
+}
+
+const pcscKeyT *pcscNewKey (const char *uid, u_int8_t *value, size_t len) {
+    pcscKeyT *key= calloc (1,sizeof(pcscKeyT));
+    key->uid=uid;
+    key->kval= value;
+    key->klen=(u_int8_t) len;
+
+    if (!key->klen) key->klen=(u_int8_t) strlen((char*)value);
+    return key;
 }
 
 // Write trailer access control key/bits
