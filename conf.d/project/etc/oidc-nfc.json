@@ -9,7 +9,7 @@
   "extension": "libafb-sgate-oidc-ext.so",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
-  "binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
+  "binding" : [{"uid": "fedid-api", "path": "fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
   "@extconfig": {
     "sgate-oidc": {
 
@@ -25,37 +25,40 @@
 
       "idps": {
             "uid": "nfc-scard",
-            "type": "nfc-pcsc",
-            "info": "Authentication via NFC Mifare or smart-card http://downloads.acs.com.hk/drivers/en/API-ACR122U-2.02.pdf",
+            "type": "pcsc",
+            "info": "NFC Mifare/Classic smartcard authentication (check ",
+            "plugin": {
+                "ldpath": "libidp-sgate-pcsc-auth.so",
+                "config":     {
+                    "info" : "Mifare/Classic command samples",
+                    "reader": "acr122",
+                    "keys": [
+                        {"uid":"key-a", "idx": 0, "value":["0x01","0x02","0x03","0x04","0x05","0x06"]},
+                        {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]}      
+                    ],
+                    "cmds": [           
+                        {"uid":"fedid"   , "action":"uuid"},
+                        {"uid":"pseudo"  , "action":"read","sec": 1, "key":"key-a", "len": 24},
+                        {"uid":"email"   , "action":"read","sec": 2, "key":"key-a", "len": 24},
+                        {"uid":"name"    , "action":"read","sec": 3, "key":"key-a", "len": 24},
+                        {"uid":"company"  , "action":"read","sec": 4, "key":"key-a", "len": 24},
+                        {"uid":"admin"   , "action":"read","sec": 5, "key":"key-a", "len": 24},
+                        {"uid":"devel"   , "action":"read","sec": 5, "key":"key-a", "len": 24},
+                    ]
+                }
+            },
             "statics": {
-                "login": "/sgate/nfc/login",
-                "logo": "/sgate/nfc/logo-64px.png",
+                "login": "/sgate/nfc-auth/login",
+                "logo": "/sgate/nfc-auth/logo-64px.png",
                 "timeout": 900
             },
-            "plugin": {
-                "info": "provide pluging path and reader name/id",
-                "ldpath": "libidp-sgate-nfc-auth.so"
-            },
-            "schema":     {
-                "info" : "NFC command list",
-                "reader": "acr122",
-                "keys": [
-                    {"uid":"dflt-A", "idx": 0, "value": ["0xFF","0xFF","0xFF","0xFF","0xFF","0xFF"]},
-                    {"uid":"dflt-B", "idx": 1, "value": ["0xFF","0xFF","0xFF","0xFF","0xFF","0xFF"]}
-                ],
-                "cmds": [
-                    {"uid":"fedid", "action":"uuid"},
-                    {"uid":"user", "action":"read", "blk":1, "len":16, "key":"dflt-A"},
-                    {"uid":"admin", "action":"read", "blk":2, "len":16, "key":"dflt-A"}
-                ]
-            },
             "wellknown": {
-                "tokenid": "/sgate/nfc/login.html"
+                "tokenid": "/sgate/nfc-auth/login.html"
             },
             "profiles": [
                 {"uid":"basic", "loa":1, "scope":"fedid"},
-                {"uid":"roles", "loa":2, "scope":"fedid, user"},
-                {"uid":"roles", "loa":3, "scope":"fedid, user, admin"}
+                {"uid":"roles", "loa":2, "scope":"fedid,pseudo,name,email,company", "label":"devel"},
+                {"uid":"admin", "loa":3, "scope":"fedid,pseudo,name,email,company", "label":"admin"}
             ]
         },
 
@@ -70,7 +73,7 @@
         {"uid": "idp-common", "url":"/sgate/common", "path":"idps/common" },
         {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "path":"idps/github" },
         {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "path":"idps/pam" },
-        {"uid": "idp-nfc"    , "url":"/sgate/nfc"   ,"loa":0, "path":"idps/nfc" },
+        {"uid": "idp-nfc"    , "url":"/sgate/nfc-auth"   ,"loa":0, "path":"idps/pcsc-nfc" },
         {"uid": "idp-phantauth" , "url":"/sgate/phantauth"   ,"loa":0, "path":"idps/phantauth" },
         {"uid": "idp-onelogin" , "url":"/sgate/onelogin"   ,"loa":0, "path":"idps/onelogin" },
         {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },

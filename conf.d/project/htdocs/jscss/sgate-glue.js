@@ -325,3 +325,28 @@ function passwordUser(verb) {
     });
 
 }
+
+// wait for smart-card/nfc/mifare token authentication
+function pcscReadCard(verb) {
+    // call user-registration
+    var api="sgate";
+    var verb="nfc-scard"
+    var query= {"state": urlQuery["state"]};
+    log.command(api, verb, query);
+    ws.call(api + "/" + verb, query)
+    .then(function (res) {
+        log.reply(res);
+        // redirect to requested URL
+        window.location.replace(res.response.target);
+
+    })
+    .catch(function (err) {
+        var info= document.getElementById ("sgate_error");
+        if (info === null) {
+            window.alert("passwordUser() require <form id='sgate_error'> in page");
+           return;
+        }
+        info.innerText=err.response;
+        log.reply(err);
+    });
+}

@@ -239,12 +239,18 @@ idpParseOneProfil (oidcIdpT * idp, json_object * profileJ, oidcProfileT * profil
 {
     profile->sTimeout = idp->statics->sTimeout;
     profile->idp = idp;
-    int err = wrap_json_unpack (profileJ, "{ss,s?s,si,ss,s?s, s?i}", "uid",
-                                &profile->uid, "info", &profile->info, "loa",
-                                &profile->loa, "scope", &profile->scope, "label",
-                                &profile->label, "timeout", &profile->sTimeout);
+    int err = wrap_json_unpack (profileJ, "{ss,s?s,si,ss,s?s,s?s,s?i,s?i !}"
+        , "uid", &profile->uid
+        , "info", &profile->info
+        , "loa",  &profile->loa
+        , "scope", &profile->scope
+        , "label", &profile->label
+        , "labels", &profile->label
+        , "group",  &profile->group
+        , "timeout", &profile->sTimeout
+    );
     if (err) {
-        EXT_CRITICAL ("[idp-profile-error] idp=%s parsing fail profile expect: loa,scope (idpParseOneProfil)", idp->uid);
+        EXT_CRITICAL ("[idp-profile-error] idp=%s parsing fail expect: uid,loa,scope,label[s],timeout (idpParseOneProfil)", idp->uid);
         goto OnErrorExit;
     }
     return 0;

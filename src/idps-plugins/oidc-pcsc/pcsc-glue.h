@@ -82,6 +82,7 @@ int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action);
 void* pcscGetCtx (pcscHandleT *handle);
 
 const pcscKeyT *pcscNewKey (const char *uid, u_int8_t *value, size_t len);
+int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, unsigned long *dlen);
 int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer);
 int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key);
 int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long *dlen, const pcscKeyT *key);

@@ -5,6 +5,34 @@
     "version": "0.2.0",
     "configurations": [
         {
+            // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-html5.json
+            "name": "oidc-pcsc",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/local/bin/afb-binder",
+            "args": [
+              "--name=afb-oidc",
+              "--config=${workspaceFolder}/conf.d/project/etc/oidc-nfc.json",
+              "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
+              "--roothttp=.",
+              "--verbose",
+              "--trap-faults=no"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [{"name":"LD_LIBRARY_PATH", "value":"package/lib:package/lib/plugins:/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+              {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+              }
+            ],
+            "miDebuggerPath": "/usr/bin/gdb"
+          },
+          {
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-html5.json
           "name": "oidc-oauth2",
           "type": "cppdbg",
@@ -22,7 +50,7 @@
           ],
           "stopAtEntry": false,
           "cwd": "${workspaceFolder}/build",
-          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"package/lib:package/lib/plugins:/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
           "externalConsole": false,
           "MIMode": "gdb",
           "setupCommands": [
@@ -53,7 +81,7 @@
           ],
           "stopAtEntry": false,
           "cwd": "${workspaceFolder}/build",
-          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"package/lib:package/lib/plugins:/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
           "externalConsole": false,
           "MIMode": "gdb",
           "setupCommands": [
@@ -70,7 +98,7 @@
           "name": "sync-group-0",
           "type": "cppdbg",
           "request": "launch",
-          "program": "${workspaceFolder}/build/package/bin/pcsc-test",
+          "program": "${workspaceFolder}/build/package/bin/pcsc-client",
           "args": [
             "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
             "--verbose",
@@ -94,7 +122,7 @@
           "name": "async-group-0",
           "type": "cppdbg",
           "request": "launch",
-          "program": "${workspaceFolder}/build/package/bin/pcsc-test",
+          "program": "${workspaceFolder}/build/package/bin/pcsc-client",
           "args": [
             "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
             "--verbose",
@@ -119,7 +147,7 @@
           "name": "sync-group-1",
           "type": "cppdbg",
           "request": "launch",
-          "program": "${workspaceFolder}/build/package/bin/pcsc-test",
+          "program": "${workspaceFolder}/build/package/bin/pcsc-client",
           "args": [
             "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
             "--verbose",

@@ -39,6 +39,6 @@ typedef struct {
     const int  value;
 } nsKeyEnumT;
 
-int utillLabel2Value (const nsKeyEnumT *keyvals, const char *label);
+int utilLabel2Value (const nsKeyEnumT *keyvals, const char *label);
 char* utilsExpandJson (const char* src, json_object *keysJ);
 const char *utillValue2Label (const nsKeyEnumT *keyvals, const int value);

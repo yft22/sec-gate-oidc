@@ -35,6 +35,15 @@ typedef struct {
 } fedidSessionT;
 
 
+typedef enum {
+    OIDC_SCHEMA_UNKNOWN=0,
+    OIDC_SCHEMA_PSEUDO,
+    OIDC_SCHEMA_NAME,
+    OIDC_SCHEMA_EMAIL,
+    OIDC_SCHEMA_AVATAR,
+    OIDC_SCHEMA_COMPANY,
+} oidcFedidSchemaE;
+
 int fedidCheck (idpRqtCtxT *rqtCtx);
 void fedidsessionReset (int signal, void *ctx);
 

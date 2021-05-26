@@ -33,7 +33,7 @@
 
 
 // search for key label within key/value array
-int utillLabel2Value (const nsKeyEnumT *keyvals, const char *label) {
+int utilLabel2Value (const nsKeyEnumT *keyvals, const char *label) {
     int value=0;
     if (!label) goto OnDefaultExit;
 

@@ -72,6 +72,7 @@ typedef struct {
     const char *scope;
     const char *label;
     int loa;
+    int group;
     unsigned long tCache;
     unsigned long sTimeout;
     oidcIdpT *idp;

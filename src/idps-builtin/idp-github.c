@@ -322,11 +322,11 @@ static int githubLoginCB (afb_hreq * hreq, void *ctx) {
             }
         }
 
-        // if loa wreqed and no profile fit exit without trying authentication
+        // if loa working and no profile fit exit without trying authentication
         if (!profile)
             goto OnErrorExit;
 
-        // store wreqed profile to retreive attached loa and role filter if login succeded
+        // store working profile to retreive attached loa and role filter if login succeded
         afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
 
         httpKeyValT query[] = {

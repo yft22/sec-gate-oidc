@@ -29,6 +29,7 @@
 #include "oidc-alias.h"
 #include <http-client.h>
 #include "oidc-fedid.h"
+#include "oidc-utils.h"
 
 #include <assert.h>
 #include <string.h>
@@ -36,6 +37,16 @@
 
 MAGIC_OIDC_SESSION (oidcFedUserCookie);
 MAGIC_OIDC_SESSION (oidcFedSocialCookie);
+
+
+const nsKeyEnumT oidcFedidSchema[] = {
+    {"pseudo"  , OIDC_SCHEMA_PSEUDO},
+    {"name"    , OIDC_SCHEMA_NAME},
+    {"email"   , OIDC_SCHEMA_EMAIL},
+    {"avatar"  , OIDC_SCHEMA_AVATAR},
+    {"company" , OIDC_SCHEMA_COMPANY},
+    {NULL} // terminator
+};
 
 typedef struct {
     afb_hreq *hreq;
@@ -46,8 +57,7 @@ typedef struct {
 } oidcFedidHdlT;
 
 // session timeout, reset LOA
-void
-fedidsessionReset (int signal, void *ctx)
+void fedidsessionReset (int signal, void *ctx)
 {
     afb_session *session = (afb_session *) ctx;
 

@@ -174,15 +174,28 @@ OnErrorExit:
 }
 
 // get card UUID (block 0 read only execpt on Chineese smartcard)
-u_int64_t pcscCheckCardUuid (pcscHandleT *handle) {
+int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, unsigned long *dlen) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
-    UCHAR receiveBuffer[32];
-    DWORD receiveLength = sizeof(receiveBuffer);
     BYTE cmdData[] = {0xFF, 0xCA, 0x00, 0x00, 0x00};
+    long rv;
+
+    rv= pcscSendCmd (handle, uid, "read-uuid", cmdData, sizeof(cmdData), data, dlen);
+    if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+    return 0;
+
+OnErrorExit:
+    return -1;
+}
+
+// get card UUID (block 0 read only execpt on Chineese smartcard)
+static u_int64_t pcscGetCardUuidNum (pcscHandleT *handle) {
+    assert (handle->magic == PCSC_HANDLE_MAGIC);
+    UCHAR receiveBuffer[16];
+    DWORD receiveLength = sizeof(receiveBuffer);
     u_int64_t uuid=0;
     long rv;
 
-    rv= pcscSendCmd (handle, "scard-uuid", "get", cmdData, sizeof(cmdData), receiveBuffer, &receiveLength);
+    rv= pcscReadUuid (handle, "uuid", receiveBuffer, &receiveLength);
     if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
     for (int idx= 0; idx != receiveLength-2; idx++) {
         uuid <<= 8;
@@ -210,6 +223,9 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
         case ATR_MIFARE_1K:
         case ATR_MIFARE_4K:
+
+            // mifare only use block index
+            if (secIdx) blkIdx= (u_int8_t)(secIdx*4) + blkIdx;
 
             // assert request is possible
             if (lenToRead > 64L ||  lenToRead % 16L) {
@@ -285,6 +301,9 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
         case ATR_MIFARE_1K:
         case ATR_MIFARE_4K:
+
+            // mifare only use block index
+            if (secIdx) blkIdx= (u_int8_t)(secIdx*4) + blkIdx;
 
             // assert request is possible
             if (dataLen > 0x40 || dataLen % 16L) {
@@ -445,6 +464,7 @@ static void *pcscMonitorThread (void *ptr) {
     pcscHandleT *handle = (pcscHandleT*)ptr;
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     long rv;
+    int err;
 
     SCARD_READERSTATE rgReaderStates;
     rgReaderStates.szReader = handle->readerName; // reader ID to test
@@ -488,9 +508,10 @@ static void *pcscMonitorThread (void *ptr) {
             }
 
             if (handle->verbose) fprintf (stderr, "\n -- async: reader=%s status=0x%lx\n", handle->readerName, rgReaderStates.dwEventState);
-            handle->callback (handle, rgReaderStates.dwEventState);
+            err= handle->callback (handle, rgReaderStates.dwEventState);
+            if (err <0) goto OnErrorExit;
+            if (err >0) break; // normal exit
         }
-
     }
     return NULL;
 
@@ -671,7 +692,7 @@ u_int64_t pcscGetCardUuid (pcscHandleT *handle) {
     }
 
     // if uuid not store check it now
-    if (!handle->uuid) handle->uuid= pcscCheckCardUuid (handle);
+    if (!handle->uuid) handle->uuid= pcscGetCardUuidNum (handle);
     return (handle->uuid);
 
 OnErrorExit:

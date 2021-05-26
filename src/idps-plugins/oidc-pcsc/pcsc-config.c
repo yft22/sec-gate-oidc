@@ -46,6 +46,7 @@ static const pcscKeyEnumT pcscActionsE[] = {
     {"read"   , PCSC_ACTION_READ},
     {"write"  , PCSC_ACTION_WRITE},
     {"trailer", PCSC_ACTION_TRAILER},
+    {"uuid"   , PCSC_ACTION_UUID},
     {NULL} // terminator
 };
 
@@ -225,6 +226,11 @@ static int pcscParseOneCmd (pcscConfigT *config, json_object *cmdJ, pcscCmdT *cm
             cmd->dlen += PCSC_MIFARE_STATUS_LEN; // reserve 2 byte for Mifare read status
             break;
 
+        case PCSC_ACTION_UUID:
+            if (!cmd->dlen) cmd->dlen= sizeof (u_int64_t);
+            cmd->dlen += PCSC_MIFARE_STATUS_LEN; // reserve 2 byte for Mifare read status
+            break;
+
         case PCSC_ACTION_WRITE:
             if (!dataJ || cmd->dlen) {
                 EXT_CRITICAL ("[pcsc-onecmd-fail] uid=%s action=%s len:forbiden data:mandatory (pcscParseOneCmd)", cmd->uid,cmdAction);
@@ -385,6 +391,11 @@ int pcscExecOneCmd (pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data) {
 
         case PCSC_ACTION_TRAILER:
             err= pcsWriteTrailer (handle, cmd->uid, cmd->sec, cmd->blk, cmd->key, cmd->trailer);
+            if (err) goto OnErrorExit;
+            break;
+
+        case PCSC_ACTION_UUID:
+            err= pcscReadUuid (handle, cmd->uid, data, cmd->dlen);
             if (err) goto OnErrorExit;
             break;
 

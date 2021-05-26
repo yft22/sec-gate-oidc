@@ -27,7 +27,7 @@ PROJECT_TARGET_ADD(pcsc-auth)
 	    PRIVATE ${CMAKE_SOURCE_DIR}/src
     )
 
-PROJECT_TARGET_ADD(pcsc-test)
+PROJECT_TARGET_ADD(pcsc-client)
     add_executable(${TARGET_NAME} ${MAIN_SRC} ${COMMON_SRC})
   	target_link_libraries(${TARGET_NAME} PUBLIC PkgConfig::PCSC libafb.so json-c pthread)
 

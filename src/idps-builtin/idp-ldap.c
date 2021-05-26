@@ -383,7 +383,7 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
         }
     }
     if (!profile) {
-        EXT_NOTICE ("[ldap-check-scope] scope=%s does not match wreqed loa=%d", scope, aliasLoa);
+        EXT_NOTICE ("[ldap-check-scope] scope=%s does not match working loa=%d", scope, aliasLoa);
         goto OnErrorExit;
     }
     // check login password
@@ -438,7 +438,7 @@ static int ldapLoginCB (afb_hreq * hreq, void *ctx)
             }
         }
 
-        // if loa wreqed and no profile fit exit without trying authentication
+        // if loa working and no profile fit exit without trying authentication
         if (!profile) goto OnErrorExit;
 
         httpKeyValT query[] = {
@@ -449,7 +449,7 @@ static int ldapLoginCB (afb_hreq * hreq, void *ctx)
             {NULL}              // terminator
         };
 
-        // store wreqed profile to retreive attached loa and role filter if login succeded
+        // store working profile to retreive attached loa and role filter if login succeded
         afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
 
         // build wreq and send it

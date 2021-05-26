@@ -471,10 +471,10 @@ static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
             }
         }
 
-        // if loa wreqed and no profile fit exit without trying authentication
+        // if loa working and no profile fit exit without trying authentication
         if (!profile) goto OnErrorExit;
 
-        // store wreqed profile to retreive attached loa and role filter if login succeded
+        // store working profile to retreive attached loa and role filter if login succeded
         afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
 
         httpKeyValT query[] = {
@@ -485,7 +485,7 @@ static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
             {.tag = "scope",.value = profile->scope},
             {.tag = "redirect_uri",.value = redirectUrl},
             {.tag = "language",.value = setlocale (LC_CTYPE, "")},
-            {NULL}              // terminator
+            {NULL}  // terminator
         };
 
         // build wreq and send it
@@ -626,12 +626,12 @@ static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
 
     // search for IDP supported authentication method
     if (wellknown->authLabel) {
-        wellknown->authMethod =utillLabel2Value (idpAuthMethods, wellknown->authLabel);
+        wellknown->authMethod =utilLabel2Value (idpAuthMethods, wellknown->authLabel);
     } else {
         if (authMethodJ) {
             for (int idx=0; idx < json_object_array_length(authMethodJ); idx++) {
                 const char* method = json_object_get_string(json_object_array_get_idx(authMethodJ, idx));
-                wellknown->authMethod =utillLabel2Value (idpAuthMethods, method);
+                wellknown->authMethod =utilLabel2Value (idpAuthMethods, method);
                 if (wellknown->authMethod) {
                     wellknown->authLabel= method;
                     break;
@@ -645,13 +645,13 @@ static httpRqtActionT oidcDiscoveryCB (httpRqtT * httpRqt)
 
     // if response type not defined use from from idp remote wellknown
     if (wellknown->respondLabel) {
-        wellknown->respondType =utillLabel2Value (idpRespondTypes, wellknown->respondLabel);
+        wellknown->respondType =utilLabel2Value (idpRespondTypes, wellknown->respondLabel);
         if (!wellknown->respondType) goto OnErrorExit;
     } else {
             if (respondTypeJ) {
                 for (int idx=0; idx < json_object_array_length(respondTypeJ); idx++) {
                     const char* redpond = json_object_get_string(json_object_array_get_idx(respondTypeJ, idx));
-                    wellknown->respondType =utillLabel2Value (idpRespondTypes, redpond);
+                    wellknown->respondType =utilLabel2Value (idpRespondTypes, redpond);
                     if (wellknown->respondType) {
                         wellknown->respondLabel= redpond;
                         break;

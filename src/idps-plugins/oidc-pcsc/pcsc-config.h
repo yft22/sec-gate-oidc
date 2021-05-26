@@ -22,6 +22,7 @@ typedef enum {
     PCSC_ACTION_READ,
     PCSC_ACTION_WRITE,
     PCSC_ACTION_TRAILER,
+    PCSC_ACTION_UUID,
 } pcscActionE;
 
 typedef struct {

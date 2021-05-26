@@ -100,7 +100,7 @@ pcscParamsT *parseArgs(int argc, char *argv[]) {
     return params;
 
 OnErrorExit:
-	fprintf (stderr, "usage: pcsc-test --config=/xxx/my-config.json [--async] [--group=-+0-9] [--verbose] [--force]\n");
+	fprintf (stderr, "usage: pcsc-client --config=/xxx/my-config.json [--async] [--group=-+0-9] [--verbose] [--force]\n");
 	return NULL;
 }
 

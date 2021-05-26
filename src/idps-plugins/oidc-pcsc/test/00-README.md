@@ -30,14 +30,15 @@ Relies on use-space pcscd resource manager to read/write NFC scard/token.
 
 The code was testing with Mifare classic tokens but pcsc-lite supports most of CCID compliant tokens. Nevertheless note that each scard/token has it own flavor or API and data organization which may require config/code customization.
 
-https://ccid.apdu.fr/ccid/supported.html
+* https://ccid.apdu.fr/ccid/supported.html
+* https://www.outilsdespros.fr/historique-des-commandes
 
 ## Testing
 
-The simplest way to test your reader/token it to use pcsc-test with a custom config.json. Note that pcsc-test should be available for major Linux distributions.
+The simplest way to test your reader/token it to use pcsc-client with a custom config.json. Note that pcsc-client should be available for major Linux distributions.
 
 ```dotnetcli
- ~/$SOURCES/sec-gate-oidc/build> ./package/bin/pcsc-test --config=../src/idps-plugins/oidc-pcsc/test/simple-pcsc.json --group=0 --async --verbose
+ ~/$SOURCES/sec-gate-oidc/build> ./package/bin/pcsc-client --config=../src/idps-plugins/oidc-pcsc/test/simple-pcsc.json --group=0 --async --verbose
  -- Waiting: 1s events for reader=ACS ACR122U PICC Interface 00 00 (ctrl-C to quit)
  -- async: reader=ACS ACR122U PICC Interface 00 00 status=0x5e0012
  -- event: reader=ACS ACR122U PICC Interface 00 00 removed (waiting for new card)
@@ -83,7 +84,7 @@ Mifare-Classic support two keys A/B where both should have 6 bytes. Default keys
 
 ### Commands
 
-Each scard model has a private physical organization (page, sector, blocs, ...) as well as it own authentication and API capabilities. As said before oidc-pcsc was tested with Mifare-Classic, if you need to support a different card model you may have to tweak configuration and code. Note that command are store in order and pcsc-test execute then from config order.
+Each scard model has a private physical organization (page, sector, blocs, ...) as well as it own authentication and API capabilities. As said before oidc-pcsc was tested with Mifare-Classic, if you need to support a different card model you may have to tweak configuration and code. Note that command are store in order and pcsc-client execute then from config order.
 
 ```json
     "cmds": [
