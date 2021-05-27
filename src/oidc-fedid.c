@@ -30,6 +30,7 @@
 #include <http-client.h>
 #include "oidc-fedid.h"
 #include "oidc-utils.h"
+#include "oidc-idsvc.h"
 
 #include <assert.h>
 #include <string.h>
@@ -60,6 +61,7 @@ typedef struct {
 void fedidsessionReset (int signal, void *ctx)
 {
     afb_session *session = (afb_session *) ctx;
+    afb_event_t evtCookie = NULL;
 
     // signal should be null
     if (signal) return;
@@ -67,6 +69,15 @@ void fedidsessionReset (int signal, void *ctx)
     // reset session LOA (this will force authentication)
     afb_session_set_loa (session, oidcSessionCookie, 0);
     EXT_NOTICE ("[fedidsessionReset] timeout ?");
+
+    afb_data_t reply;
+    afb_session_cookie_get (session, idsvcEvtCookie, (void **) &evtCookie);
+    if (evtCookie) {
+        json_object *eventJ;
+        // create an API-V4 json param
+        afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_STRINGZ, eventJ, 0, (void *) json_object_put, eventJ);
+        afb_event_push (evtCookie, 1, &reply);
+    }
 }
 
 // if fedkey exists callback receive local store user profile otherwise we should create it
