@@ -102,9 +102,9 @@ Each command should have:
     * **read**: read one/multiple blocs
     * **write** read one/multiple blocs
     * **trailer**: write access control bit and authentication keys for a given sector.
-* **sec**: [optional] unuse with Mifare. Some token as NFC/type-2 requires a sector index. (default:0)
+* **sec**: [optional] With Mifare/classic sector is map to 4 blocks also (sec:1,block:1) is equivalent to (block:5). Some token as NFC/type-2 requires a sector index. (default:0)
 * **blk**: [mandatory] block index for read and write commands.
-* **len**: [mandatory for read] specify amount of data to read. *Warning: it is application responsibility to provided a buffer big enough to hold data.*
+* **len**: [mandatory/read, optional/write] specify amount of data to read. With write action, 'len' is the maximum of data written, any remaining input is silently ignored. *Warning: it is application responsibility to provided a buffer big enough to hold read data.*
 * **value**: [mandatory for write/trailer] provide information to write on the scard. The information may by provided in hexa or ascii form. Warning: depending on token/scard model writable size diverge. Mifare only support 0x10,0x20,x30 value length. Last bloc written with trailer command is reserved for access control bits/keys.
 
 

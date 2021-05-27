@@ -111,7 +111,7 @@ A json array defining each authentication authority. Default authority are oAith
     },
     "profiles": [
         {"uid":"basic", "loa":1, "scope":"user:email"},
-        {"uid":"teams", "loa":2, "scope":"read:org", "label":"organizations_url"}
+        {"uid":"teams", "loa":2, "scope":"read:org", "attrs":"organizations_url"}
     ]
 }
 ```
@@ -145,7 +145,8 @@ A json array defining each authentication authority. Default authority are oAith
   * **uid**: unique profile label
   * **loa**: level of assurance attached to this IDP profile
   * **scope**: scope request when requesting authentication
-  * **label**: custom IDP label. It is used to request further identity information from IDP services. In the case of github 'organizations_url' is the json key used to return organizations a user belows to.
+  * **slave**: secondary authentication only, this profile should to be initially link to a main profile
+  * **attrs**: custom IDP attributes string. It is used to request further identity information from IDP services. In the case of github 'organizations_url' is the json key used to return organizations a user belows to.
 
 ### API section
 

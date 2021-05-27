@@ -105,7 +105,9 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
         goto OnErrorExit;
     }
 
-    if (argc != 1) {  // feduser was not created
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfil);
+    if (argc != 1) {  // fedid is not registered and we are not facing a secondary authentication
+        const char *targetUrl;
 
         // fedkey not fount let's store social authority profile into session and redirect user on userprofil creation
         afb_session_cookie_set (session, oidcFedUserCookie, idpRqtCtx->fedUser, fedUserFreeCB, idpRqtCtx->fedUser);
@@ -117,8 +119,13 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
             {NULL}              // terminator
         };
 
+        if (idpProfil->slave) {
+            targetUrl= idpRqtCtx->idp->oidc->globals->fedlinkUrl; 
+        } else {
+            targetUrl= idpRqtCtx->idp->oidc->globals->registerUrl;
+        }    
         if (hreq) {
-            err = httpBuildQuery (idpRqtCtx->idp->uid, url, sizeof (url), NULL /* prefix */ , idpRqtCtx->idp->oidc->globals->registerUrl, query);
+            err = httpBuildQuery (idpRqtCtx->idp->uid, url, sizeof (url), NULL /* prefix */ , targetUrl, query);
             if (err) {
                 EXT_ERROR ("[fedid-register-unknown] fail to build redirect url");
                 goto OnErrorExit;
@@ -126,7 +133,8 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
         } else {
             target = idpRqtCtx->idp->oidc->globals->registerUrl;
         }
-    } else {     // feduser is avaliable
+
+    } else { // fedid is already registered
 
         err = afb_data_convert (argv[0], fedUserObjType, &argd[0]);
         if (err < 0) goto OnErrorExit;

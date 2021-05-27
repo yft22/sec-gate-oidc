@@ -165,8 +165,8 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
     rqtCtx->fedUser= fedUser;
 
     // user is ok, let's map user organisation onto security attributes
-    if (rqtCtx->profile->label) {
-        const char *organizationsUrl = json_object_get_string (json_object_object_get (profileJ, rqtCtx->profile->label));
+    if (rqtCtx->profile->attrs) {
+        const char *organizationsUrl = json_object_get_string (json_object_object_get (profileJ, rqtCtx->profile->attrs));
         if (organizationsUrl) {
             githubGetAttrsByToken (rqtCtx, organizationsUrl);
         }

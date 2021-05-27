@@ -99,7 +99,7 @@
             },
             "profiles": [
                 {"uid":"basic", "loa":1, "scope":"user:email"},
-                {"uid":"teams", "loa":2, "scope":"read:org", "label":"organizations_url"}
+                {"uid":"teams", "loa":2, "scope":"read:org", "attrs":"organizations_url"}
             ]
         }
       ],

@@ -70,9 +70,10 @@ typedef struct {
     const char *uid;
     const char *info;
     const char *scope;
-    const char *label;
+    const char *attrs;
     int loa;
     int group;
+    int slave;
     unsigned long tCache;
     unsigned long sTimeout;
     oidcIdpT *idp;

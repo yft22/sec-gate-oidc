@@ -83,35 +83,41 @@ static pcscKeyT *pcscKeyByUid (pcscConfigT *config, const char *keyUid) {
     return key;
 }
 
-// parse keys or command value as asci string or hexa array
-static int pcscParseOneValue (json_object *valueJ, u_int8_t **value, unsigned long *len)
+// parse keys or command data as asci string or hexa array
+static int pcscParseOneData (json_object *dataJ, u_int8_t **data, unsigned long *dlen)
 {
-    switch (json_object_get_type (valueJ)) {
-        const char *byteS, *valueS;
+    switch (json_object_get_type (dataJ)) {
+        const char *byteS, *dataS;
         u_int8_t *valueB;
         int err, byte;
         size_t count;
 
         case json_type_string:
-            valueS= json_object_get_string (valueJ);
-            *len= strlen(valueS);
-            *value=(u_int8_t*) strdup(valueS);
+            dataS= json_object_get_string (dataJ);
+            // if no dlen then use data string len
+            if (!*dlen) {
+                *dlen= strlen(dataS);
+                *data=(u_int8_t*) strdup(dataS);
+            } else {
+                *data= malloc (*dlen);
+                strncpy ((char*)*data, dataS, *dlen);
+            }
             break;
 
         case json_type_array:
-            count = json_object_array_length(valueJ);
+            count = json_object_array_length(dataJ);
             valueB= calloc (count+1, sizeof(u_int8_t));
 
             for (int idx=0; idx < count; idx++) {
-                byteS= json_object_get_string (json_object_array_get_idx(valueJ, idx));
+                byteS= json_object_get_string (json_object_array_get_idx(dataJ, idx));
                 err= sscanf (byteS, "0x%2x", &byte);
                 if (err <0) goto OnErrorExit;
                 if (byte > 255) goto OnErrorExit;
                 valueB[idx]= (u_int8_t)byte;
             }
 
-            *len= count;
-            *value= valueB;
+            *dlen= count;
+            *data= valueB;
             break;
 
         default:
@@ -121,7 +127,7 @@ static int pcscParseOneValue (json_object *valueJ, u_int8_t **value, unsigned lo
     return 0;
 
 OnErrorExit:
-    EXT_CRITICAL ("[pcsc-onevalue-fail] key/cmd value should be asci/string or array of hexa/string (pcscParseOneValue)");
+    EXT_CRITICAL ("[pcsc-onevalue-fail] key/cmd data should be asci/string or array of hexa/string (pcscParseOneData)");
     return -1;
 }
 
@@ -143,7 +149,7 @@ static int pcscParseOneKey (pcscConfigT *config, json_object *keyJ, pcscKeyT *ke
 
     // value should be an asci string or an array of hexa valueB
     unsigned long klen;
-    err= pcscParseOneValue (valueJ, &key->kval, &klen);
+    err= pcscParseOneData (valueJ, &key->kval, &klen);
     if (err) goto OnErrorExit;
     key->klen= (uint8_t)klen;
 
@@ -180,7 +186,7 @@ static int pcscParseOneTrailer (pcscConfigT *config, json_object *trailerJ, pcsc
 
     // value should be an asci string or an array of hexa valueB
     unsigned long alen;
-    err= pcscParseOneValue (valueJ, &response->acls, &alen);
+    err= pcscParseOneData (valueJ, &response->acls, &alen);
     if (err || alen != 4) goto OnErrorExit;
     response->alen= (uint8_t)alen;
 
@@ -232,11 +238,11 @@ static int pcscParseOneCmd (pcscConfigT *config, json_object *cmdJ, pcscCmdT *cm
             break;
 
         case PCSC_ACTION_WRITE:
-            if (!dataJ || cmd->dlen) {
-                EXT_CRITICAL ("[pcsc-onecmd-fail] uid=%s action=%s len:forbiden data:mandatory (pcscParseOneCmd)", cmd->uid,cmdAction);
+            if (!dataJ) {
+                EXT_CRITICAL ("[pcsc-onecmd-fail] uid=%s action=%s data:mandatory (pcscParseOneCmd)", cmd->uid,cmdAction);
                 goto OnErrorExit;
             }
-            err= pcscParseOneValue (dataJ, &cmd->data, &cmd->dlen);
+            err= pcscParseOneData (dataJ, &cmd->data, &cmd->dlen);
             if (err) goto OnErrorExit;
             break;
 
@@ -395,7 +401,7 @@ int pcscExecOneCmd (pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data) {
             break;
 
         case PCSC_ACTION_UUID:
-            err= pcscReadUuid (handle, cmd->uid, data, cmd->dlen);
+            err= pcscReadUuid (handle, cmd->uid, data, &dlen);
             if (err) goto OnErrorExit;
             break;
 

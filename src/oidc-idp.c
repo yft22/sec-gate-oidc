@@ -239,14 +239,14 @@ idpParseOneProfil (oidcIdpT * idp, json_object * profileJ, oidcProfileT * profil
 {
     profile->sTimeout = idp->statics->sTimeout;
     profile->idp = idp;
-    int err = wrap_json_unpack (profileJ, "{ss,s?s,si,ss,s?s,s?s,s?i,s?i !}"
+    int err = wrap_json_unpack (profileJ, "{ss,s?s,si,ss,s?s,s?i,s?i,s?i !}"
         , "uid", &profile->uid
         , "info", &profile->info
         , "loa",  &profile->loa
         , "scope", &profile->scope
-        , "label", &profile->label
-        , "labels", &profile->label
+        , "attrs", &profile->attrs
         , "group",  &profile->group
+        , "slave",  &profile->slave
         , "timeout", &profile->sTimeout
     );
     if (err) {

@@ -178,14 +178,14 @@ static void ldapAccessAttrs (idpRqtCtxT *idpRqtCtx) {
     };
 
      // asynchronous wreq to LDAP to check passwd and retreive user groups
-    EXT_DEBUG ("[curl-ldap-attrs] curl -u '%s:my_secret_passwd' '%s'\n", ldapRqtCtx->userdn, curlQuery);
+    EXT_DEBUG ("[curl-ldap-attrs] curl -u '%s:my_secret_passwd' '%s'", ldapRqtCtx->userdn, curlQuery);
     int err = httpSendGet (ldapRqtCtx->httpPool, curlQuery, &curlOpts, NULL, ldapAccessAttrsCB, idpRqtCtx);
     if (err) goto OnErrorExit;
 
     return;
 
   OnErrorExit:
-    EXT_ERROR ("[curl-ldap-error] curl -u '%s:my_secret_passwd' '%s'\n", ldapRqtCtx->userdn, curlQuery);
+    EXT_ERROR ("[curl-ldap-error] curl -u '%s:my_secret_passwd' '%s'", ldapRqtCtx->userdn, curlQuery);
     return;
 }
 
@@ -343,8 +343,6 @@ static int ldapAccessProfile (oidcIdpT * idp, const char *login, const char *pas
     idpRqtCtxFree(idpRqtCtx);
     return 1;
 }
-
-
 
 // check user email/pseudo attribute
 static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct afb_data *const params[])

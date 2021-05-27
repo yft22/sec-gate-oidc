@@ -10,6 +10,7 @@
         {"uid":"public-read" , "group": 0, "action":"read", "blk": 1, "len": 16},
         {"uid":"public-write", "group": 0, "action":"write","blk": 2, "data": "abcdefghijklmnop"},
         {"uid":"public-read" , "group": 0, "action":"read", "blk": 2, "len": 16},
+        {"uid":"public-ascii", "group": 0, "action":"write","sec": 4, "data": "toto,titi,tata", "len":32},
 
         {"uid":"set-acls"   , "group": 2, "action":"trailer", "blk": 27, "key":"dfltA", "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0xF0","0xF7","0x80","0x00"]}},
 

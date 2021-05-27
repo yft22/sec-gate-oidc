@@ -42,8 +42,8 @@
                         {"uid":"email"   , "action":"read","sec": 2, "key":"key-a", "len": 24},
                         {"uid":"name"    , "action":"read","sec": 3, "key":"key-a", "len": 24},
                         {"uid":"company"  , "action":"read","sec": 4, "key":"key-a", "len": 24},
-                        {"uid":"admin"   , "action":"read","sec": 5, "key":"key-a", "len": 24},
-                        {"uid":"devel"   , "action":"read","sec": 5, "key":"key-a", "len": 24},
+                        {"uid":"roles"   , "action":"read","sec": 5, "key":"key-a", "len": 24},
+                        {"uid":"apps"   , "action":"read","sec": 5, "key":"key-a", "len": 24},
                     ]
                 }
             },
@@ -56,9 +56,9 @@
                 "tokenid": "/sgate/nfc-auth/login.html"
             },
             "profiles": [
-                {"uid":"basic", "loa":1, "scope":"fedid"},
-                {"uid":"roles", "loa":2, "scope":"fedid,pseudo,name,email,company", "label":"devel"},
-                {"uid":"admin", "loa":3, "scope":"fedid,pseudo,name,email,company", "label":"admin"}
+              {"uid":"basic", "loa":1, "scope":"fedid,pseudo,name,email,company"},
+              {"uid":"linked","loa":2, "scope":"fedid", "slave":true},
+              {"uid":"admin", "loa":3, "scope":"fedid,pseudo,name,email,company", "attrs":"roles,apps"}
             ]
         },
 
