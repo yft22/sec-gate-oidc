@@ -97,6 +97,8 @@ pcscParamsT *parseArgs(int argc, char *argv[]) {
 		}
 	}
 
+    if (!params->cnfpath) goto OnErrorExit;
+
     return params;
 
 OnErrorExit:
@@ -115,7 +117,7 @@ static int execGroupCmd (pcscHandleT *handle, pcscParamsT *params) {
         const pcscCmdT *cmd= &config->cmds[idx];
         u_int8_t data[cmd->dlen];
 
-        if (params->group >= abs(cmd->group)  || params->group == abs(cmd->group)) {
+        if (params->group >= cmd->group  || abs(params->group) == cmd->group) {
             jump=1;
             err= pcscExecOneCmd (handle, cmd, data);
             if (err) {

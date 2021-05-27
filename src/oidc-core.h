@@ -44,6 +44,7 @@ typedef struct idpPluginS idpPluginT;
 #define URL_OIDC_AUTH_CACHE  5000       // 5sec alias authen cache
 
 #define STATUS_OIDC_AUTH_DENY 403
+#define STATUS_OIDC_LOA_RESET 423
 
 typedef struct {
     const char *loginUrl;

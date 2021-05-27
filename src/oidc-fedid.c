@@ -62,6 +62,7 @@ void fedidsessionReset (int signal, void *ctx)
 {
     afb_session *session = (afb_session *) ctx;
     afb_event_t evtCookie = NULL;
+    oidcIdpT *idpProfil;
 
     // signal should be null
     if (signal) return;
@@ -72,8 +73,16 @@ void fedidsessionReset (int signal, void *ctx)
 
     afb_data_t reply;
     afb_session_cookie_get (session, idsvcEvtCookie, (void **) &evtCookie);
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfil);
+
     if (evtCookie) {
         json_object *eventJ;
+        wrap_json_pack (&eventJ, "{ss ss ss* ss*}"
+        , "status", "loa-reset"
+        , "home" , idpProfil->oidc->globals->homeUrl ? : "/"
+        , "login", idpProfil->oidc->globals->loginUrl
+        , "error", idpProfil->oidc->globals->errorUrl
+    );
         // create an API-V4 json param
         afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_STRINGZ, eventJ, 0, (void *) json_object_put, eventJ);
         afb_event_push (evtCookie, 1, &reply);

@@ -113,7 +113,16 @@ static long pcscSendCmd (pcscHandleT *handle, const char *cmdUid, const char *ac
     }
 
     if (handle->verbose) {
+        int ascii=0;
     	printf(" -- len=%lu/%lu received: [", *dataLen, bufferLen);
+        for (int idx=0; idx< *dataLen; idx++) {
+            if (!dataBuf[idx]) break;
+            if (dataBuf[idx] >= ' ' && dataBuf[idx] <= '~') {
+                fwrite(&dataBuf[idx], sizeof(char), 1, stdout);
+                ascii=1;
+            }
+        }
+        if (ascii) printf ("] [");
 	    for (int idx=0; idx< *dataLen; idx++) printf("0x%02X,", dataBuf[idx]);
 	    printf("]\n");
     }
@@ -225,10 +234,13 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
         case ATR_MIFARE_4K:
 
             // mifare only use block index
-            if (secIdx) blkIdx= (u_int8_t)(secIdx*4) + blkIdx;
+            if (secIdx) {
+                blkIdx= (u_int8_t)(secIdx*4) + blkIdx;
+                secIdx=0;
+            }
 
             // assert request is possible
-            if (lenToRead > 64L ||  lenToRead % 16L) {
+            if (lenToRead > 48L ||  lenToRead % 16L) {
                 handle->error= "Invalid ATR_MIFARE_CLASSIC dlen should be mod/16";
                 goto OnErrorExit;
             }
@@ -296,14 +308,17 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
     u_int8_t keyIdx;
     BYTE status[32];
 
-    if (handle->verbose) fprintf (stderr, "\n# pcsWriteBlock reader=%s cmd=%s scard=%ld blk=%d dlen=%ld\n", handle->readerName, uid, handle->uuid, blkIdx, dataLen);
+    if (handle->verbose) fprintf (stderr, "\n# pcsWriteBlock reader=%s cmd=%s scard=%ld blk=%d dlen=%ld\n", handle->readerName, uid, handle->uuid, secIdx*4+blkIdx, dataLen);
     switch (handle->cardId) {
 
         case ATR_MIFARE_1K:
         case ATR_MIFARE_4K:
 
             // mifare only use block index
-            if (secIdx) blkIdx= (u_int8_t)(secIdx*4) + blkIdx;
+            if (secIdx) {
+                blkIdx= (u_int8_t)(secIdx*4) + blkIdx;
+                secIdx= 0;
+            }
 
             // assert request is possible
             if (dataLen > 0x40 || dataLen % 16L) {

@@ -41,9 +41,9 @@
                         {"uid":"pseudo"  , "action":"read","sec": 1, "key":"key-a", "len": 24},
                         {"uid":"email"   , "action":"read","sec": 2, "key":"key-a", "len": 24},
                         {"uid":"name"    , "action":"read","sec": 3, "key":"key-a", "len": 24},
-                        {"uid":"company"  , "action":"read","sec": 4, "key":"key-a", "len": 24},
+                        {"uid":"company" , "action":"read","sec": 4, "key":"key-a", "len": 24},
                         {"uid":"roles"   , "action":"read","sec": 5, "key":"key-a", "len": 24},
-                        {"uid":"apps"   , "action":"read","sec": 5, "key":"key-a", "len": 24},
+                        {"uid":"apps"    , "action":"read","sec": 6, "key":"key-a", "len": 24},
                     ]
                 }
             },

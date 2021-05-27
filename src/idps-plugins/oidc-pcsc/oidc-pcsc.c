@@ -85,6 +85,7 @@ typedef struct {
    pcscOptsT *opts;
    const char *scope;
    const char *label;
+   afb_session *session;
 } pcscRqtCtxT;
 
 static void pcscRqtCtxFree (pcscRqtCtxT *rqt) {
@@ -96,18 +97,16 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
     pcscRqtCtxT *pcscRqtCtx= (pcscRqtCtxT*) pcscGetCtx(handle);
     idpRqtCtxT  *idpRqtCtx= pcscRqtCtx->idpRqtCtx;
     pcscOptsT   *pcscOpts= pcscRqtCtx->opts;
+    int inserted=0, status=0;
     int err;
 
-    if (!(state & SCARD_STATE_EMPTY)) {
-        afb_session *session;
+    // is card was previously inserted logout user (session loa=0)
+    if ((state & SCARD_STATE_EMPTY) && inserted) {
         EXT_DEBUG ("[pcsc-monitor-absent] card removed from reader (reseting session)\n");
-
-        if (idpRqtCtx->hreq) session = idpRqtCtx->hreq->comreq.session;
-        if (idpRqtCtx->wreq) session = afb_req_v4_get_common(idpRqtCtx->wreq)->session;
-        if (!session) goto OnErrorExit;
-
-        // logout user (session loa=0)
-        fedidsessionReset (0, session);      
+        assert (pcscRqtCtx->session);
+        fedidsessionReset (0, pcscRqtCtx->session);
+        pcscRqtCtxFree(pcscRqtCtx);
+        status=1; // terminate thread 
     } 
 
     if (state & SCARD_STATE_PRESENT) {
@@ -115,14 +114,13 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
         // reserve federation and social user structure
         idpRqtCtx->fedSocial= calloc (1, sizeof (fedSocialRawT));
         idpRqtCtx->fedUser= calloc (1, sizeof (fedUserRawT));
-
         const char *cmdUid;
         u_int64_t uuid;
         char *data;
 
         // map scope to pcsc commands
         char *tokstring = strdup (pcscRqtCtx->scope);
-        for (cmdUid = strtok (tokstring, ","); cmdUid; tokstring = strtok (NULL, ",")) {
+        for (cmdUid = strtok (tokstring, ","); cmdUid; cmdUid = strtok (NULL, ",")) {
             pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, cmdUid);
             if (!cmd) {
                 EXT_ERROR ("[pcsc-cmd-uid] command=%s not found", cmdUid);
@@ -183,7 +181,7 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
             int index=0;
             idpRqtCtx->fedSocial->attrs= calloc (pcscOpts->labelMax+1, sizeof(char*));
             tokstring = strdup (pcscRqtCtx->label);
-            for (cmdUid = strtok (tokstring, ","); cmdUid; tokstring = strtok (NULL, ",")) {
+            for (cmdUid = strtok (tokstring, ","); cmdUid; cmdUid = strtok (NULL, ",")) {
                 pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, cmdUid);
                 if (!cmd || cmd->action != PCSC_ACTION_READ) {
                     EXT_ERROR ("[pcsc-cmd-label] label=%s does does match any read command", cmdUid);
@@ -199,7 +197,7 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
                 // parse ttrs string to extract multi-attributes if any
                 char *attrsTok= strdup(data);
                 char *attribute;
-                for (attribute = strtok (attrsTok, ","); attribute; attrsTok = strtok (NULL, ",")) {
+                for (attribute = strtok (attrsTok, ","); attribute; attribute = strtok (NULL, ",")) {
                     idpRqtCtx->fedSocial->attrs[index++] = strdup (attribute);
                     if (index == pcscOpts->labelMax) {
                         EXT_ERROR ("[pcsc-cmd-label] ignored labels command=%s maxlabel=%d too small labels=%s", cmd->uid, pcscOpts->labelMax, pcscRqtCtx->scope);
@@ -209,14 +207,16 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
             }
             free (tokstring);
         }
+        // do federate authentication
+        err = fedidCheck (idpRqtCtx);
+        if (err) goto OnErrorExit;
+
+        inserted=1; // stop thread as soon as card is removed
+        status=0;   // keep thread running
     }
-    // do federate authentication
-    err = fedidCheck (idpRqtCtx);
-    if (err) goto OnErrorExit;
 
     // we done idpRqtCtx is cleared by fedidCheck
-    pcscRqtCtxFree(pcscRqtCtx);
-    return 1; // terminate thread normal exit
+    return status;
 
 OnErrorExit:
     {
@@ -243,21 +243,25 @@ static int pcscScardGet (oidcIdpT * idp, const oidcProfileT *profile, unsigned l
 {
     pcscOptsT *pcscOpts= (pcscOptsT*) idp->ctx;
 
+    // store pcsc context within idp request one
+    idpRqtCtxT *idpRqtCtx= calloc (1, sizeof(idpRqtCtxT));
+    idpRqtCtx->hreq= hreq;
+    idpRqtCtx->wreq= wreq;
+    idpRqtCtx->idp= idp;
+
     // prepare context for pcsc monitor callbacks
     pcscRqtCtxT *pcscRqtCtx= calloc (1, sizeof(pcscRqtCtxT));
     pcscRqtCtx->pin=pin;
     pcscRqtCtx->scope=profile->scope;
     pcscRqtCtx->label=profile->attrs;
     pcscRqtCtx->opts= pcscOpts;
+    pcscRqtCtx->idpRqtCtx= idpRqtCtx;
 
-    // store pcsc context within idp request one
-    idpRqtCtxT *idpRqtCtx= calloc (1, sizeof(idpRqtCtxT));
-    idpRqtCtx->hreq= hreq;
-    idpRqtCtx->wreq= wreq;
-    idpRqtCtx->idp= idp;
-    idpRqtCtx->userData= (void*)pcscRqtCtx;
 
-    unsigned long tid= pcscMonitorReader (pcscOpts->handle, readerMonitorCB, (void*)idpRqtCtx);
+    if (idpRqtCtx->hreq) pcscRqtCtx->session= idpRqtCtx->hreq->comreq.session;
+    if (idpRqtCtx->wreq) pcscRqtCtx->session= afb_req_v4_get_common (wreq)->session;
+
+    unsigned long tid= pcscMonitorReader (pcscOpts->handle, readerMonitorCB, (void*)pcscRqtCtx);
     if (tid <= 0) goto OnErrorExit;
 
     return 0;
@@ -328,6 +332,8 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
     err = pcscScardGet (idp, profile, pinCode, /*hreq*/NULL, wreq);
     if (err) goto OnErrorExit;
 
+    // response is handle asynchronously
+    afb_req_addref (wreq);
     return;
 
   OnErrorExit:
@@ -411,8 +417,7 @@ int pcscLoginCB (afb_hreq * hreq, void *ctx)
         err = pcscScardGet (idp, profile, pinCode, hreq, NULL /*wreq*/);
         if (err) goto OnErrorExit;
     }
-
-    return 0; // we're done
+    return 1; // we're done
 
   OnErrorExit:
     afb_hreq_redirect_to (hreq, idp->oidc->globals->loginUrl, HREQ_QUERY_INCL, HREQ_REDIR_TMPY);
@@ -427,7 +432,6 @@ int pcscRegisterApis (oidcIdpT * idp, struct afb_apiset *declare_set, struct afb
     //err= afb_api_add_verb(idp->oidc->apiv4, idp->uid, idp->info, checkLoginVerb, idp, NULL, 0, 0);
     err = afb_api_v4_add_verb_hookable (idp->oidc->apiv4, idp->uid, idp->info, checkLoginVerb, idp, NULL, 0, 0);
     if (err) goto OnErrorExit;
-
     return 0;
 
   OnErrorExit:
@@ -490,9 +494,6 @@ static int pcscRegisterConfig (oidcIdpT * idp, json_object * idpJ)
     pcscSetOpt (pcscOpts->handle, PCSC_OPT_VERBOSE, pcscOpts->config->verbose);
     pcscSetOpt (pcscOpts->handle, PCSC_OPT_TIMEOUT, pcscOpts->config->timeout);
 
-    // store default plugin options with idp context
-    idp->ctx= (void*) pcscOpts;
-
     // only default profile is usefull
     oidcDefaultsT defaults = {
         .profiles = dfltProfiles,
@@ -503,9 +504,8 @@ static int pcscRegisterConfig (oidcIdpT * idp, json_object * idpJ)
     };
 
     // delegate config parsing to common idp utility callbacks
-    err = idpCallbacks->parseConfig (idp, idpJ, &defaults, NULL);
+    err = idpCallbacks->parseConfig (idp, idpJ, &defaults, pcscOpts);
     if (err) goto OnErrorExit;
-
 
     return 0;
 

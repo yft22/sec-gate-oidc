@@ -168,8 +168,13 @@ aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
             if (alias->loa > sessionLoa && sessionLoa != abs (alias->loa)) {
                 json_object *eventJ;
 
-                wrap_json_pack (&eventJ, "{si ss ss si si}", "status", STATUS_OIDC_AUTH_DENY, "uid", alias->uid, "url", alias->url, "loa-target", alias->loa,
-                                "loa-session", sessionLoa);
+                wrap_json_pack (&eventJ, "{ss ss ss si si}"
+                    , "status", "loa-mismatch"
+                    , "uid", alias->uid
+                    , "url", alias->url
+                    , "loa-target", alias->loa
+                    , "loa-session", sessionLoa
+                    );
 
                 // try to push event to notify the access deny and replay with redirect to login
                 idscvPushEvent (hreq, eventJ);

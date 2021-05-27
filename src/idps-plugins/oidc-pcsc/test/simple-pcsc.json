@@ -7,14 +7,21 @@
         {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]}
     ],
     "cmds": [
-        {"uid":"public-read" , "group": 0, "action":"read", "blk": 1, "len": 16},
-        {"uid":"public-write", "group": 0, "action":"write","blk": 2, "data": "abcdefghijklmnop"},
-        {"uid":"public-read" , "group": 0, "action":"read", "blk": 2, "len": 16},
-        {"uid":"public-ascii", "group": 0, "action":"write","sec": 4, "data": "toto,titi,tata", "len":32},
+        {"uid":"public-read"  ,"group":0,"action":"read" ,"blk":1,"len":16},
+        {"uid":"public-write" ,"group":0,"action":"write","blk":2,"data": "abcdefghijklmnop"},
+        {"uid":"public-read"  ,"group":0,"action":"read" ,"blk":2,"len":16},
+        {"uid":"public-ascii" ,"group":0,"action":"write","sec":4,"len":32,"data":"toto,titi,tata"},
 
-        {"uid":"set-acls"   , "group": 2, "action":"trailer", "blk": 27, "key":"dfltA", "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0xF0","0xF7","0x80","0x00"]}},
+        // provisioning card with default key (new card)
+        {"uid":"write-pseudo" ,"group":1,"action":"write","sec":1,"len":48,"data":"fulup-bzh"},
+        {"uid":"write-email"  ,"group":1,"action":"write","sec":2,"len":48,"data":"fulup@iot.bzh"},
+        {"uid":"write-name"   ,"group":1,"action":"write","sec":3,"len":48,"data":"Fulup Le Foll"},
+        {"uid":"write-company","group":1,"action":"write","sec":4,"len":48,"data":"IoT.bzh"},
+        {"uid":"write-roles"  ,"group":1,"action":"write","sec":5,"len":48,"data":"role1,role2,role3"},
+        {"uid":"write-apps"   ,"group":1,"action":"write","sec":6,"len":48,"data":"app1,app2,app3"},
 
-        {"uid":"keyB-write"  , "group": 1, "action":"write","blk": 26, "key":"key-b", "data": "abcdefghijklmnop"},
-        {"uid":"keyA-read"   , "group": 1, "action":"read","blk": 26, "key":"key-a", "len": 16},
+        {"uid":"read-pseudo" ,"group":1,"action":"read","sec":1,"len":48},
+
+        // {"uid":"set-acls"  , "group": 2, "action":"trailer","sec":1,"blk":3, "key":"dfltA", "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0xF0","0xF7","0x80","0x00"]}},
     ]
 }

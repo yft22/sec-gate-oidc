@@ -144,14 +144,14 @@
         },
         {
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "sync-group-1",
+          "name": "sync-group-1-only",
           "type": "cppdbg",
           "request": "launch",
           "program": "${workspaceFolder}/build/package/bin/pcsc-client",
           "args": [
             "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
             "--verbose",
-            "--group=1",
+            "--group=-1",
           ],
           "stopAtEntry": true,
           "cwd": "${workspaceFolder}/build",
