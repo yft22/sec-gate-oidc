@@ -16,6 +16,8 @@
               "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
               "--roothttp=.",
               "--verbose",
+              "--verbose",
+              "--verbose",
               "--trap-faults=no"
             ],
             "stopAtEntry": false,
@@ -151,7 +153,8 @@
           "args": [
             "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
             "--verbose",
-            "--group=-1",
+            "--group=3",
+            "--async",
           ],
           "stopAtEntry": true,
           "cwd": "${workspaceFolder}/build",

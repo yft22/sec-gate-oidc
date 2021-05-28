@@ -10,7 +10,7 @@ static afb_verb_t idsvcVerbs[] = {
     {.verb = "idp-query-conf",.callback = idpQueryConf,.info = "wreq idp list/scope for a given LOA level"},
     {.verb = "idp-query-user",.callback = idpQueryUser,.info = "return pseudo/email idps list before linking user multiple IDPs"},
     {.verb = "session-get",.callback = sessionGet,.info = "retrieve current client session [profile, user, social]"},
-    {.verb = "session-subscribe",.callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
+    {.verb = "session-event",.callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
     {.verb = "session-reset",.callback = sessionReset,.info = "reset current session [set loa=0]"},
     {.verb = "usr-register",.callback = userRegister,.info = "register federated user profile into local fedid store"},
     {.verb = "usr-check",.callback = userCheckAttr,.info = "check user attribute within local store"},
@@ -208,13 +208,13 @@ Response:
 ![session-reset](asset/apis/sgate-session-reset.png)
 
 
-##session-subscribe
+##session-event
 
 Subscribe to sgate notification event. A new event is generated each time a privilege is refused or a session reset. It is the responsibility of client UI to process those event, and generate adequate authentication request to provide requested privileges.
 
 Question:
 ```json
-    ws:/sgate/session-subscribe?query={}
+    ws:/sgate/session-event?query={}
 ```
 Response:
 ```json

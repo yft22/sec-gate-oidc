@@ -400,11 +400,11 @@ static void subscribeEvent (afb_req_t wreq, unsigned argc, afb_data_t const argv
 
     // retrieve current wreq LOA from session (to be fixed by Jose)
     afb_session *session = afb_req_v4_get_common (wreq)->session;
-    afb_session_cookie_get (session, idsvcEvtCookie, (void **) &evtCookie);
+    afb_session_cookie_get (session, idsvcEvtCookie, (void**) &evtCookie);
     if (!evtCookie) {
-        err = afb_api_new_event (afb_req_get_api (wreq), afb_session_uuid (session), &evtCookie);
+        err = afb_api_new_event (afb_req_get_api (wreq),"session", &evtCookie);
         if (err < 0) goto OnErrorExit;
-        afb_session_cookie_set (session, idsvcEvtCookie, (void *) evtCookie, NULL, NULL);
+        afb_session_cookie_set (session, idsvcEvtCookie, (void*)evtCookie, NULL, NULL);
         afb_req_subscribe (wreq, evtCookie);
     }
 
@@ -420,23 +420,23 @@ static void subscribeEvent (afb_req_t wreq, unsigned argc, afb_data_t const argv
 }
 
 // Push a json object event to html5 application
-int idscvPushEvent (afb_hreq * hreq, json_object * eventJ)
+int idscvPushEvent (afb_session *session, json_object * eventJ)
 {
     int count;
     afb_event_t evtCookie = NULL;
     afb_data_t reply;
 
-    afb_session_cookie_get (hreq->comreq.session, idsvcEvtCookie, (void **) &evtCookie);
+    afb_session_cookie_get (session, idsvcEvtCookie, (void **) &evtCookie);
     if (!evtCookie) goto OnErrorExit;
 
     // create an API-V4 json param
-    afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_JSON, eventJ, 0, (void *) json_object_put, eventJ);
+    afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_JSON_C, eventJ, 0, (void *) json_object_put, eventJ);
     count = afb_event_push (evtCookie, 1, &reply);
 
     // no one listening clear event and cookie
     if (count <= 0) {
         afb_event_unref (evtCookie);
-        afb_session_cookie_set (hreq->comreq.session, idsvcEvtCookie, NULL, NULL, NULL);
+        afb_session_cookie_set (session, idsvcEvtCookie, NULL, NULL, NULL);
     }
 
     return count;
@@ -529,7 +529,7 @@ static afb_verb_t idsvcVerbs[] = {
     {.verb = "idp-query-conf",.callback = idpQueryConf,.info = "wreq idp list/scope for a given LOA level"},
     {.verb = "idp-query-user",.callback = idpQueryUser,.info = "return pseudo/email idps list before linking user multiple IDPs"},
     {.verb = "session-get",.callback = sessionGet,.info = "retrieve current client session [profile, user, social]"},
-    {.verb = "session-subscribe",.callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
+    {.verb = "session-event",.callback = subscribeEvent,.info = "subscribe to sgate private client session events"},
     {.verb = "session-reset",.callback = sessionReset,.info = "reset current session [set loa=0]"},
     {.verb = "usr-register",.callback = userRegister,.info = "register federated user profile into local fedid store"},
     {.verb = "usr-check",.callback = userCheckAttr,.info = "check user attribute within local store"},

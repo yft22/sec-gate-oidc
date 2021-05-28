@@ -439,6 +439,9 @@ static int ldapLoginCB (afb_hreq * hreq, void *ctx)
         // if loa working and no profile fit exit without trying authentication
         if (!profile) goto OnErrorExit;
 
+        // store working profile to retreive attached loa and role filter if login succeded
+        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
+
         httpKeyValT query[] = {
             {.tag = "state",.value = afb_session_uuid (hreq->comreq.session)},
             {.tag = "scope",.value = profile->scope},
@@ -447,14 +450,11 @@ static int ldapLoginCB (afb_hreq * hreq, void *ctx)
             {NULL}              // terminator
         };
 
-        // store working profile to retreive attached loa and role filter if login succeded
-        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
-
         // build wreq and send it
         err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->tokenid, query);
         if (err) goto OnErrorExit;
 
-        EXT_DEBUG ("[ldap-redirect-url] %s (ldapRegisterAlias)", url);
+        EXT_DEBUG ("[ldap-redirect-url] %s (ldapLoginCB)", url);
         afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 
     } else {
@@ -463,7 +463,7 @@ static int ldapLoginCB (afb_hreq * hreq, void *ctx)
         const char *state = afb_hreq_get_argument (hreq, "state");
         if (!state || strcmp (state, afb_session_uuid (hreq->comreq.session))) goto OnErrorExit;
 
-        EXT_DEBUG ("[ldap-auth-code] login=%s (ldapRegisterAlias)", login);
+        EXT_DEBUG ("[ldap-auth-code] login=%s (ldapLoginCB)", login);
         afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &profile);
         if (!profile) goto OnErrorExit;
 

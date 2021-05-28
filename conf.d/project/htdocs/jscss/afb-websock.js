@@ -146,6 +146,7 @@ function AFB(base, initialtoken) {
 			}
 		}
 
+        
 		function onmessage(event) {
 			var obj = JSON.parse(event.data);
 			var code = obj[0];

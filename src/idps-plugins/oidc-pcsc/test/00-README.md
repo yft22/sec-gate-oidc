@@ -31,7 +31,12 @@ Relies on use-space pcscd resource manager to read/write NFC scard/token.
 The code was testing with Mifare classic tokens but pcsc-lite supports most of CCID compliant tokens. Nevertheless note that each scard/token has it own flavor or API and data organization which may require config/code customization.
 
 * https://ccid.apdu.fr/ccid/supported.html
-* https://www.outilsdespros.fr/historique-des-commandes
+
+## References
+* NXP Mifare https://www.nxp.com/docs/en/data-sheet/MF1S70YYX_V1.pdf
+* online acl: http://calc.gmss.ru/Mifare1k/
+* SpringCore https://docs.springcard.com/books/SpringCore/PCSC_Operation/APDU_Interpreter/Command_list
+* ACR 122 reader http://downloads.acs.com.hk/drivers/en/API-ACR122U-2.02.pdf
 
 ## Testing
 
@@ -125,7 +130,7 @@ Trailer is a specialized version of write command used to simplify access contro
 * **acls**: [mandatory] The acls control bits of you trailer block. **WARNING** invalid acls data will brick all blocks from targeted page/sector. Check further note to create a valid acls blocs.
     * references: https://www.nxp.com/docs/en/data-sheet/MF1S70YYX_V1.pdf
     * online acl: http://calc.gmss.ru/Mifare1k/
-    * example: "acls":["0xF0","0xF7","0x80","0x00"]} key-A readable, key-B writable
+    * example: "acls":["0x08","0x77","0x8F","0x00"]} key-A readable, key-B writable
 
 
 **ACLs control bits**

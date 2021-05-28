@@ -240,8 +240,8 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
             }
 
             // assert request is possible
-            if (lenToRead > 48L ||  lenToRead % 16L) {
-                handle->error= "Invalid ATR_MIFARE_CLASSIC dlen should be mod/16";
+            if (lenToRead != 16L) {
+                handle->error= "Invalid ATR_MIFARE_CLASSIC dlen should be 16";
                 goto OnErrorExit;
             }
 
@@ -275,7 +275,7 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
         case ATR_MIFARE_UL:
             // no authentication
-            if ((blkIdx*4 + lenToRead) > 38*4L || (lenToRead % 4L)) {
+            if ((blkIdx*4 + lenToRead) > 38*4L || (lenToRead != 4L)) {
                 handle->error= "Invalid ATR_MIFARE_UL dlen should be mod/4";
                 goto OnErrorExit;
             }
@@ -321,8 +321,8 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
             }
 
             // assert request is possible
-            if (dataLen > 0x40 || dataLen % 16L) {
-                handle->error= "Invalid MIFARE_CLASSIC dlen should be mod/16";
+            if (dataLen != 16) {
+                handle->error= "Invalid MIFARE_CLASSIC dlen should be 16";
                 goto OnErrorExit;
             }
 
@@ -353,7 +353,7 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
         case ATR_MIFARE_UL:
             // no authentication
-            if ((blkIdx*4 + dataLen) > 38*4L || (dataLen % 4L)) {
+            if ((blkIdx*4 + dataLen) > 38*4L || (dataLen != 4L)) {
                 handle->error= "Invalid MIFARE_UL (dlen should be mod/4)";
                 goto OnErrorExit;
             }
@@ -366,7 +366,7 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
     // Add data to pcsc update command block
     {
-        BYTE writeCmd[] = { 0xFF, 0xD6, secIdx, blkIdx, 0x10};
+        BYTE writeCmd[] = {0xFF, 0xD6, secIdx, blkIdx, (u_int8_t)dataLen};
         BYTE bufferRqt[dataLen+sizeof(writeCmd)];
         memcpy (&bufferRqt[0], writeCmd, sizeof(writeCmd));
         memcpy (&bufferRqt[sizeof(writeCmd)], dataBuf, dataLen);
@@ -489,6 +489,9 @@ static void *pcscMonitorThread (void *ptr) {
     while (1) {
             // wait timeout second for card to be inserted
             rv = SCardGetStatusChange(handle->hContext, handle->timeout*1000, &rgReaderStates, 1);
+            
+            // if timeout is infinit loop when pscsd exit
+            if (rv == SCARD_E_TIMEOUT && !handle->timeout) continue;
             if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
             if (rgReaderStates.dwCurrentState != rgReaderStates.dwEventState) {

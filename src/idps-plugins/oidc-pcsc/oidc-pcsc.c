@@ -86,10 +86,43 @@ typedef struct {
    const char *scope;
    const char *label;
    afb_session *session;
+   int done;
 } pcscRqtCtxT;
 
 static void pcscRqtCtxFree (pcscRqtCtxT *rqt) {
     free(rqt);
+}
+
+typedef struct {
+    char *str;
+    u_int8_t sep;
+    size_t index;
+} strTokenT;
+
+static char* strTokenNext (strTokenT *handle) {
+    size_t idx, onsep=0;
+    char* token;
+    if (!handle->str[handle->index]) return NULL;
+
+    for (idx=handle->index; handle->str[idx] != '\0'; idx ++) {
+        if (handle->str[idx] == handle->sep) {
+            handle->str[idx]='\0';
+            onsep=1;
+            break;
+        }
+    }
+    token=&handle->str[handle->index];
+    if (onsep) handle->index= idx+1;
+    else handle->index=idx;
+
+    return token;
+}
+
+static char *strTokenNew (strTokenT *handle, const char* source, u_int8_t sep) {
+    handle->str= strdup(source);
+    handle->sep = sep;
+    handle->index=0;
+    return strTokenNext(handle);
 }
 
 static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
@@ -97,11 +130,11 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
     pcscRqtCtxT *pcscRqtCtx= (pcscRqtCtxT*) pcscGetCtx(handle);
     idpRqtCtxT  *idpRqtCtx= pcscRqtCtx->idpRqtCtx;
     pcscOptsT   *pcscOpts= pcscRqtCtx->opts;
-    int inserted=0, status=0;
+    int status=0;
     int err;
 
     // is card was previously inserted logout user (session loa=0)
-    if ((state & SCARD_STATE_EMPTY) && inserted) {
+    if ((state & SCARD_STATE_EMPTY) && pcscRqtCtx->done) {
         EXT_DEBUG ("[pcsc-monitor-absent] card removed from reader (reseting session)\n");
         assert (pcscRqtCtx->session);
         fedidsessionReset (0, pcscRqtCtx->session);
@@ -114,20 +147,18 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
         // reserve federation and social user structure
         idpRqtCtx->fedSocial= calloc (1, sizeof (fedSocialRawT));
         idpRqtCtx->fedUser= calloc (1, sizeof (fedUserRawT));
-        const char *cmdUid;
         u_int64_t uuid;
         char *data;
 
         // map scope to pcsc commands
-        char *tokstring = strdup (pcscRqtCtx->scope);
-        for (cmdUid = strtok (tokstring, ","); cmdUid; cmdUid = strtok (NULL, ",")) {
-            pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, cmdUid);
+        strTokenT scopeTkn;
+        for (char *scope=strTokenNew(&scopeTkn,pcscRqtCtx->scope,','); scope; scope=strTokenNext(&scopeTkn)) {
+
+            pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, scope);
             if (!cmd) {
-                EXT_ERROR ("[pcsc-cmd-uid] command=%s not found", cmdUid);
+                EXT_ERROR ("[pcsc-cmd-uid] command=%s not found", scope);
                 goto OnErrorExit;
             }
-
-            // reserve data read buffer (note that pcscConfig reserve enough space for trailing '/0')
 
             switch (cmd->action) {
                 case PCSC_ACTION_UUID: 
@@ -174,17 +205,16 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
                     goto OnErrorExit;
             }     
         }
-        free (tokstring);
 
         // map security atributes to pcsc read commands
         if (pcscRqtCtx->label) {
+            strTokenT tokenLabel;
             int index=0;
             idpRqtCtx->fedSocial->attrs= calloc (pcscOpts->labelMax+1, sizeof(char*));
-            tokstring = strdup (pcscRqtCtx->label);
-            for (cmdUid = strtok (tokstring, ","); cmdUid; cmdUid = strtok (NULL, ",")) {
-                pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, cmdUid);
+            for (char *label=strTokenNew(&tokenLabel, pcscRqtCtx->label, ','); label; label=strTokenNext(&tokenLabel)) {
+                pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, label);
                 if (!cmd || cmd->action != PCSC_ACTION_READ) {
-                    EXT_ERROR ("[pcsc-cmd-label] label=%s does does match any read command", cmdUid);
+                    EXT_ERROR ("[pcsc-cmd-label] label=%s does does match any read command", label);
                     goto OnErrorExit;
                 }
 
@@ -195,23 +225,20 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
                 }
 
                 // parse ttrs string to extract multi-attributes if any
-                char *attrsTok= strdup(data);
-                char *attribute;
-                for (attribute = strtok (attrsTok, ","); attribute; attribute = strtok (NULL, ",")) {
-                    idpRqtCtx->fedSocial->attrs[index++] = strdup (attribute);
+                strTokenT tokenAttr;
+                for (char *attr=strTokenNew(&tokenAttr, data,','); attr; attr=strTokenNext(&tokenAttr)) {
+                    idpRqtCtx->fedSocial->attrs[index++] = strdup(attr);
                     if (index == pcscOpts->labelMax) {
                         EXT_ERROR ("[pcsc-cmd-label] ignored labels command=%s maxlabel=%d too small labels=%s", cmd->uid, pcscOpts->labelMax, pcscRqtCtx->scope);
                     }
                 }
-                free (attrsTok);
             }
-            free (tokstring);
         }
         // do federate authentication
         err = fedidCheck (idpRqtCtx);
         if (err) goto OnErrorExit;
 
-        inserted=1; // stop thread as soon as card is removed
+        pcscRqtCtx->done=1; // stop thread as soon as card is removed
         status=0;   // keep thread running
     }
 
@@ -349,74 +376,45 @@ int pcscLoginCB (afb_hreq * hreq, void *ctx)
     const oidcProfileT *profile = NULL;
     const oidcAliasT *alias = NULL;
     int err, aliasLoa;
-    unsigned long pinCode=0;
-
-    // check if wreq as a code
-    const char *state = afb_hreq_get_argument (hreq, "state");
-    
 
     // Initial redirect redirect user on web page to enter login
-    if (!state) {
-        char url[EXT_URL_MAX_LEN];
+    char url[EXT_URL_MAX_LEN];
 
-        afb_session_cookie_get (hreq->comreq.session, oidcAliasCookie, (void **) &alias);
-        if (alias) aliasLoa = alias->loa;
-        else aliasLoa = 0;
+    afb_session_cookie_get (hreq->comreq.session, oidcAliasCookie, (void **) &alias);
+    if (alias) aliasLoa = alias->loa;
+    else aliasLoa = 0;
 
-        // search a working loa scope
-        const char *scope = afb_hreq_get_argument (hreq, "scope");
-        // search for a scope fiting wreqing loa
-        for (int idx = 0; idp->profiles[idx].uid; idx++) {
+    // search a working loa scope
+    const char *scope = afb_hreq_get_argument (hreq, "scope");
+    // search for a scope fiting wreqing loa
+    for (int idx = 0; idp->profiles[idx].uid; idx++) {
+        profile = &idp->profiles[idx];
+        if (idp->profiles[idx].loa >= aliasLoa) {
+            // if no scope take the 1st profile with valid LOA
+            if (scope && (strcmp (scope, idp->profiles[idx].scope))) continue;
             profile = &idp->profiles[idx];
-            if (idp->profiles[idx].loa >= aliasLoa) {
-                // if no scope take the 1st profile with valid LOA
-                if (scope && (strcmp (scope, idp->profiles[idx].scope))) continue;
-                profile = &idp->profiles[idx];
-                break;
-            }
+            break;
         }
-
-        // if loa working and no profile fit exit without trying authentication
-        if (!profile) goto OnErrorExit;
-
-        // store working profile to retreive attached loa and role filter if login succeded
-        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void*)profile, NULL, NULL);
-
-        httpKeyValT query[] = {
-            {.tag = "state",.value= afb_session_uuid (hreq->comreq.session)},
-            {.tag = "scope",.value= profile->scope},
-            {.tag = "language",.value = setlocale (LC_CTYPE, "")},
-            {NULL}  // terminator
-        };
-
-        // build wreq and send it
-        err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->tokenid, query);
-        if (err) goto OnErrorExit;
-
-        EXT_DEBUG ("[pcsc-redirect-url] %s (pcscLoginCB)", url);
-        afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
-
-    } else {
-
-        // make sure this is the response to initial request
-        if (!state || strcmp (state, afb_session_uuid (hreq->comreq.session))) goto OnErrorExit;
-
-        const char *pinstr = afb_hreq_get_argument (hreq, "pin");
-        if (pinstr) {
-            err= sscanf (pinstr, "%ld", &pinCode);
-            if (err <= 0) {
-                EXT_ERROR ("[pcsc-pin-invalid] pin code should be a valid 'unsigned long'");
-                goto OnErrorExit;
-            }
-        }
-
-        // store working profile to retreive attached loa and role filter if login succeeded
-        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void*)profile, NULL, NULL);
-
-        // try to access smart card
-        err = pcscScardGet (idp, profile, pinCode, hreq, NULL /*wreq*/);
-        if (err) goto OnErrorExit;
     }
+
+    // if loa working and no profile fit exit without trying authentication
+    if (!profile) goto OnErrorExit;
+    afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *)profile, NULL, NULL);
+
+    httpKeyValT query[] = {
+        {.tag = "state",.value= afb_session_uuid (hreq->comreq.session)},
+        {.tag = "scope",.value= profile->scope},
+        {.tag = "language",.value = setlocale (LC_CTYPE, "")},
+        {NULL}  // terminator
+    };
+
+    // build wreq and send it
+    err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->tokenid, query);
+    if (err) goto OnErrorExit;
+
+    EXT_DEBUG ("[pcsc-redirect-url] %s (pcscLoginCB)", url);
+    afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
+
     return 1; // we're done
 
   OnErrorExit:

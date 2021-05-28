@@ -117,7 +117,7 @@ static int execGroupCmd (pcscHandleT *handle, pcscParamsT *params) {
         const pcscCmdT *cmd= &config->cmds[idx];
         u_int8_t data[cmd->dlen];
 
-        if (params->group >= cmd->group  || abs(params->group) == cmd->group) {
+        if (params->group <= cmd->group*-1  || params->group == cmd->group) {
             jump=1;
             err= pcscExecOneCmd (handle, cmd, data);
             if (err) {
@@ -134,6 +134,8 @@ static int execGroupCmd (pcscHandleT *handle, pcscParamsT *params) {
             }
         }
     }
+    fprintf (stderr,"\n ** OK: Cmds/group=%d [done]\n", params->group);
+    if (params->async) fprintf(stderr," ?? Insert new scard/token ??\n");
     return 0;
 
 OnErrorExit:

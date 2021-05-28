@@ -350,3 +350,28 @@ function pcscReadCard(verb) {
         log.reply(err);
     });
 }
+
+// try to reload page when session terminate if page is protected this will force login
+function sessionEventCB(event, name) {
+    log.reply(event);
+    if (event.data.status === "loa-reset") location.reload(); 
+}
+
+function monitorEvents() {
+
+    // register event handler
+    ws.onevent ("sgate/session", sessionEventCB);
+
+    // call user-registration
+    var api="sgate";
+    var verb="session-event"
+    var query= {};
+    log.command(api, verb, query);
+    ws.call(api + "/" + verb, query)
+    .then(function (res) {
+        log.reply(res);
+    })
+    .catch(function (err) {
+        log.reply(err);
+    });
+}

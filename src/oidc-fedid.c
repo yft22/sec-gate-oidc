@@ -61,31 +61,29 @@ typedef struct {
 void fedidsessionReset (int signal, void *ctx)
 {
     afb_session *session = (afb_session *) ctx;
-    afb_event_t evtCookie = NULL;
-    oidcIdpT *idpProfil;
+    oidcProfileT *idpProfil=NULL;
+    int err;
 
     // signal should be null
     if (signal) return;
 
-    // reset session LOA (this will force authentication)
+    // reset session and alias LOA (this will force authentication)
     afb_session_set_loa (session, oidcSessionCookie, 0);
-    EXT_NOTICE ("[fedidsessionReset] timeout ?");
+    afb_session_set_loa (session, oidcAliasCookie, 0);
+    EXT_NOTICE ("[fedidsessionReset] logout/timeout session uuid=%s ?", afb_session_uuid (session));
 
-    afb_data_t reply;
-    afb_session_cookie_get (session, idsvcEvtCookie, (void **) &evtCookie);
+
     afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfil);
 
-    if (evtCookie) {
+    if (idpProfil) {
         json_object *eventJ;
-        wrap_json_pack (&eventJ, "{ss ss ss* ss*}"
+        err= wrap_json_pack (&eventJ, "{ss ss ss* ss*}"
         , "status", "loa-reset"
-        , "home" , idpProfil->oidc->globals->homeUrl ? : "/"
-        , "login", idpProfil->oidc->globals->loginUrl
-        , "error", idpProfil->oidc->globals->errorUrl
-    );
-        // create an API-V4 json param
-        afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_STRINGZ, eventJ, 0, (void *) json_object_put, eventJ);
-        afb_event_push (evtCookie, 1, &reply);
+        , "home" , idpProfil->idp->oidc->globals->homeUrl ? : "/"
+        , "login", idpProfil->idp->oidc->globals->loginUrl
+        , "error", idpProfil->idp->oidc->globals->errorUrl
+        );
+        if (!err) idscvPushEvent (session, eventJ);
     }
 }
 

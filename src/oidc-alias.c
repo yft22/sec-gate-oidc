@@ -177,7 +177,7 @@ aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
                     );
 
                 // try to push event to notify the access deny and replay with redirect to login
-                idscvPushEvent (hreq, eventJ);
+                idscvPushEvent (hreq->comreq.session, eventJ);
 
                 // if current profile LOA is enough then fire same idp/profile authen
                 err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void *) &idpProfil);
