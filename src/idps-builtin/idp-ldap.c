@@ -115,7 +115,7 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
   	// token not json
     static const char token[]=  "DN: ";
     idpRqtCtx->fedSocial->attrs = calloc (ldapOpts->gidsMax+1, sizeof (char *));
-	char *ptr = strtok(httpRqt->body, token);
+	char *savptr, *ptr = strtok_r(httpRqt->body, token, &savptr);
     int idx;
 	for (idx=0; ptr != NULL; idx++)	{
         static char cnString[]= "cn=";
@@ -139,7 +139,7 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
             }
         }
         // move to next cn= (next group)
-        ptr = strtok(NULL, token);
+        ptr = strtok_r(NULL, token, &savptr);
 	}
 
     // reduse groups attrs size to what ever is needed

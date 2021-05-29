@@ -93,38 +93,6 @@ static void pcscRqtCtxFree (pcscRqtCtxT *rqt) {
     free(rqt);
 }
 
-typedef struct {
-    char *str;
-    u_int8_t sep;
-    size_t index;
-} strTokenT;
-
-static char* strTokenNext (strTokenT *handle) {
-    size_t idx, onsep=0;
-    char* token;
-    if (!handle->str[handle->index]) return NULL;
-
-    for (idx=handle->index; handle->str[idx] != '\0'; idx ++) {
-        if (handle->str[idx] == handle->sep) {
-            handle->str[idx]='\0';
-            onsep=1;
-            break;
-        }
-    }
-    token=&handle->str[handle->index];
-    if (onsep) handle->index= idx+1;
-    else handle->index=idx;
-
-    return token;
-}
-
-static char *strTokenNew (strTokenT *handle, const char* source, u_int8_t sep) {
-    handle->str= strdup(source);
-    handle->sep = sep;
-    handle->index=0;
-    return strTokenNext(handle);
-}
-
 static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
     extern const nsKeyEnumT oidcFedidSchema[];
     pcscRqtCtxT *pcscRqtCtx= (pcscRqtCtxT*) pcscGetCtx(handle);
@@ -151,8 +119,8 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
         char *data;
 
         // map scope to pcsc commands
-        strTokenT scopeTkn;
-        for (char *scope=strTokenNew(&scopeTkn,pcscRqtCtx->scope,','); scope; scope=strTokenNext(&scopeTkn)) {
+        str2TokenT scopeTkn;
+        for (char *scope=utilStr2Token(&scopeTkn,',',pcscRqtCtx->scope); scope; scope=utilStr2Token(&scopeTkn,0,0)) {
 
             pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, scope);
             if (!cmd) {
@@ -208,10 +176,10 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
 
         // map security atributes to pcsc read commands
         if (pcscRqtCtx->label) {
-            strTokenT tokenLabel;
+            str2TokenT tokenLabel;
             int index=0;
             idpRqtCtx->fedSocial->attrs= calloc (pcscOpts->labelMax+1, sizeof(char*));
-            for (char *label=strTokenNew(&tokenLabel, pcscRqtCtx->label, ','); label; label=strTokenNext(&tokenLabel)) {
+            for (char *label=utilStr2Token(&tokenLabel,',', pcscRqtCtx->label); label; label=utilStr2Token(&tokenLabel,0,0)) {
                 pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, label);
                 if (!cmd || cmd->action != PCSC_ACTION_READ) {
                     EXT_ERROR ("[pcsc-cmd-label] label=%s does does match any read command", label);
@@ -225,8 +193,8 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
                 }
 
                 // parse ttrs string to extract multi-attributes if any
-                strTokenT tokenAttr;
-                for (char *attr=strTokenNew(&tokenAttr, data,','); attr; attr=strTokenNext(&tokenAttr)) {
+                str2TokenT tokenAttr;
+                for (char *attr=utilStr2Token(&tokenAttr, ',', data); attr; attr=utilStr2Token(&tokenAttr,0,0)) {
                     idpRqtCtx->fedSocial->attrs[index++] = strdup(attr);
                     if (index == pcscOpts->labelMax) {
                         EXT_ERROR ("[pcsc-cmd-label] ignored labels command=%s maxlabel=%d too small labels=%s", cmd->uid, pcscOpts->labelMax, pcscRqtCtx->scope);

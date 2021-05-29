@@ -469,14 +469,13 @@ static int idpParseOne (oidcCoreHdlT * oidc, json_object * idpJ, oidcIdpT * idp)
         } else {
             void *handle = NULL;
             char *filepath;
-            char *tokpath = strdup (ldpath);
             // split string into multiple configpath
-            for (filepath = strtok (tokpath, ":"); filepath; filepath = strtok (NULL, ":")) {
+            str2TokenT tknHandle;
+            for (filepath= utilStr2Token (&tknHandle,':', ldpath); filepath; filepath= utilStr2Token(&tknHandle,0,0)) {
                 handle = dlopen (filepath, RTLD_NOW | RTLD_LOCAL);
                 if (handle)
                     break;
             }
-            free (tokpath);
             if (!handle) {
                 EXT_ERROR ("[idp-plugin-load] idp=%s plugin=%s error=%s", uid, ldpath, dlerror ());
                 goto OnErrorExit;

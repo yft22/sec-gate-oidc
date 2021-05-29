@@ -235,7 +235,7 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
             // mifare only use block index
             if (secIdx) {
-                blkIdx= (u_int8_t)(secIdx*4) + blkIdx;
+                blkIdx= (u_int8_t)((secIdx*4) + blkIdx);
                 secIdx=0;
             }
 
@@ -316,7 +316,7 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
             // mifare only use block index
             if (secIdx) {
-                blkIdx= (u_int8_t)(secIdx*4) + blkIdx;
+                blkIdx= (u_int8_t)((secIdx*4) + blkIdx);
                 secIdx= 0;
             }
 
