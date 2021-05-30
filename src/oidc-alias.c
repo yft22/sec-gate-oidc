@@ -31,7 +31,7 @@
 #include "oidc-alias.h"
 #include "oidc-fedid.h"
 #include "oidc-idsvc.h"
-#include "http-client.h"
+#include "curl-glue.h"
 
 #include <string.h>
 #include <microhttpd.h>

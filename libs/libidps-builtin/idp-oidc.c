@@ -36,7 +36,7 @@
 #include "oidc-idp.h"
 #include "oidc-alias.h"
 #include "oidc-fedid.h"
-#include "http-client.h"
+#include "curl-glue.h"
 #include "oidc-utils.h"
 #include "idp-oidc.h"
 

@@ -14,11 +14,6 @@
 # limitations under the License.
 ###########################################################################
 
-# should include static http-client lib before main source
-add_subdirectory(oidc-http)
-add_subdirectory(idps-builtin)
-add_subdirectory(idps-plugins)
-
 # Add target to project dependency list
 PROJECT_TARGET_ADD(sgate-oidc)
 
@@ -27,13 +22,15 @@ PROJECT_TARGET_ADD(sgate-oidc)
 	file(GLOB CHEADERS [a-z]*.h)
 
 	# Define project Targets
-	add_library(${TARGET_NAME} MODULE ${CSOURCES})
+	add_library(${TARGET_NAME} SHARED ${CSOURCES})
+
+    add_dependencies(${TARGET_NAME} curl-glue-afb)
+    target_link_libraries(${TARGET_NAME} curl-glue-afb)
 
    	target_include_directories(${TARGET_NAME}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/oidc-http ${CMAKE_CURRENT_SOURCE_DIR}/autorities ${PROJECT_SOURCE_DIR}/../fedid-binding/src/fedid-types
+       INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
+       PRIVATE ${CMAKE_SOURCE_DIR}/libs/libidps-builtin
     )
-    add_dependencies(${TARGET_NAME} afb-http-client idps-builtin)
-    target_link_libraries(${TARGET_NAME} afb-http-client idps-builtin)
 
     target_compile_options(${TARGET_NAME}
         PUBLIC  -Wno-unused-variable

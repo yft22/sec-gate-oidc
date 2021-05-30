@@ -173,7 +173,6 @@ set(WIDGET_ENTRY_POINT lib/afb-oidc.so)
 # Optional schema validator about now only XML, LUA and JSON
 # are supported
 #------------------------------------------------------------
-#set(LUA_CHECKER "luac" CACHE STRING "LUA compiler")
 #set(XML_CHECKER "xmllint" CACHE STRING "XML linter")
 #set(JSON_CHECKER "json_verify" CACHE STRING "JSON linter")
 

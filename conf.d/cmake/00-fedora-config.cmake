@@ -1,6 +1,4 @@
 message(STATUS "Custom options: 00-fedora-config.cmake --")
-add_definitions(-DSUSE_LUA_INCDIR)
-list(APPEND PKG_REQUIRED_LIST lua>=5.3)
 
 # Libshell is not part of standard Linux Distro (https://libshell.org/)
 set(ENV{PKG_CONFIG_PATH} "$ENV{PKG_CONFIG_PATH}:/usr/local/lib64/pkgconfig")

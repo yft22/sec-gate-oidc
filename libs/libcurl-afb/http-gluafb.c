@@ -10,7 +10,7 @@
 #define _GNU_SOURCE
 
 #include "oidc-defaults.h"
-#include "http-client.h"
+#include "curl-glue.h"
 
 #include <errno.h>
 #include <curl/curl.h>

@@ -31,7 +31,7 @@
 #include "oidc-alias.h"
 #include "oidc-apis.h"
 #include "oidc-idp.h"
-#include "http-client.h"
+#include "curl-glue.h"
 #include "oidc-idsvc.h"
 
 #include <stdlib.h>

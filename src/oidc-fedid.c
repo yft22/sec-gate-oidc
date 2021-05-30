@@ -27,7 +27,7 @@
 
 #include "oidc-core.h"
 #include "oidc-alias.h"
-#include <http-client.h>
+#include <curl-glue.h>
 #include "oidc-fedid.h"
 #include "oidc-utils.h"
 #include "oidc-idsvc.h"
@@ -138,10 +138,10 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
         };
 
         if (idpProfil->slave) {
-            targetUrl= idpRqtCtx->idp->oidc->globals->fedlinkUrl; 
+            targetUrl= idpRqtCtx->idp->oidc->globals->fedlinkUrl;
         } else {
             targetUrl= idpRqtCtx->idp->oidc->globals->registerUrl;
-        }    
+        }
         if (hreq) {
             err = httpBuildQuery (idpRqtCtx->idp->uid, url, sizeof (url), NULL /* prefix */ , targetUrl, query);
             if (err) {

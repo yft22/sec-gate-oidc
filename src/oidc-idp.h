@@ -24,7 +24,7 @@
 #pragma once
 
 #include "oidc-core.h"
-#include "oidc-http/http-client.h"
+#include "curl-glue.h"
 #include <fedid-types.h>
 
 extern void *oidcIdpProfilCookie;

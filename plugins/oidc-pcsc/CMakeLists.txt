@@ -13,6 +13,7 @@ PROJECT_TARGET_ADD(pcsc-auth)
     add_library(${TARGET_NAME} MODULE ${COMMON_SRC} ${PLUGIN_SRC})
 
 	target_link_libraries(${TARGET_NAME} PUBLIC PkgConfig::PCSC pthread)
+    add_dependencies(${TARGET_NAME} curl-glue-afb)
 
 	# pcsc Plugin properties
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
