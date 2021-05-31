@@ -21,7 +21,6 @@
  * $RP_END_LICENSE$
 */
 
-
 #pragma once
 
 #include <json-c/json.h>

@@ -49,7 +49,7 @@ typedef enum {
 typedef enum {
     PCSC_MONITOR_UNKNOWN=0,
     PCSC_MONITOR_WAIT,
-    PCSC_MONITOR_TERMINATE,
+    PCSC_MONITOR_CANCEL,
 } pcscMonitorActionE;
 
 typedef struct {

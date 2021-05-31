@@ -14,7 +14,7 @@
         {"uid":"write-name"   ,"group":1,"action":"write","sec":3,"len":16,"data":"Fulup Le Foll"},
         {"uid":"write-company","group":1,"action":"write","sec":4,"len":16,"data":"IoT.bzh"},
         {"uid":"write-roles"  ,"group":1,"action":"write","sec":5,"len":16,"data":"role1,role2"},
-        {"uid":"write-apps"   ,"group":1,"action":"write","sec":6,"len":16,"data":"app1,app2"},
+        {"uid":"write-apps"   ,"group":1,"action":"write","sec":7,"len":16,"data":"app1,app2"},
 
         // read sector with default key as provision in group=1
         {"uid":"read-pseudo" ,"group":2,"action":"read","sec":1,"len":16},
@@ -47,5 +47,13 @@
         {"uid":"write-company","group":6,"action":"write","sec":4,"len":48,"key":"key-b","data":"IoT.bzh"},
         {"uid":"write-roles"  ,"group":6,"action":"write","sec":5,"len":48,"key":"key-b","data":"roleA,roleB,roleC,roleD"},
         {"uid":"write-apps"   ,"group":6,"action":"write","sec":6,"len":48,"key":"key-b","data":"appA,appB,appC,appD"},
+
+        // write sector with acl set in group=4
+        {"uid":"write-pseudo" ,"group":7,"action":"write","sec":1,"len":48,"key":"key-b","data":"fulup-bzh"},
+        {"uid":"write-email"  ,"group":7,"action":"write","sec":2,"len":48,"key":"key-b","data":"fulupiot.bzh"},
+        {"uid":"write-name"   ,"group":7,"action":"write","sec":3,"len":48,"key":"key-b","data":"Fulup Ar Foll"},
+        {"uid":"write-company","group":7,"action":"write","sec":4,"len":48,"key":"key-b","data":"IoT.bzh"},
+        {"uid":"write-roles"  ,"group":7,"action":"write","sec":5,"len":48,"key":"key-b","data":"role1,role2,role3,role4"},
+        {"uid":"write-apps"   ,"group":7,"action":"write","sec":6,"len":48,"key":"key-b","data":"app1,app2,app3,app4"},
     ]
 }

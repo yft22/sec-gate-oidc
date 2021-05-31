@@ -235,7 +235,7 @@ High level API, hopefully match most application requirement.
 ```
 * **pcscReaderCheck**: in synchronous mode wait xx ticks for reader to be ready. Default ticks is 60s, and can be changed with timeout option.
 * **pcscMonitorReader**: start monitoring thread and register callback and and context. Unfortunately pcsc-lite does not support asynchronous operation and application should register a dedicated thread to run pcsc operations in background.
-* **pcscMonitorWait**: wait for monitor thread to finish. Action=PCSC_MONITOR_WAIT|PCSC_MONITOR_TERMINATE
+* **pcscMonitorWait**: wait for monitor thread to finish. Action=PCSC_MONITOR_WAIT|PCSC_MONITOR_CANCEL
 * **pcscGetCtx**: return handle context provided by pcscMonitorReader.
 * **pcscGetCardUuid**: check scard ATR and return UUID. If card is not supported this return an error.
 * **pcscStatusCbT** monitoring callback signature register by pcscMonitorReader. This callback is call each time reader status change. Typically when a scard is inserted/removed. As callback get pcsc handle it can run any commands. Check main-pcsc.c for sample.

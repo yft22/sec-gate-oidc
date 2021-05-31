@@ -164,7 +164,7 @@ OnErrorExit:
 
 // signal handler
 static jmp_buf  JumpBuffer;
-void  sigHandlerCB(int  sig) {
+static void  sigHandlerCB(int  sig) {
     switch (sig) {
       case SIGINT:
         fprintf (stderr, "\nCtrl-C received\n");

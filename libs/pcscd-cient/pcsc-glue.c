@@ -528,6 +528,7 @@ static void *pcscMonitorThread (void *ptr) {
             if (err >0) break; // normal exit
         }
     }
+    EXT_DEBUG ("[pcsc-thread-monitor] Normal thread end");
     return NULL;
 
 OnErrorExit:
@@ -562,8 +563,9 @@ int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action) {
             pthread_join(handle->threadId, NULL); // infinit wait for monitor to quit
             break;
 
-        case PCSC_MONITOR_TERMINATE:
-            pthread_kill (handle->threadId, SIGTERM); 
+        case PCSC_MONITOR_CANCEL:
+            SCardCancel (handle->hContext);
+
             break;
 
         default: 

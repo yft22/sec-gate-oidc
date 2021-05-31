@@ -226,7 +226,6 @@ function sgateReset() {
         log.reply(res);
         // redirect to requested URL
         window.location.replace(res.response.login);
-
     })
     .catch(function (err) {
         window.location.replace("/")

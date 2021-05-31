@@ -39,12 +39,12 @@
                     "cmds": [ 
                         // card should be pre-provision with right keys/acls (pcsc-client --help)          
                         {"uid":"fedid"   , "action":"uuid"},
-                        {"uid":"pseudo"  , "action":"read","sec": 1, "key":"key-a", "len": 16},
-                        {"uid":"email"   , "action":"read","sec": 2, "key":"key-a", "len": 16},
-                        {"uid":"name"    , "action":"read","sec": 3, "key":"key-a", "len": 16},
-                        {"uid":"company" , "action":"read","sec": 4, "key":"key-a", "len": 16},
-                        {"uid":"roles"   , "action":"read","sec": 5, "key":"key-a", "len": 16},
-                        {"uid":"apps"    , "action":"read","sec": 6, "key":"key-a", "len": 16}
+                        {"uid":"pseudo"  , "action":"read","sec": 1, "key":"key-a", "len":48},
+                        {"uid":"email"   , "action":"read","sec": 2, "key":"key-a", "len":48},
+                        {"uid":"name"    , "action":"read","sec": 3, "key":"key-a", "len":48},
+                        {"uid":"company" , "action":"read","sec": 4, "key":"key-a", "len":48},
+                        {"uid":"roles"   , "action":"read","sec": 5, "key":"key-a", "len":48},
+                        {"uid":"apps"    , "action":"read","sec": 6, "key":"key-a", "len":48}
                     ]
                 }
             },

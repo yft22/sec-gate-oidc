@@ -38,6 +38,7 @@
 
 MAGIC_OIDC_SESSION (oidcFedUserCookie);
 MAGIC_OIDC_SESSION (oidcFedSocialCookie);
+MAGIC_OIDC_SESSION (oidcUsrDataCookie);
 
 
 const nsKeyEnumT oidcFedidSchema[] = {
@@ -72,8 +73,13 @@ void fedidsessionReset (int signal, void *ctx)
     afb_session_set_loa (session, oidcAliasCookie, 0);
     EXT_NOTICE ("[fedidsessionReset] logout/timeout session uuid=%s ?", afb_session_uuid (session));
 
-
     afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfil);
+
+    if (idpProfil->idp->plugin->resetSession) {
+        void *ctx=NULL;
+        afb_session_cookie_get (session, oidcUsrDataCookie, &ctx);
+        idpProfil->idp->plugin->resetSession(idpProfil, ctx);
+    }
 
     if (idpProfil) {
         json_object *eventJ;
@@ -229,6 +235,9 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
             }
         }
         afb_session_set_loa (session, oidcSessionCookie, idpProfil->loa);
+
+        // if idp request get userdata keep track of them
+        if (idpRqtCtx->userData) afb_session_cookie_set (session, oidcUsrDataCookie, (void *)idpRqtCtx->userData, NULL, NULL);
     }
 
     // free user info handle and redirect to initial targeted url

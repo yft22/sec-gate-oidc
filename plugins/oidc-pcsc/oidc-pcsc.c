@@ -57,8 +57,8 @@ typedef struct {
 
 // dflt_xxxx config.json default options
 static pcscOptsT dfltOpts = {
-    .readerMax = 8,
-    .labelMax = 8,
+    .readerMax = 4,
+    .labelMax = 16,
     .avatarAlias = "/sgate/pcsc/avatar-dflt.png",
 };
 
@@ -91,6 +91,12 @@ typedef struct {
 
 static void pcscRqtCtxFree (pcscRqtCtxT *rqt) {
     free(rqt);
+}
+
+// if needed stop pcsc thread when session finish
+static void pcscResetSession (oidcProfileT *idpProfil, void *ctx) {
+    pcscHandleT *handle= (pcscHandleT*)ctx;
+    pcscMonitorWait (handle, PCSC_MONITOR_CANCEL);
 }
 
 static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
@@ -203,6 +209,7 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
             }
         }
         // do federate authentication
+        idpRqtCtx->userData = (void*) handle;
         err = fedidCheck (idpRqtCtx);
         if (err) goto OnErrorExit;
 
@@ -229,7 +236,6 @@ OnErrorExit:
     fedUserFreeCB(idpRqtCtx->fedUser);
     pcscRqtCtxFree(pcscRqtCtx);
     idpRqtCtxFree(idpRqtCtx);
-
 	return -1;  // on error exit kill thread
 }
 
@@ -251,7 +257,6 @@ static int pcscScardGet (oidcIdpT * idp, const oidcProfileT *profile, unsigned l
     pcscRqtCtx->label=profile->attrs;
     pcscRqtCtx->opts= pcscOpts;
     pcscRqtCtx->idpRqtCtx= idpRqtCtx;
-
 
     if (idpRqtCtx->hreq) pcscRqtCtx->session= idpRqtCtx->hreq->comreq.session;
     if (idpRqtCtx->wreq) pcscRqtCtx->session= afb_req_v4_get_common (wreq)->session;
@@ -481,7 +486,12 @@ static int pcscRegisterConfig (oidcIdpT * idp, json_object * idpJ)
 
 // pcsc sample plugin exposes only one IDP
 idpPluginT idppcscAuth[] = {
-    {.uid = "pcsc",.info = "SmartCard/NFC pscd client",.registerConfig = pcscRegisterConfig,.registerApis = pcscRegisterApis,.registerAlias= pcscRegisterAlias},
+    {.uid = "pcsc",.info = "SmartCard/NFC pscd client"
+        ,.registerConfig = pcscRegisterConfig
+        ,.registerApis = pcscRegisterApis
+        ,.registerAlias= pcscRegisterAlias
+        ,.resetSession = pcscResetSession
+    },
     {.uid = NULL}               // must be null terminated
 };
 
