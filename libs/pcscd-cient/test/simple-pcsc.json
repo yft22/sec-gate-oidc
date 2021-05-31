@@ -33,19 +33,19 @@
         {"uid":"acls-6"  , "group":4, "action":"trailer","sec":6,"blk":3, "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0x08","0x77","0x8F","0x00"]}},
 
         // read sector with acl set in group=4
-        {"uid":"read-pseudo" ,"group":5,"action":"read","sec":1,"len":16,"key":"key-a"},
-        {"uid":"read-email"  ,"group":5,"action":"read","sec":2,"len":16,"key":"key-a"},
-        {"uid":"read-name"   ,"group":5,"action":"read","sec":3,"len":16,"key":"key-a"},
-        {"uid":"read-company","group":5,"action":"read","sec":4,"len":16,"key":"key-a"},
-        {"uid":"read-roles"  ,"group":5,"action":"read","sec":5,"len":16,"key":"key-a"},
-        {"uid":"read-apps"   ,"group":5,"action":"read","sec":6,"len":16,"key":"key-a"},
+        {"uid":"read-pseudo" ,"group":5,"action":"read","sec":1,"len":48,"key":"key-a"},
+        {"uid":"read-email"  ,"group":5,"action":"read","sec":2,"len":48,"key":"key-a"},
+        {"uid":"read-name"   ,"group":5,"action":"read","sec":3,"len":48,"key":"key-a"},
+        {"uid":"read-company","group":5,"action":"read","sec":4,"len":48,"key":"key-a"},
+        {"uid":"read-roles"  ,"group":5,"action":"read","sec":5,"len":48,"key":"key-a"},
+        {"uid":"read-apps"   ,"group":5,"action":"read","sec":6,"len":48,"key":"key-a"},
 
         // write sector with acl set in group=4
-        {"uid":"write-pseudo" ,"group":6,"action":"write","sec":1,"len":16,"key":"key-b","data":"youn-bzh"},
-        {"uid":"write-email"  ,"group":6,"action":"write","sec":2,"len":16,"key":"key-b","data":"youn@iot.bzh"},
-        {"uid":"write-name"   ,"group":6,"action":"write","sec":3,"len":16,"key":"key-b","data":"Youn Ar Foll"},
-        {"uid":"write-company","group":6,"action":"write","sec":4,"len":16,"key":"key-b","data":"IoT.bzh"},
-        {"uid":"write-roles"  ,"group":6,"action":"write","sec":5,"len":16,"key":"key-b","data":"roleA,roleB"},
-        {"uid":"write-apps"   ,"group":6,"action":"write","sec":6,"len":16,"key":"key-b","data":"appA,appB"},
+        {"uid":"write-pseudo" ,"group":6,"action":"write","sec":1,"len":48,"key":"key-b","data":"youn-bzh"},
+        {"uid":"write-email"  ,"group":6,"action":"write","sec":2,"len":48,"key":"key-b","data":"youn@iot.bzh"},
+        {"uid":"write-name"   ,"group":6,"action":"write","sec":3,"len":48,"key":"key-b","data":"Youn Ar Foll"},
+        {"uid":"write-company","group":6,"action":"write","sec":4,"len":48,"key":"key-b","data":"IoT.bzh"},
+        {"uid":"write-roles"  ,"group":6,"action":"write","sec":5,"len":48,"key":"key-b","data":"roleA,roleB,roleC,roleD"},
+        {"uid":"write-apps"   ,"group":6,"action":"write","sec":6,"len":48,"key":"key-b","data":"appA,appB,appC,appD"},
     ]
 }

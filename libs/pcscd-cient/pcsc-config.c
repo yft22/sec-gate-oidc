@@ -386,7 +386,7 @@ int pcscExecOneCmd (pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data) {
     switch (cmd->action) {
 
         case PCSC_ACTION_READ:
-            err= pcscReadBlock (handle, cmd->uid, cmd->sec, cmd->blk, data, &dlen, cmd->key);
+            err= pcscReadBlock (handle, cmd->uid, cmd->sec, cmd->blk, data, dlen, cmd->key);
             if (err) goto OnErrorExit;
             break;
 

@@ -100,9 +100,9 @@
           "name": "sync-group-0",
           "type": "cppdbg",
           "request": "launch",
-          "program": "${workspaceFolder}/build/package/bin/pcsc-client",
+          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
           "args": [
-            "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
+            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-pcsc.json",
             "--verbose",
           ],
           "stopAtEntry": true,
@@ -121,14 +121,15 @@
         },
         {
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "async-group-0",
+          "name": "async-group-6",
           "type": "cppdbg",
           "request": "launch",
-          "program": "${workspaceFolder}/build/package/bin/pcsc-client",
+          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
           "args": [
-            "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
+            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-pcsc.json",
             "--verbose",
             "--async",
+            "--group=6",
           ],
           "stopAtEntry": true,
           "cwd": "${workspaceFolder}/build",
@@ -146,14 +147,14 @@
         },
         {
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "sync-group-1-only",
+          "name": "sync-group-5",
           "type": "cppdbg",
           "request": "launch",
-          "program": "${workspaceFolder}/build/package/bin/pcsc-client",
+          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
           "args": [
-            "--config=${workspaceFolder}/src/idps-plugins/oidc-pcsc/test/simple-pcsc.json",
+            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-pcsc.json",
             "--verbose",
-            "--group=3",
+            "--group=5",
             "--async",
           ],
           "stopAtEntry": true,

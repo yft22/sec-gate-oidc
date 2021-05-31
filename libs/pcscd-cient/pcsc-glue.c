@@ -41,6 +41,13 @@ typedef struct {
   atrIsoCardid  cardid;
 } isoAtrCardIdMapT;
 
+
+// map 16 bits blockindex on two bytes
+typedef union {
+    u_int16_t u16;
+    u_int8_t  u8[2];
+} mifareSecBlkT;
+
 static BYTE defaultKey[]= {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 static BYTE pcPsRid[]= {0xA0,0x00,0x00,0x03,0x06};
 
@@ -216,103 +223,19 @@ OnErrorExit:
     return 0;
 }
 
-
-// try to read data bloc
-int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long *dlen, const pcscKeyT *key)
-{
-    assert (handle->magic == PCSC_HANDLE_MAGIC);
-    long rv=0;
+static long pcscAuthSCard (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, unsigned long dataLen, const pcscKeyT *key, unsigned long *blkSector, unsigned long *blkLength) {
+    long rv;
     u_int8_t *keyVal;
     u_int8_t keyIdx;
     BYTE status[32];
-    unsigned long lenToRead = *dlen-PCSC_MIFARE_STATUS_LEN;
 
-    if (handle->verbose) fprintf (stderr, "\n# pcscReadBlock reader=%s cmd=%s scard=%ld blk=%d dlen=%ld\n", handle->readerName, uid, handle->uuid, blkIdx, *dlen);
     switch (handle->cardId) {
 
         case ATR_MIFARE_1K:
         case ATR_MIFARE_4K:
 
-            // mifare only use block index
-            if (secIdx) {
-                blkIdx= (u_int8_t)((secIdx*4) + blkIdx);
-                secIdx=0;
-            }
-
-            // assert request is possible
-            if (lenToRead != 16L) {
-                handle->error= "Invalid ATR_MIFARE_CLASSIC dlen should be 16";
-                goto OnErrorExit;
-            }
-
-            if (!key) {
-                keyVal= defaultKey;
-                keyIdx =0; // keyA
-            }
-            else {
-                if (key->klen != 6) {
-                    handle->error= "Invalid MIFARE_CLASSIC keyken should 6";
-                    goto OnErrorExit;
-                }
-                keyVal= key->kval;
-                keyIdx= key->kidx;
-            }
-
-            // load key
-            if (!keyVal) keyVal= defaultKey;
-            const u_int8_t keyCmd[] = {0xFF, 0x82, 0x00, 0x00, 0x06, keyVal[0], keyVal[1], keyVal[2], keyVal[3], keyVal[4], keyVal[5]};
-            unsigned long keyStatusLen= sizeof(status);
-            rv= pcscSendCmd (handle, uid, "loadkey", keyCmd, sizeof(keyCmd), status, &keyStatusLen);
-	        if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
-
-            // send authentication block
-            const u_int8_t authCmd[] = {0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, secIdx, blkIdx, 0x60|keyIdx, 0x00};
-            unsigned long authStatusLen= sizeof(status);
-            rv= pcscSendCmd (handle, uid, "authent", authCmd, sizeof(authCmd), status, &authStatusLen);
-	        if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
-
-            break;
-
-        case ATR_MIFARE_UL:
-            // no authentication
-            if ((blkIdx*4 + lenToRead) > 38*4L || (lenToRead != 4L)) {
-                handle->error= "Invalid ATR_MIFARE_UL dlen should be mod/4";
-                goto OnErrorExit;
-            }
-
-            break;
-
-        default:
-            handle->error= "Unsupported smart card model";
-            goto OnErrorExit;
-    }
-
-    // try to read bloc
- 	u_int8_t readBlk[] = { 0xFF, 0xB0, secIdx, blkIdx, 0x10};
-    rv= pcscSendCmd (handle, uid, "read", readBlk, sizeof(readBlk), data, dlen);
-	if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
-
-    return 0;
-
-OnErrorExit:
-    EXT_ERROR ("[pcsc-readblk-fail] cmd=%s action:read err=%s", uid, handle->error);
-    return -1;
-}
-
-// try to read data bloc
-int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key)
-{
-    assert (handle->magic == PCSC_HANDLE_MAGIC);
-    long rv=0;
-    u_int8_t *keyVal;
-    u_int8_t keyIdx;
-    BYTE status[32];
-
-    if (handle->verbose) fprintf (stderr, "\n# pcsWriteBlock reader=%s cmd=%s scard=%ld blk=%d dlen=%ld\n", handle->readerName, uid, handle->uuid, secIdx*4+blkIdx, dataLen);
-    switch (handle->cardId) {
-
-        case ATR_MIFARE_1K:
-        case ATR_MIFARE_4K:
+            *blkSector=4L; // mifare classic block/sector organisation
+            *blkLength=16L;   // fixe block size
 
             // mifare only use block index
             if (secIdx) {
@@ -321,8 +244,8 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
             }
 
             // assert request is possible
-            if (dataLen != 16) {
-                handle->error= "Invalid MIFARE_CLASSIC dlen should be 16";
+            if (dataLen > 48 || dataLen % 16) {
+                handle->error= "Invalid MIFARE_CLASSIC dlen should 16*x where x=1-3.";
                 goto OnErrorExit;
             }
 
@@ -352,6 +275,9 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
             break;
 
         case ATR_MIFARE_UL:
+            *blkSector=4L; // mifare UL block/sector organisation
+            *blkLength=4L; // fixe block size
+
             // no authentication
             if ((blkIdx*4 + dataLen) > 38*4L || (dataLen != 4L)) {
                 handle->error= "Invalid MIFARE_UL (dlen should be mod/4)";
@@ -363,17 +289,88 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
             handle->error="Unsupported smartcard model";
             goto OnErrorExit;
     }
+    return SCARD_S_SUCCESS;
 
-    // Add data to pcsc update command block
-    {
-        BYTE writeCmd[] = {0xFF, 0xD6, secIdx, blkIdx, (u_int8_t)dataLen};
-        BYTE bufferRqt[dataLen+sizeof(writeCmd)];
+OnErrorExit: 
+    return -1;    
+}
+
+// try to read data bloc
+int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long dataLen, const pcscKeyT *key)
+{
+    assert (handle->magic == PCSC_HANDLE_MAGIC);
+    long rv=0;
+    unsigned long blkSector, blkLength;
+    unsigned long dlen;
+
+    if (handle->verbose) fprintf (stderr, "\n# pcscReadBlock reader=%s cmd=%s scard=%ld sec=%d blk=%d dlen=%ld", handle->readerName, uid, handle->uuid, secIdx, blkIdx, dataLen);
+
+    rv= pcscAuthSCard (handle, uid, secIdx, blkIdx, dataLen-PCSC_MIFARE_STATUS_LEN, key, &blkSector, &blkLength);
+    if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+
+    // try to read bloc
+    int dataIdx=0;
+    for (int idx=blkIdx%blkSector; (idx<blkSector && dataIdx < dataLen-PCSC_MIFARE_STATUS_LEN); idx++) {
+        mifareSecBlkT sIdx;
+        sIdx.u16= (u_int16_t)(secIdx*4) + blkIdx + idx;
+
+        dlen = blkLength + PCSC_MIFARE_STATUS_LEN;  // add cmd status to buffer size
+        u_int8_t readBlk[] = {0xFF, 0xB0, sIdx.u8[1], sIdx.u8[0], (u_int8_t)blkLength};
+        rv= pcscSendCmd (handle, uid, "read", readBlk, sizeof(readBlk), &data[dataIdx], &dlen);
+        if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+
+        // move to new block if any
+        dataIdx += blkLength;
+    }
+    if (handle->verbose) {
+        fprintf(stderr, "recieved=%d data:[", dataIdx);
+        for (int idx=0; idx< dataIdx; idx++) {
+            if (!data[idx]) break;
+            if (data[idx] >= ' ' && data[idx] <= '~') {
+                fwrite(&data[idx], sizeof(char), 1, stderr);
+            }
+        }
+        fprintf (stderr, "]\n");
+    }
+
+    return 0;
+
+OnErrorExit:
+    if (handle->verbose) fprintf (stderr, " error=%s\n", handle->error);
+    EXT_ERROR ("[pcsc-readblk-fail] cmd=%s action:read err=%s", uid, handle->error);
+    return -1;
+}
+
+
+// try to read data bloc
+int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key)
+{
+    assert (handle->magic == PCSC_HANDLE_MAGIC);
+    long rv=0;
+    unsigned long blkSector, blkLength;
+
+    if (handle->verbose) fprintf (stderr, "\n# pcsWriteBlock reader=%s cmd=%s scard=%ld sec=%d blk=%d dlen=%ld\n", handle->readerName, uid, handle->uuid, secIdx, blkIdx, dataLen);
+    rv= pcscAuthSCard (handle, uid, secIdx, blkIdx, dataLen, key, &blkSector, &blkLength);
+    if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+
+    // Write is done by block within one sector
+    int dataIdx=0;
+    for (int idx=blkIdx%blkSector; (idx<blkSector && dataIdx < dataLen); idx++) {
+
+        mifareSecBlkT sIdx;
+        sIdx.u16= (u_int16_t)(secIdx*4) + blkIdx + idx;
+
+        BYTE writeCmd[] = {0xFF, 0xD6, sIdx.u8[1], sIdx.u8[0], (u_int8_t)blkLength};
+        BYTE bufferRqt[blkLength+sizeof(writeCmd)];
         memcpy (&bufferRqt[0], writeCmd, sizeof(writeCmd));
-        memcpy (&bufferRqt[sizeof(writeCmd)], dataBuf, dataLen);
-        unsigned long length= dataLen+sizeof(writeCmd);
+        memcpy (&bufferRqt[sizeof(writeCmd)], &dataBuf[dataIdx], blkLength);
+        unsigned long length= blkLength+sizeof(writeCmd);
 
         rv= pcscSendCmd (handle, uid, "write", bufferRqt, sizeof(bufferRqt), dataBuf, &length);
         if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+        
+        // move to new block if any
+        dataIdx += blkLength;
     }
 
     return 0;
