@@ -1,12 +1,14 @@
-PROJECT_TARGET_ADD(curl-glue-afb)
+PROJECT_TARGET_ADD(idps-builtin)
 
 	# compile any C file starting with a lower case
 	file(GLOB CSOURCES [a-z]*.c)
 
 	# Define project Targets
 	add_library(${TARGET_NAME} STATIC ${CSOURCES})
+    add_dependencies(${TARGET_NAME} curl-glue-afb)
+    target_link_libraries(${TARGET_NAME} curl-glue-afb)
 
-	# Alsa Plugin properties
+	# oidc Plugin properties
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
 		OUTPUT_NAME ${TARGET_NAME}
 	)

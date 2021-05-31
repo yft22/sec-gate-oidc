@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "../oidc-idp.h"
+#include "oidc-idp.h"
 
 // ldap.c
 int ldapRegisterAlias (oidcIdpT * idp, afb_hsrv * hsrv);

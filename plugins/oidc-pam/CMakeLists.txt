@@ -7,7 +7,9 @@ PROJECT_TARGET_ADD(pam-auth)
 	# Define project Targets
 	find_library (PAM_DEVEL libpam required)
 	add_library(${TARGET_NAME} MODULE ${CSOURCES})
-	target_link_libraries(${TARGET_NAME} pam)
+
+    add_dependencies(${TARGET_NAME} curl-glue-afb sgate-oidc)
+	target_link_libraries(${TARGET_NAME} curl-glue-afb pam sgate-oidc)
 
 	# Pam Plugin properties
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
@@ -16,9 +18,3 @@ PROJECT_TARGET_ADD(pam-auth)
 			SUFFIX ".so"
 			OUTPUT_NAME ${TARGET_NAME}
 	)
-
-	# compilation include path
-	target_include_directories(${TARGET_NAME}
-	    PRIVATE ${CMAKE_SOURCE_DIR}/src
-		PRIVATE ${CMAKE_SOURCE_DIR}/src/oidc-http
-    )

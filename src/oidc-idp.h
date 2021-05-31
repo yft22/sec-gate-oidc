@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <libafb/afb-v4.h>
 #include "oidc-core.h"
 #include "curl-glue.h"
 #include <fedid-types.h>

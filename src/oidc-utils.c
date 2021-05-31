@@ -33,9 +33,6 @@
 
 char *utilStr2Token (str2TokenT *handle, u_int8_t separator, const char* data) {
 
-    // no more data
-    if (!handle->str[handle->index]) goto OnErrorExit;
-
     // on 1st call separator should be defined
     if (data) {
         handle->str=NULL;
@@ -43,6 +40,9 @@ char *utilStr2Token (str2TokenT *handle, u_int8_t separator, const char* data) {
         handle->str= strdup(data);
         handle->sep = separator;
         handle->index=0;
+    } else {
+        // no more data
+        if (!handle->str[handle->index]) goto OnErrorExit;
     }
 
     size_t idx, onsep=0;

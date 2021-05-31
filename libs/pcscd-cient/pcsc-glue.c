@@ -490,7 +490,7 @@ static void *pcscMonitorThread (void *ptr) {
             // wait timeout second for card to be inserted
             rv = SCardGetStatusChange(handle->hContext, handle->timeout*1000, &rgReaderStates, 1);
             
-            // if timeout is infinit loop when pscsd exit
+            // if timeout is infinit loop when pcscd exit
             if (rv == SCARD_E_TIMEOUT && !handle->timeout) continue;
             if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 

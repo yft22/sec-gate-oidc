@@ -29,13 +29,13 @@
 #include "oidc-idp.h"
 #include "oidc-fedid.h"
 #include "oidc-utils.h"
-#include "idps-builtin.h"
 
 #include <string.h>
 #include <dlfcn.h>
 #include <assert.h>
 
 MAGIC_OIDC_SESSION (oidcIdpProfilCookie);
+extern idpPluginT idpBuiltin[];
 
 typedef struct idpRegistryS {
     struct idpRegistryS *next;
@@ -44,7 +44,6 @@ typedef struct idpRegistryS {
 } idpRegistryT;
 
 // registry holds a linked list of core+pugins idps
-idpPluginT idpBuiltin[];
 static idpRegistryT *registryHead = NULL;
 
 const nsKeyEnumT idpAuthMethods[] = {
@@ -363,14 +362,14 @@ static const oidcWellknownT *idpParseWellknown (oidcIdpT * idp, json_object * we
 
 int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * defaults, void *ctx)
 {
-
+    json_object *schemaJ;
     if (!configJ) {
         EXT_CRITICAL ("ext=%s github config must define client->id & client->secret (githubRegisterConfig)", idp->uid);
         goto OnErrorExit;
     }
     // unpack main IDP config
     json_object *credentialsJ = NULL, *staticJ = NULL, *wellknownJ = NULL, *headersJ = NULL, *profilesJ, *pluginJ=NULL;
-    int err = wrap_json_unpack (configJ, "{ss s?s s?s s?o s?o s?o s?o s?o s?o !}"
+    int err = wrap_json_unpack (configJ, "{ss s?s s?s s?o s?o s?o s?o s?o s?o s?o !}"
         , "uid", &idp->uid
         , "info", &idp->info
         , "type", &idp->type
@@ -380,9 +379,10 @@ int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * d
         , "profiles", &profilesJ
         , "wellknown", &wellknownJ
         , "headers", &headersJ
+        , "schema", &schemaJ
         );
     if (err) {
-        EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (githubRegisterConfig)", idp->uid);
+        EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (idpParseOidcConfig)", idp->uid);
         goto OnErrorExit;
     }
 
@@ -588,14 +588,6 @@ int idpRegisterApis (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *dec
     EXT_ERROR ("[idp-register-apis] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
     return 1;
 }
-
-// Builtin in output formater. Note that first one is used when cmd does not define a format
-idpPluginT idpBuiltin[] = {
-    {.uid = "oidc",.info = "openid connect idp",.registerConfig = oidcRegisterConfig,.registerAlias= oidcRegisterAlias},
-    {.uid = "github",.info = "github public oauth2 idp",.registerConfig = githubRegisterConfig,.registerAlias= githubRegisterAlias},
-    {.uid = "ldap"  ,.info = "ldap internal users",.registerConfig = ldapRegsterConfig,.registerAlias= ldapRegisterAlias, .registerApis=ldapRegisterApis},
-    {.uid = NULL}               // must be null terminated
-};
 
 // register callback and use it to register core idps
 int

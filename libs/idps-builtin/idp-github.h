@@ -24,6 +24,7 @@
 #pragma once
 
 #include "oidc-idp.h"
-#include "idp-oidc.h"
-#include "idp-github.h"
-#include "idp-ldap.h"
+
+// github.c
+int githubRegisterAlias (oidcIdpT * idp, afb_hsrv * hsrv);
+int githubRegisterConfig (oidcIdpT * idp, json_object * idpJ);

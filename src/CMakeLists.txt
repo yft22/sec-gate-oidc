@@ -24,12 +24,11 @@ PROJECT_TARGET_ADD(sgate-oidc)
 	# Define project Targets
 	add_library(${TARGET_NAME} SHARED ${CSOURCES})
 
-    add_dependencies(${TARGET_NAME} curl-glue-afb)
-    target_link_libraries(${TARGET_NAME} curl-glue-afb)
+    add_dependencies(${TARGET_NAME} curl-glue-afb idps-builtin)
+    target_link_libraries(${TARGET_NAME} curl-glue-afb idps-builtin)
 
    	target_include_directories(${TARGET_NAME}
        INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
-       PRIVATE ${CMAKE_SOURCE_DIR}/libs/libidps-builtin
     )
 
     target_compile_options(${TARGET_NAME}

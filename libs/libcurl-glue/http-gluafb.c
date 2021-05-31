@@ -9,7 +9,6 @@
 
 #define _GNU_SOURCE
 
-#include "oidc-defaults.h"
 #include "curl-glue.h"
 
 #include <errno.h>

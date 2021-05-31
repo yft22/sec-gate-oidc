@@ -28,7 +28,7 @@
             "type": "pcsc",
             "info": "NFC Mifare/Classic smartcard authentication (check ",
             "plugin": {
-                "ldpath": "libidp-sgate-pcsc-auth.so",
+                "ldpath": "libidp-sgate-pcscd-auth.so",
                 "config":     {
                     "info" : "Mifare/Classic command samples",
                     "reader": "acr122",

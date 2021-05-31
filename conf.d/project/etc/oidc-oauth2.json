@@ -37,7 +37,7 @@
             "schema": {
                 "fedid" :"sub",
                 "avatar":"picture",
-                "pseudo":"preferred_username",
+                "pseudo":"preferred_username", 
                 "name": "name",
                 "company": "company",
                 "email": "email",
