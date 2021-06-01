@@ -143,7 +143,7 @@ OnErrorExit:
 }
 
 // in asynchronous mode CB is call each time reader status change
-static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
+static int readerMonitorCB (pcscHandleT *handle, ulong state) {
     pcscParamsT *params = (pcscParamsT*) pcscGetCtx(handle);
     int err;
 

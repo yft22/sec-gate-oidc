@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <pthread.h>
 
 // import pcsc-little API
 #include "pcsc-glue.h"
@@ -80,13 +81,13 @@ static const oidcWellknownT dfltWellknown = {
 };
 
 typedef struct {
-   unsigned long pin;
+   ulong pin;
    idpRqtCtxT *idpRqtCtx;
    pcscOptsT *opts;
    const char *scope;
    const char *label;
    afb_session *session;
-   int done;
+   int present;
 } pcscRqtCtxT;
 
 static void pcscRqtCtxFree (pcscRqtCtxT *rqt) {
@@ -99,7 +100,7 @@ static void pcscResetSession (oidcProfileT *idpProfil, void *ctx) {
     pcscMonitorWait (handle, PCSC_MONITOR_CANCEL);
 }
 
-static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
+static int readerMonitorCB (pcscHandleT *handle, ulong state) {
     extern const nsKeyEnumT oidcFedidSchema[];
     pcscRqtCtxT *pcscRqtCtx= (pcscRqtCtxT*) pcscGetCtx(handle);
     idpRqtCtxT  *idpRqtCtx= pcscRqtCtx->idpRqtCtx;
@@ -107,113 +108,122 @@ static int readerMonitorCB (pcscHandleT *handle, unsigned long state) {
     int status=0;
     int err;
 
+    assert (pcscRqtCtx->session);
+
     // is card was previously inserted logout user (session loa=0)
-    if ((state & SCARD_STATE_EMPTY) && pcscRqtCtx->done) {
-        EXT_DEBUG ("[pcsc-monitor-absent] card removed from reader (reseting session)\n");
-        assert (pcscRqtCtx->session);
-        fedidsessionReset (0, pcscRqtCtx->session);
-        pcscRqtCtxFree(pcscRqtCtx);
-        status=1; // terminate thread 
+    if (state & SCARD_STATE_EMPTY) {
+        EXT_DEBUG ("[pcsc-monitor-absent] tid=0x%lx handle=0x%p  card=absent present=%d (reset session)", pcscGetTid(handle),handle, pcscRqtCtx->present);
+        // prevent double detection
+        if (pcscRqtCtx->present) {
+            pcscRqtCtx->present=0;
+            fedidsessionReset (pcscRqtCtx->session);
+            pcscRqtCtxFree(pcscRqtCtx);
+            status=1; // terminate thread 
+        }
     } 
 
     if (state & SCARD_STATE_PRESENT) {
-        EXT_DEBUG ("[pcsc-monitor-present] card=0x%lx inserted\n", pcscGetCardUuid(handle));
-        // reserve federation and social user structure
-        idpRqtCtx->fedSocial= calloc (1, sizeof (fedSocialRawT));
-        idpRqtCtx->fedUser= calloc (1, sizeof (fedUserRawT));
-        u_int64_t uuid;
-        char *data;
+        EXT_DEBUG ("[pcsc-monitor-authenticated] tid=0x%lx id=0x%lx handle=0x%p card=0x%lx ctx=0x%p present=%d", pcscGetTid(handle), pthread_self(), handle, pcscGetCardUuid(handle), pcscRqtCtx, pcscRqtCtx->present);
 
-        // map scope to pcsc commands
-        str2TokenT scopeTkn;
-        for (char *scope=utilStr2Token(&scopeTkn,',',pcscRqtCtx->scope); scope; scope=utilStr2Token(&scopeTkn,0,0)) {
+        // prevent from double detection
+        if (!pcscRqtCtx->present) {
+            pcscRqtCtx->present=1;
 
-            pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, scope);
-            if (!cmd) {
-                EXT_ERROR ("[pcsc-cmd-uid] command=%s not found", scope);
-                goto OnErrorExit;
+            // reserve federation and social user structure
+            idpRqtCtx->fedSocial= calloc (1, sizeof (fedSocialRawT));
+            idpRqtCtx->fedUser= calloc (1, sizeof (fedUserRawT));
+            u_int64_t uuid;
+            char *data;
+
+            // map scope to pcsc commands
+            str2TokenT scopeTkn;
+            for (char *scope=utilStr2Token(&scopeTkn,',',pcscRqtCtx->scope); scope; scope=utilStr2Token(&scopeTkn,0,0)) {
+
+                pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, scope);
+                if (!cmd) {
+                    EXT_ERROR ("[pcsc-cmd-uid] command=%s not found", scope);
+                    goto OnErrorExit;
+                }
+
+                switch (cmd->action) {
+                    case PCSC_ACTION_UUID: 
+                        uuid= pcscGetCardUuid (handle);
+                        if (uuid == 0) {
+                            EXT_ERROR ("[pcsc-cmd-uuid] command=%s fail getting uuid error=%s", cmd->uid, pcscErrorMsg(handle));
+                            goto OnErrorExit;
+                        }
+                        idpRqtCtx->fedSocial->idp = strdup (idpRqtCtx->idp->uid);
+                        asprintf ((char**)&idpRqtCtx->fedSocial->fedkey, "%ld", uuid);
+                        break;
+
+                    case PCSC_ACTION_READ: 
+                        data=malloc(cmd->dlen);
+                        err= pcscExecOneCmd (pcscOpts->handle, cmd, (u_int8_t*)data);
+                        if (err) {
+                            EXT_ERROR ("[pcsc-cmd-exec] command=%s execution fail error=%s", cmd->uid, pcscErrorMsg(handle));
+                            goto OnErrorExit;
+                        }
+                        switch (utilLabel2Value(oidcFedidSchema, cmd->uid)) {
+                            case OIDC_SCHEMA_PSEUDO: 
+                                idpRqtCtx->fedUser->pseudo= strdup(data);
+                                break;
+                            case OIDC_SCHEMA_NAME: 
+                                idpRqtCtx->fedUser->name= strdup(data);
+                                break;
+                            case OIDC_SCHEMA_EMAIL: 
+                                idpRqtCtx->fedUser->email= strdup(data);
+                                break;
+                            case OIDC_SCHEMA_COMPANY: 
+                                idpRqtCtx->fedUser->company= strdup(data);
+                                break;
+                            case OIDC_SCHEMA_AVATAR: 
+                                idpRqtCtx->fedUser->avatar= strdup(data);
+                                break;
+                            default: 
+                                EXT_ERROR ("[pcsc-cmd-schema] command=%s no schema mapping [pseudo,name,email,company,avatar]", cmd->uid);
+                                goto OnErrorExit;
+                        }
+                        break;
+
+                    default:
+                        EXT_ERROR ("[pcsc-cmd-action] command=%s action=%d not supported for authentication", cmd->uid, cmd->action);
+                        goto OnErrorExit;
+                }     
             }
 
-            switch (cmd->action) {
-                case PCSC_ACTION_UUID: 
-                    uuid= pcscGetCardUuid (handle);
-                    if (uuid == 0) {
-                        EXT_ERROR ("[pcsc-cmd-uuid] command=%s fail getting uuid error=%s", cmd->uid, pcscErrorMsg(handle));
+            // map security atributes to pcsc read commands
+            if (pcscRqtCtx->label) {
+                str2TokenT tokenLabel;
+                int index=0;
+                idpRqtCtx->fedSocial->attrs= calloc (pcscOpts->labelMax+1, sizeof(char*));
+                for (char *label=utilStr2Token(&tokenLabel,',', pcscRqtCtx->label); label; label=utilStr2Token(&tokenLabel,0,0)) {
+                    pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, label);
+                    if (!cmd || cmd->action != PCSC_ACTION_READ) {
+                        EXT_ERROR ("[pcsc-cmd-label] label=%s does does match any read command", label);
                         goto OnErrorExit;
                     }
-                    idpRqtCtx->fedSocial->idp = strdup (idpRqtCtx->idp->uid);
-                    asprintf ((char**)&idpRqtCtx->fedSocial->fedkey, "%ld", uuid);
-                    break;
 
-                case PCSC_ACTION_READ: 
-                    data=malloc(cmd->dlen);
                     err= pcscExecOneCmd (pcscOpts->handle, cmd, (u_int8_t*)data);
                     if (err) {
-                        EXT_ERROR ("[pcsc-cmd-exec] command=%s execution fail error=%s", cmd->uid, pcscErrorMsg(handle));
+                        EXT_ERROR ("[pcsc-cmd-label] command=%s execution fail error=%s", cmd->uid, pcscErrorMsg(handle));
                         goto OnErrorExit;
                     }
-                    switch (utilLabel2Value(oidcFedidSchema, cmd->uid)) {
-                        case OIDC_SCHEMA_PSEUDO: 
-                            idpRqtCtx->fedUser->pseudo= strdup(data);
-                            break;
-                        case OIDC_SCHEMA_NAME: 
-                            idpRqtCtx->fedUser->name= strdup(data);
-                            break;
-                        case OIDC_SCHEMA_EMAIL: 
-                            idpRqtCtx->fedUser->email= strdup(data);
-                            break;
-                        case OIDC_SCHEMA_COMPANY: 
-                            idpRqtCtx->fedUser->company= strdup(data);
-                            break;
-                        case OIDC_SCHEMA_AVATAR: 
-                            idpRqtCtx->fedUser->avatar= strdup(data);
-                            break;
-                        default: 
-                            EXT_ERROR ("[pcsc-cmd-schema] command=%s no schema mapping [pseudo,name,email,company,avatar]", cmd->uid);
-                            goto OnErrorExit;
-                    }
-                    break;
 
-                default:
-                    EXT_ERROR ("[pcsc-cmd-action] command=%s action=%d not supported for authentication", cmd->uid, cmd->action);
-                    goto OnErrorExit;
-            }     
-        }
-
-        // map security atributes to pcsc read commands
-        if (pcscRqtCtx->label) {
-            str2TokenT tokenLabel;
-            int index=0;
-            idpRqtCtx->fedSocial->attrs= calloc (pcscOpts->labelMax+1, sizeof(char*));
-            for (char *label=utilStr2Token(&tokenLabel,',', pcscRqtCtx->label); label; label=utilStr2Token(&tokenLabel,0,0)) {
-                pcscCmdT *cmd = pcscCmdByUid (pcscOpts->config, label);
-                if (!cmd || cmd->action != PCSC_ACTION_READ) {
-                    EXT_ERROR ("[pcsc-cmd-label] label=%s does does match any read command", label);
-                    goto OnErrorExit;
-                }
-
-                err= pcscExecOneCmd (pcscOpts->handle, cmd, (u_int8_t*)data);
-                if (err) {
-                    EXT_ERROR ("[pcsc-cmd-label] command=%s execution fail error=%s", cmd->uid, pcscErrorMsg(handle));
-                    goto OnErrorExit;
-                }
-
-                // parse ttrs string to extract multi-attributes if any
-                str2TokenT tokenAttr;
-                for (char *attr=utilStr2Token(&tokenAttr, ',', data); attr; attr=utilStr2Token(&tokenAttr,0,0)) {
-                    idpRqtCtx->fedSocial->attrs[index++] = strdup(attr);
-                    if (index == pcscOpts->labelMax) {
-                        EXT_ERROR ("[pcsc-cmd-label] ignored labels command=%s maxlabel=%d too small labels=%s", cmd->uid, pcscOpts->labelMax, pcscRqtCtx->scope);
+                    // parse ttrs string to extract multi-attributes if any
+                    str2TokenT tokenAttr;
+                    for (char *attr=utilStr2Token(&tokenAttr, ',', data); attr; attr=utilStr2Token(&tokenAttr,0,0)) {
+                        idpRqtCtx->fedSocial->attrs[index++] = strdup(attr);
+                        if (index == pcscOpts->labelMax) {
+                            EXT_ERROR ("[pcsc-cmd-label] ignored labels command=%s maxlabel=%d too small labels=%s", cmd->uid, pcscOpts->labelMax, pcscRqtCtx->scope);
+                        }
                     }
                 }
             }
+            // do federate authentication
+            idpRqtCtx->userData = (void*) handle;
+            err = fedidCheck (idpRqtCtx);
+            if (err) goto OnErrorExit;
         }
-        // do federate authentication
-        idpRqtCtx->userData = (void*) handle;
-        err = fedidCheck (idpRqtCtx);
-        if (err) goto OnErrorExit;
-
-        pcscRqtCtx->done=1; // stop thread as soon as card is removed
         status=0;   // keep thread running
     }
 
@@ -235,12 +245,11 @@ OnErrorExit:
     fedSocialFreeCB(idpRqtCtx->fedSocial);
     fedUserFreeCB(idpRqtCtx->fedUser);
     pcscRqtCtxFree(pcscRqtCtx);
-    idpRqtCtxFree(idpRqtCtx);
 	return -1;  // on error exit kill thread
 }
 
 // check pcsc login/passwd using scope as pcsc application
-static int pcscScardGet (oidcIdpT * idp, const oidcProfileT *profile, unsigned long pin, afb_hreq *hreq, struct afb_req_v4 *wreq)
+static int pcscScardGet (oidcIdpT * idp, const oidcProfileT *profile, ulong pin, afb_hreq *hreq, struct afb_req_v4 *wreq)
 {
     pcscOptsT *pcscOpts= (pcscOptsT*) idp->ctx;
 
@@ -261,7 +270,7 @@ static int pcscScardGet (oidcIdpT * idp, const oidcProfileT *profile, unsigned l
     if (idpRqtCtx->hreq) pcscRqtCtx->session= idpRqtCtx->hreq->comreq.session;
     if (idpRqtCtx->wreq) pcscRqtCtx->session= afb_req_v4_get_common (wreq)->session;
 
-    unsigned long tid= pcscMonitorReader (pcscOpts->handle, readerMonitorCB, (void*)pcscRqtCtx);
+    ulong tid= pcscMonitorReader (pcscOpts->handle, readerMonitorCB, (void*)pcscRqtCtx);
     if (tid <= 0) goto OnErrorExit;
 
     return 0;
@@ -279,7 +288,6 @@ OnErrorExit:
         }
     }
     pcscRqtCtxFree(pcscRqtCtx);
-    idpRqtCtxFree(idpRqtCtx);
     return 1;
 }
 
@@ -294,7 +302,7 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
     const oidcAliasT *alias = NULL;
     afb_data_t reply;
     const char *state;
-    unsigned long pinCode;
+    ulong pinCode;
     int aliasLoa;
     int err;
 

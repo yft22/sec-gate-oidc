@@ -84,7 +84,7 @@ static pcscKeyT *pcscKeyByUid (pcscConfigT *config, const char *keyUid) {
 }
 
 // parse keys or command data as asci string or hexa array
-static int pcscParseOneData (json_object *dataJ, u_int8_t **data, unsigned long *dlen)
+static int pcscParseOneData (json_object *dataJ, u_int8_t **data, ulong *dlen)
 {
     switch (json_object_get_type (dataJ)) {
         const char *byteS, *dataS;
@@ -148,7 +148,7 @@ static int pcscParseOneKey (pcscConfigT *config, json_object *keyJ, pcscKeyT *ke
     }
 
     // value should be an asci string or an array of hexa valueB
-    unsigned long klen;
+    ulong klen;
     err= pcscParseOneData (valueJ, &key->kval, &klen);
     if (err) goto OnErrorExit;
     key->klen= (uint8_t)klen;
@@ -185,7 +185,7 @@ static int pcscParseOneTrailer (pcscConfigT *config, json_object *trailerJ, pcsc
     }
 
     // value should be an asci string or an array of hexa valueB
-    unsigned long alen;
+    ulong alen;
     err= pcscParseOneData (valueJ, &response->acls, &alen);
     if (err || alen != 4) goto OnErrorExit;
     response->alen= (uint8_t)alen;
@@ -381,7 +381,7 @@ pcscCmdT *pcscCmdByUid (pcscConfigT *config, const char *uid) {
 
 int pcscExecOneCmd (pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data) {
     int err;
-    unsigned long dlen= cmd->dlen;
+    ulong dlen= cmd->dlen;
 
     switch (cmd->action) {
 

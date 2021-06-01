@@ -39,7 +39,7 @@ typedef struct oidcAliasesS {
     const char *path;
     const char **roles;
     oidcCoreHdlT *oidc;
-    unsigned long tCache;
+    ulong tCache;
 } oidcAliasT;
 
 oidcAliasT *aliasParseConfig (oidcCoreHdlT * oidc, json_object * aliasesJ);

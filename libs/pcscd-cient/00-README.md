@@ -210,7 +210,7 @@ High level API, hopefully match most application requirement.
  #include <pcsc-glue.h>
  pcscHandleT *pcscConnect (const char *readerName);
  int pcscDisconnect (pcscHandleT *handle);
- int pcscSetOpt (pcscHandleT *handle, pcscOptsE opt, unsigned long value);
+ int pcscSetOpt (pcscHandleT *handle, pcscOptsE opt, ulong value);
  const char* pcscErrorMsg (pcscHandleT *handle);
 ```
 
@@ -226,11 +226,11 @@ High level API, hopefully match most application requirement.
 ```c
  #include <pcsc-glue.h>
  int pcscReaderCheck (pcscHandleT *handle, int ticks);
- unsigned long pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
+ ulong pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
  int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action);
  void* pcscGetCtx (pcscHandleT *handle);
 
- typedef int (*pcscStatusCbT) (pcscHandleT *handle, unsigned long state);
+ typedef int (*pcscStatusCbT) (pcscHandleT *handle, ulong state);
  u_int64_t pcscGetCardUuid (pcscHandleT *handle);
 ```
 * **pcscReaderCheck**: in synchronous mode wait xx ticks for reader to be ready. Default ticks is 60s, and can be changed with timeout option.
@@ -248,8 +248,8 @@ Low level commands, most user may prefer to rather pcscExecOneCmd.
 ```c
  #include <pcsc-glue.h>
  const pcscKeyT *pcscNewKey (const char *uid, u_int8_t *value, size_t len);
- int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key);
- int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long *dlen, const pcscKeyT *key);
+ int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, ulong dataLen, const pcscKeyT *key);
+ int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, ulong *dlen, const pcscKeyT *key);
  int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer);
 ```
 

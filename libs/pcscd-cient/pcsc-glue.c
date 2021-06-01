@@ -82,7 +82,7 @@ typedef union {
 
 
 typedef struct pcscHandleS {
-  unsigned long magic;
+  ulong magic;
   const char *readerName;
   int readerId;
   atrCardidEnumT cardId;
@@ -94,8 +94,8 @@ typedef struct pcscHandleS {
   const SCARD_IO_REQUEST *pioSendPci;
   DWORD  activeProtocol;
   pthread_t threadId;
-  unsigned long timeout;
-  unsigned long verbose;
+  ulong timeout;
+  ulong verbose;
   const char *error;
   pcscStatusCbT callback;
   void *ctx;
@@ -190,7 +190,7 @@ OnErrorExit:
 }
 
 // get card UUID (block 0 read only execpt on Chineese smartcard)
-int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, unsigned long *dlen) {
+int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, ulong *dlen) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     BYTE cmdData[] = {0xFF, 0xCA, 0x00, 0x00, 0x00};
     long rv;
@@ -223,7 +223,7 @@ OnErrorExit:
     return 0;
 }
 
-static long pcscAuthSCard (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, unsigned long dataLen, const pcscKeyT *key, unsigned long *blkSector, unsigned long *blkLength) {
+static long pcscAuthSCard (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, ulong dataLen, const pcscKeyT *key, ulong *blkSector, ulong *blkLength) {
     long rv;
     u_int8_t *keyVal;
     u_int8_t keyIdx;
@@ -262,13 +262,13 @@ static long pcscAuthSCard (pcscHandleT *handle, const char *uid, u_int8_t secIdx
                 keyIdx= key->kidx;
             }
             BYTE keyCmd[] = {0xFF, 0x82, 0x00, 0x00, 0x06, keyVal[0], keyVal[1], keyVal[2], keyVal[3], keyVal[4], keyVal[5]};
-            unsigned long keyStatusLen= sizeof(status);
+            ulong keyStatusLen= sizeof(status);
             rv= pcscSendCmd (handle, uid, "key", keyCmd, sizeof(keyCmd), status, &keyStatusLen);
             if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
             // send authentication block
             BYTE authCmd[] = {0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, secIdx, blkIdx, 0x60|keyIdx, 0x00};
-            unsigned long authStatusLen= sizeof(status);
+            ulong authStatusLen= sizeof(status);
             rv= pcscSendCmd (handle, uid, "authent", authCmd, sizeof(authCmd), status, &authStatusLen);
             if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
@@ -296,12 +296,12 @@ OnErrorExit:
 }
 
 // try to read data bloc
-int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long dataLen, const pcscKeyT *key)
+int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, ulong dataLen, const pcscKeyT *key)
 {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     long rv=0;
-    unsigned long blkSector, blkLength;
-    unsigned long dlen;
+    ulong blkSector, blkLength;
+    ulong dlen;
 
     if (handle->verbose) fprintf (stderr, "\n# pcscReadBlock reader=%s cmd=%s scard=%ld sec=%d blk=%d dlen=%ld", handle->readerName, uid, handle->uuid, secIdx, blkIdx, dataLen);
 
@@ -309,10 +309,10 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
     if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
     // try to read bloc
-    int dataIdx=0;
-    for (int idx=blkIdx%blkSector; (idx<blkSector && dataIdx < dataLen-PCSC_MIFARE_STATUS_LEN); idx++) {
+    ulong dataIdx=0;
+    for (ulong idx=blkIdx%blkSector; (idx<blkSector && dataIdx < dataLen-PCSC_MIFARE_STATUS_LEN); idx++) {
         mifareSecBlkT sIdx;
-        sIdx.u16= (u_int16_t)(secIdx*4) + blkIdx + idx;
+        sIdx.u16= (u_int16_t)(secIdx*4 + blkIdx + idx);
 
         dlen = blkLength + PCSC_MIFARE_STATUS_LEN;  // add cmd status to buffer size
         u_int8_t readBlk[] = {0xFF, 0xB0, sIdx.u8[1], sIdx.u8[0], (u_int8_t)blkLength};
@@ -323,7 +323,7 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
         dataIdx += blkLength;
     }
     if (handle->verbose) {
-        fprintf(stderr, "recieved=%d data:[", dataIdx);
+        fprintf(stderr, "recieved=%ld data:[", dataIdx);
         for (int idx=0; idx< dataIdx; idx++) {
             if (!data[idx]) break;
             if (data[idx] >= ' ' && data[idx] <= '~') {
@@ -343,28 +343,28 @@ OnErrorExit:
 
 
 // try to read data bloc
-int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key)
+int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, ulong dataLen, const pcscKeyT *key)
 {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     long rv=0;
-    unsigned long blkSector, blkLength;
+    ulong blkSector, blkLength;
 
     if (handle->verbose) fprintf (stderr, "\n# pcsWriteBlock reader=%s cmd=%s scard=%ld sec=%d blk=%d dlen=%ld\n", handle->readerName, uid, handle->uuid, secIdx, blkIdx, dataLen);
     rv= pcscAuthSCard (handle, uid, secIdx, blkIdx, dataLen, key, &blkSector, &blkLength);
     if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
     // Write is done by block within one sector
-    int dataIdx=0;
-    for (int idx=blkIdx%blkSector; (idx<blkSector && dataIdx < dataLen); idx++) {
+    ulong dataIdx=0;
+    for (ulong idx=blkIdx%blkSector; (idx<blkSector && dataIdx < dataLen); idx++) {
 
         mifareSecBlkT sIdx;
-        sIdx.u16= (u_int16_t)(secIdx*4) + blkIdx + idx;
+        sIdx.u16= (u_int16_t)(secIdx*4 + blkIdx + idx);
 
         BYTE writeCmd[] = {0xFF, 0xD6, sIdx.u8[1], sIdx.u8[0], (u_int8_t)blkLength};
         BYTE bufferRqt[blkLength+sizeof(writeCmd)];
         memcpy (&bufferRqt[0], writeCmd, sizeof(writeCmd));
         memcpy (&bufferRqt[sizeof(writeCmd)], &dataBuf[dataIdx], blkLength);
-        unsigned long length= blkLength+sizeof(writeCmd);
+        ulong length= blkLength+sizeof(writeCmd);
 
         rv= pcscSendCmd (handle, uid, "write", bufferRqt, sizeof(bufferRqt), dataBuf, &length);
         if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
@@ -471,6 +471,10 @@ OnErrorExit:
     return -1;
 }
 
+ulong pcscGetTid (pcscHandleT *handle) {
+    return handle->threadId;
+}
+
 // thread monitoring reader status change
 static void *pcscMonitorThread (void *ptr) {
     pcscHandleT *handle = (pcscHandleT*)ptr;
@@ -481,64 +485,83 @@ static void *pcscMonitorThread (void *ptr) {
     SCARD_READERSTATE rgReaderStates;
     rgReaderStates.szReader = handle->readerName; // reader ID to test
     rgReaderStates.dwCurrentState = SCARD_STATE_UNAWARE;
+    EXT_DEBUG ("[pcsc-thread-monitor] starting tid=0x%lx", handle->threadId);
 
     // loop forever until reader is disconnected
     while (1) {
             // wait timeout second for card to be inserted
             rv = SCardGetStatusChange(handle->hContext, handle->timeout*1000, &rgReaderStates, 1);
             
-            // if timeout is infinit loop when pcscd exit
-            if (rv == SCARD_E_TIMEOUT && !handle->timeout) continue;
-            if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+            switch (rv) {
+                case SCARD_E_CANCELLED:
+                    goto OnCancelExit;
 
-            if (rgReaderStates.dwCurrentState != rgReaderStates.dwEventState) {
-                rgReaderStates.dwCurrentState = rgReaderStates.dwEventState;
+                case SCARD_E_TIMEOUT: 
+                    if (!handle->timeout) continue;
+                    break;
 
-                // card was inserted retreive uuid/atr
-                if (rgReaderStates.dwEventState & SCARD_STATE_PRESENT) {
+                case SCARD_S_SUCCESS:
+                    if (rgReaderStates.dwCurrentState != rgReaderStates.dwEventState) {
+                        rgReaderStates.dwCurrentState = rgReaderStates.dwEventState;
 
-                    rv = SCardConnect(handle->hContext, handle->readerName, SCARD_SHARE_SHARED,
-                        SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &handle->hCard, &handle->activeProtocol);
-                    if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+                        // card was inserted retreive uuid/atr
+                        if (rgReaderStates.dwEventState & SCARD_STATE_PRESENT) {
 
-                    // set up the io request
-                    switch(handle->activeProtocol)
-                    {
-                        case SCARD_PROTOCOL_T0:
-                            handle->pioSendPci = SCARD_PCI_T0;
-                            break;
-                        case SCARD_PROTOCOL_T1:
-                            handle->pioSendPci = SCARD_PCI_T1;
-                            break;
-                        default:
-                            EXT_CRITICAL("[pcsc-sccard-check] SCARD_PCI Unknown protocol (SCardConnect)");
-                            goto OnErrorExit;
+                            rv = SCardConnect(handle->hContext, handle->readerName, SCARD_SHARE_SHARED,
+                                SCARD_PROTOCOL_T0 | SCARD_PROTOCOL_T1, &handle->hCard, &handle->activeProtocol);
+                            if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+
+                            // set up the io request
+                            switch(handle->activeProtocol) {
+
+                                case SCARD_PROTOCOL_T0:
+                                    handle->pioSendPci = SCARD_PCI_T0;
+                                    break;
+                                case SCARD_PROTOCOL_T1:
+                                    handle->pioSendPci = SCARD_PCI_T1;
+                                    break;
+                                default:
+                                    EXT_CRITICAL("[pcsc-sccard-check] SCARD_PCI Unknown protocol (SCardConnect)");
+                                    goto OnErrorExit;
+                            }
+                        }
+
+                        // card was removed cleanup UUID/ATR
+                        if (rgReaderStates.dwEventState & SCARD_STATE_EMPTY) {
+                            handle->uuid=0;
+                            handle->cardId=ATR_UNKNOWN;
+                        }
                     }
-                }
 
-            // card was removed cleanup UUID/ATR
-            if (rgReaderStates.dwEventState & SCARD_STATE_EMPTY) {
-                handle->uuid=0;
-                handle->cardId=ATR_UNKNOWN;
-            }
-
-            if (handle->verbose) fprintf (stderr, "\n -- async: reader=%s status=0x%lx\n", handle->readerName, rgReaderStates.dwEventState);
-            err= handle->callback (handle, rgReaderStates.dwEventState);
-            if (err <0) goto OnErrorExit;
-            if (err >0) break; // normal exit
+                    if (handle->verbose) fprintf (stderr, "\n -- async: reader=%s status=0x%lx\n", handle->readerName, rgReaderStates.dwEventState);
+                    err= handle->callback (handle, rgReaderStates.dwEventState);
+                    if (err < 0) goto OnErrorExit;
+                    if (err > 0) goto OnRequestExit;
+                    break;
+                default: 
+                    goto OnErrorExit;
         }
     }
-    EXT_DEBUG ("[pcsc-thread-monitor] Normal thread end");
+
+OnRequestExit:    
+    EXT_DEBUG ("[pcsc-thread-monitor] card-remove exit tid=0x%lx", handle->threadId);
+    handle->threadId=0;
+    return NULL;
+
+OnCancelExit:
+    EXT_DEBUG ("[pcsc-thread-monitor] session-cancel exit tid=0x%lx", handle->threadId);
+    handle->threadId=0;
     return NULL;
 
 OnErrorExit:
     handle->error= pcsc_stringify_error(rv);
-    EXT_CRITICAL ("[pcsc-thread-monitor] Reader not avaliable thread exited err=%s", handle->error);
+    EXT_CRITICAL ("[pcsc-thread-monitor] Reader not avaliable tid=0x%lx exited err=%s", handle->threadId, handle->error);
+    handle->threadId=0;
     return NULL;
 }
 
 // start a posix thread to monitor reader status
-unsigned long pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx) {
+ulong pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     handle->ctx= ctx;
     handle->callback=callback;
@@ -560,12 +583,22 @@ int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action) {
 
     switch (action) {
         case PCSC_MONITOR_WAIT:
+            if (!handle->threadId) goto OnErrorExit;
+            EXT_DEBUG ("[pcsc-thread-join] tid=0x%lx (pcscMonitorWait)", handle->threadId);
             pthread_join(handle->threadId, NULL); // infinit wait for monitor to quit
             break;
 
         case PCSC_MONITOR_CANCEL:
+            EXT_DEBUG ("[pcsc-thread-cancel] tid=0x%lx (pcscMonitorWait)", handle->threadId);
             SCardCancel (handle->hContext);
+            break;
 
+        case PCSC_MONITOR_KILL:
+            EXT_DEBUG ("[pcsc-thread-kill] tid=0x%lx (pcscMonitorWait)", handle->threadId);
+            if (handle->threadId) {
+                pthread_cancel (handle->threadId);
+                handle->threadId=0;
+            }
             break;
 
         default: 
@@ -587,7 +620,7 @@ int pcscDisconnect (pcscHandleT *handle) {
     int err;
 
     if (handle->threadId) {
-        err= pthread_kill (handle->threadId, SIGSTOP);
+        err= pcscMonitorWait (handle, PCSC_MONITOR_CANCEL);
         if (err) {
             EXT_NOTICE ("[pcsc-disconnect-thread] fail to stop monitoring thread");
         }
@@ -673,7 +706,7 @@ OnErrorExit:
 }
 
 // setter for reader options
-int pcscSetOpt (pcscHandleT *handle, pcscOptsE option, unsigned long value) {
+int pcscSetOpt (pcscHandleT *handle, pcscOptsE option, ulong value) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
 
     // if no value keep defaults

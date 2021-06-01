@@ -180,7 +180,6 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
   OnErrorExit:
     EXT_CRITICAL ("[github-fail-user-profile] Fail to get user profile from github status=%ld body='%s'", httpRqt->status, httpRqt->body);
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
-    idpRqtCtxFree(rqtCtx);
     fedSocialFreeCB(fedSocial);
     fedUserFreeCB(fedUser);
     return HTTP_HANDLE_FREE;

@@ -30,7 +30,7 @@ typedef struct {
     const u_int8_t sec; // sector number (0 for mifare)
     const u_int8_t blk; // block number for NFC tag-2
     u_int8_t *data;
-    unsigned long dlen;
+    ulong dlen;
     const pcscKeyT *key;
     pcscActionE action;
     pcscTrailerT *trailer;
@@ -39,9 +39,9 @@ typedef struct {
 } pcscCmdT;
 
 typedef struct {
-    unsigned long magic;
+    ulong magic;
     const char *reader;
-    unsigned long timeout;
+    ulong timeout;
     int maxdev;
     int verbose;
     const char *info;

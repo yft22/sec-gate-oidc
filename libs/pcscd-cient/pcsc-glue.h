@@ -50,6 +50,7 @@ typedef enum {
     PCSC_MONITOR_UNKNOWN=0,
     PCSC_MONITOR_WAIT,
     PCSC_MONITOR_CANCEL,
+    PCSC_MONITOR_KILL,
 } pcscMonitorActionE;
 
 typedef struct {
@@ -67,22 +68,23 @@ typedef struct {
 } pcscTrailerT;
 
 typedef struct pcscHandleS pcscHandleT; // opaque handle for client apps
-typedef int (*pcscStatusCbT) (pcscHandleT *handle, unsigned long state);
+typedef int (*pcscStatusCbT) (pcscHandleT *handle, ulong state);
 
 pcscHandleT *pcscConnect (const char *readerName);
 int pcscDisconnect (pcscHandleT *handle);
-int pcscSetOpt (pcscHandleT *handle, pcscOptsE opt, unsigned long value);
+int pcscSetOpt (pcscHandleT *handle, pcscOptsE opt, ulong value);
 const char* pcscReaderName (pcscHandleT *handle);
 const char* pcscErrorMsg (pcscHandleT *handle);
 u_int64_t pcscGetCardUuid (pcscHandleT *handle);
 
 int pcscReaderCheck (pcscHandleT *handle, int ticks);
-unsigned long pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
+ulong pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
 int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action);
 void* pcscGetCtx (pcscHandleT *handle);
+ulong pcscGetTid (pcscHandleT *handle);
 
 const pcscKeyT *pcscNewKey (const char *uid, u_int8_t *value, size_t len);
-int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, unsigned long *dlen);
+int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, ulong *dlen);
 int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer);
-int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, unsigned long dataLen, const pcscKeyT *key);
-int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, unsigned long dataLen, const pcscKeyT *key);
+int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, ulong dataLen, const pcscKeyT *key);
+int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, ulong dataLen, const pcscKeyT *key);

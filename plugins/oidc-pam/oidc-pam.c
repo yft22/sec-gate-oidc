@@ -211,7 +211,6 @@ static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct af
         err = idpCallbacks->fedidCheck (idpRqtCtx);
         if (err) {
             afb_req_unref (wreq);
-            idpRqtCtxFree(idpRqtCtx);
             goto OnErrorExit;
         }
     } else {
@@ -309,7 +308,6 @@ int pamLoginCB (afb_hreq * hreq, void *ctx)
         idpRqtCtx->hreq= hreq;
         err = idpCallbacks->fedidCheck (idpRqtCtx);
         if (err) {
-            idpRqtCtxFree(idpRqtCtx);
             goto OnErrorExit;
         }
     }

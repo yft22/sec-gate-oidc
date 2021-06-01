@@ -542,7 +542,7 @@ static int oidcLogoutCB (afb_hreq * hreq, void *ctx) {
     // search session uuid and close it when exist
     session= afb_session_search (sessionUid);
     if (!session) goto OnErrorExit;
-    fedidsessionReset (0, (void*)sidMap->uuid);
+    fedidsessionReset (session);
 
     // remove sid from sidmap table
     HASH_DEL(sidHead, sidMap);

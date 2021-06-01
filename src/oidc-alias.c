@@ -74,7 +74,7 @@ aliasCheckAttrs (afb_session * session, oidcAliasT * alias)
 static void
 aliasRedirectTimeout (afb_hreq * hreq, oidcAliasT * alias)
 {
-    oidcProfileT *profile = NULL;
+    oidcProfileT *profile;
     int err;
 
     afb_session_cookie_set (hreq->comreq.session, oidcAliasCookie, alias, NULL, NULL);

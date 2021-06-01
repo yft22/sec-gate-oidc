@@ -52,8 +52,8 @@ typedef struct {
     const char *registerUrl;
     const char *fedlinkUrl;
     const char *homeUrl;
-    unsigned long tCache;
-    unsigned long sTimeout;
+    ulong tCache;
+    ulong sTimeout;
 } oidGlobalsT;
 
 // this structure is returned by plugin registration callback

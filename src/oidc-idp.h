@@ -75,14 +75,14 @@ typedef struct {
     int loa;
     int group;
     int slave;
-    unsigned long tCache;
-    unsigned long sTimeout;
+    ulong tCache;
+    ulong sTimeout;
     oidcIdpT *idp;
 } oidcProfileT;
 
 typedef struct oidcStaticsS {
     int loa;
-    unsigned long sTimeout;
+    ulong sTimeout;
     const char *aliasLogo;
     const char *aliasLogin;
     const char *aliasLogout;

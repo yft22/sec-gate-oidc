@@ -286,7 +286,6 @@ static httpRqtActionT ldapAccessProfileCB (httpRqtT * httpRqt)
     fedSocialFreeCB(idpRqtCtx->fedSocial);
     fedUserFreeCB(idpRqtCtx->fedUser);
     ldapRqtCtxFree(ldapRqtCtx);
-    idpRqtCtxFree(idpRqtCtx);
     return HTTP_HANDLE_FREE;
 }
 

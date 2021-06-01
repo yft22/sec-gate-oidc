@@ -73,8 +73,8 @@ static void userCheckAttrCB (void *ctx, int status, unsigned argc, const afb_dat
     static char existMsg[] = "locked";
     static char freeMsg[] = "available";
     afb_data_t reply[1], argd[2];
-    fedUserRawT *fedUser = NULL;
-    oidcProfileT *profile = NULL;
+    fedUserRawT *fedUser;
+    oidcProfileT *profile;
     json_object *profileJ;
 
     // return creation status to HTML5
@@ -121,7 +121,7 @@ userCheckAttr (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 static void idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
 {
     char *errorMsg = "[user-link-fail] internal error (idpQueryUserCB)";
-    fedSocialRawT *fedSocial = NULL, *fedToLink;
+    fedSocialRawT *fedSocial, *fedToLink;
     json_object *idpsJ, *responseJ, *aliasJ;
     afb_data_t reply[1];
     afb_data_t argd[1];
@@ -140,7 +140,7 @@ static void idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data
     const char **idps = (void *) afb_data_ro_pointer (argd[0]);
 
     // retreive oidc config from current alias cookie
-    oidcAliasT *alias = NULL;
+    oidcAliasT *alias;
     afb_session *session = afb_req_v4_get_common (wreq)->session;
     afb_session_cookie_get (session, oidcAliasCookie, (void **) &alias);
 
@@ -195,8 +195,8 @@ static void userRegisterCB (void *ctx, int status, unsigned argc, const afb_data
 {
     char *errorMsg = "[user-create-fail]  (idsvcuserRegisterCB)";
     afb_data_t reply[1], argd[2];
-    oidcProfileT *profile = NULL;
-    oidcAliasT *alias = NULL;
+    oidcProfileT *profile;
+    oidcAliasT *alias;
     json_object *aliasJ;
     afb_session *session = afb_req_v4_get_common (wreq)->session;
 
@@ -222,8 +222,8 @@ static void userRegisterCB (void *ctx, int status, unsigned argc, const afb_data
 static void userRegister (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     char *errorMsg = "[user-register-fail] invalid session/wreq";
-    afb_event_t evtCookie = NULL;
-    const oidcProfileT *profile = NULL;
+    afb_event_t evtCookie;
+    const oidcProfileT *profile;
     const fedSocialRawT *fedSocial;
     int err;
 
@@ -264,8 +264,8 @@ static void userFederateCB (void *ctx, int status, unsigned argc, const afb_data
     fedUserRawT *fedUser= (fedUserRawT*)ctx;
     fedidLinkT *fedBackup;
     afb_data_t reply[1];
-    oidcProfileT *profile = NULL;
-    oidcAliasT *alias = NULL;
+    oidcProfileT *profile;
+    oidcAliasT *alias;
     json_object *responseJ;
     int err;
 
@@ -302,8 +302,8 @@ static void userFederateCB (void *ctx, int status, unsigned argc, const afb_data
 static void userFederate (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     char *errorMsg = "[user-federate-fail] invalid/missing query arguments";
-    afb_event_t evtCookie = NULL;
-    const oidcProfileT *profile = NULL;
+    afb_event_t evtCookie;
+    const oidcProfileT *profile;
     const fedSocialRawT *fedSocial;
     json_object *responseJ;
     int err;
@@ -329,13 +329,12 @@ static void userFederate (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
     if (argc == 1 && argd[0]) afb_data_array_unref (argc, argd);
 }
 
-static void
-sessionReset (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
+static void sessionReset (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     json_object *responseJ;
     afb_session *session = afb_req_v4_get_common (wreq)->session;
-    const oidcProfileT *profile = NULL;
-    fedidsessionReset (0, (void *) session);
+    const oidcProfileT *profile;
+    fedidsessionReset (session);
     afb_data_t reply;
 
     afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profile);
@@ -360,8 +359,8 @@ static void sessionGet (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
 {
     char *errorMsg = "[fail-session-get] no session running anonymous mode";
     afb_data_t reply[3];
-    afb_event_t evtCookie = NULL;
-    const oidcProfileT *profile = NULL;
+    afb_event_t evtCookie;
+    const oidcProfileT *profile;
     fedUserRawT *fedUser;
     fedSocialRawT *fedSocial;
     json_object *profileJ;
@@ -396,7 +395,7 @@ static void subscribeEvent (afb_req_t wreq, unsigned argc, afb_data_t const argv
     int err;
     char *response;
     afb_data_t reply;
-    afb_event_t evtCookie = NULL;
+    afb_event_t evtCookie;
 
     // retrieve current wreq LOA from session (to be fixed by Jose)
     afb_session *session = afb_req_v4_get_common (wreq)->session;
@@ -405,8 +404,9 @@ static void subscribeEvent (afb_req_t wreq, unsigned argc, afb_data_t const argv
         err = afb_api_new_event (afb_req_get_api (wreq),"session", &evtCookie);
         if (err < 0) goto OnErrorExit;
         afb_session_cookie_set (session, idsvcEvtCookie, (void*)evtCookie, NULL, NULL);
-        afb_req_subscribe (wreq, evtCookie);
     }
+    EXT_DEBUG ("[session-evt-sub] client subscribed session uuid=%s", afb_session_uuid (session));
+    afb_req_subscribe (wreq, evtCookie);
 
     asprintf (&response, "session-uuid=%s", afb_session_uuid (session));
     afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_STRINGZ, response, strlen (response) + 1, free, NULL);
@@ -423,7 +423,7 @@ static void subscribeEvent (afb_req_t wreq, unsigned argc, afb_data_t const argv
 int idscvPushEvent (afb_session *session, json_object * eventJ)
 {
     int count;
-    afb_event_t evtCookie = NULL;
+    afb_event_t evtCookie;
     afb_data_t reply;
 
     afb_session_cookie_get (session, idsvcEvtCookie, (void **) &evtCookie);
