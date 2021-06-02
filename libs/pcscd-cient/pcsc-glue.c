@@ -88,6 +88,7 @@ typedef union {
 
 
 typedef struct pcscHandleS {
+  const char *uid;  
   ulong magic;
   const char *readerName;
   int readerId;
@@ -102,6 +103,7 @@ typedef struct pcscHandleS {
   ulong timeout;
   ulong verbose;
   const char *error;
+  ulong tid;
   void *ctx;
 } pcscHandleT;
 
@@ -341,7 +343,7 @@ int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
 OnErrorExit:
     if (handle->verbose) fprintf (stderr, " error=%s\n", handle->error);
-    EXT_ERROR ("[pcsc-readblk-fail] cmd=%s action:read err=%s", uid, handle->error);
+    EXT_DEBUG ("[pcsc-readblk-fail] cmd=%s action:read err=%s", uid, handle->error);
     return -1;
 }
 
@@ -380,7 +382,7 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
     return 0;
 
 OnErrorExit:
-    EXT_ERROR("[pcsc-writeblk-fail] cmd=%s action=write err=%s", uid, handle->error);
+    EXT_DEBUG("[pcsc-writeblk-fail] cmd=%s action=write err=%s", uid, handle->error);
     return -1;
 }
 
@@ -413,7 +415,7 @@ int pcscCardCheckAtr(pcscHandleT *handle)
     return 0;
 
 OnErrorExit:
-    EXT_CRITICAL ("[pcsc-sccard-atr] Fail get smart card atr reader=%s. (pcscCardCheckAtr=%s)", handle->readerName, pcsc_stringify_error(rv));
+    EXT_ERROR ("[pcsc-sccard-atr] Fail get smart card atr reader=%s. (pcscCardCheckAtr=%s)", handle->readerName, pcsc_stringify_error(rv));
     return -1;
 }
 
@@ -471,7 +473,7 @@ int pcscReaderCheck (pcscHandleT *handle, int ticks)
 
 OnErrorExit:
     handle->error= pcsc_stringify_error(rv);
-    EXT_CRITICAL ("[pcsc-sccard-check] Fail get connect smart card reader=%s. (SCardConnect=%s)", handle->readerName, pcsc_stringify_error(rv));
+    EXT_ERROR ("[pcsc-sccard-check] Fail get connect smart card reader=%s. (SCardConnect=%s)", handle->readerName, pcsc_stringify_error(rv));
     return -1;
 }
 
@@ -549,17 +551,20 @@ static void *pcscMonitorThread (void *ptr) {
 OnRequestExit:    
     EXT_DEBUG ("[pcsc-thread-monitor] card-remove exit tid=0x%lx", pthread_self());
     free (threadCtx);
+    handle->tid=0;
     return NULL;
 
 OnCancelExit:
     EXT_DEBUG ("[pcsc-thread-monitor] session-cancel exit tid=0x%lx", pthread_self());
     free(threadCtx);
+    handle->tid=0;
     return NULL;
 
 OnErrorExit:
     handle->error= pcsc_stringify_error(rv);
-    EXT_CRITICAL ("[pcsc-thread-monitor] Reader not avaliable tid=0x%lx exited err=%s", pthread_self(), handle->error);
+    EXT_ERROR ("[pcsc-thread-monitor] Reader not avaliable tid=0x%lx exited err=%s", pthread_self(), handle->error);
     free(threadCtx);
+    handle->tid=0;
     return NULL;
 }
 
@@ -568,18 +573,26 @@ ulong pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *user
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     int err;
 
+    if (handle->tid) {
+        handle->error= "[pcsc-monitor-fail] monitoring thread already present";
+        goto OnErrorExit;
+    }
+
     pcscThreadT *threadCtx= calloc (1, sizeof(pcscThreadT));
     threadCtx->userData= userData;
     threadCtx->pcsc= handle;
     threadCtx->callback=callback;
 
     err= pthread_create (&threadCtx->tid, NULL, pcscMonitorThread, (void*) threadCtx);
-    if (err) goto OnErrorExit;
+    if (err) {
+        handle->error= strerror(errno);
+        goto OnErrorExit;
+    }
+    handle->tid= threadCtx->tid; // prevent from starting two thread
     return (ulong)threadCtx->tid;
 
 OnErrorExit:
-    handle->error= strerror(errno);
-    EXT_CRITICAL ("[pcsc-sccard-monitor] Fail start monitoring thread reader=%s. (pcscMonitorReader err=%s)", handle->readerName, strerror(errno)) ;
+    EXT_ERROR ("[pcsc-sccard-monitor] Fail monitoring reader=%s. (pcscMonitorReader err=%s)", handle->uid, strerror(errno)) ;
     return 0;
 }
 
@@ -606,7 +619,7 @@ int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action, ulong tid) 
 
 OnErrorExit:
     handle->error= strerror(errno);
-    EXT_CRITICAL ("[pcsc-sccard-monitor] Unknown action on monitor reader=%s. (pcscMonitorWait err=%s)", handle->readerName, strerror(errno)) ;
+    EXT_ERROR ("[pcsc-sccard-monitor] Unknown action on monitor reader=%s. (pcscMonitorWait err=%s)", handle->readerName, strerror(errno)) ;
     return -1;
 }
 
@@ -627,16 +640,18 @@ int pcscDisconnect (pcscHandleT *handle) {
     return 0;
 
 OnErrorExit:
-    EXT_CRITICAL ("[pcsc-disconnect-fail] fail to free pcsc handle err=%s", pcsc_stringify_error(rv));
+    EXT_ERROR ("[pcsc-disconnect-fail] fail to free pcsc handle err=%s", pcsc_stringify_error(rv));
     return -1;
 }
 
 // search for reader and create corresponding pcsc-lite handle
-pcscHandleT *pcscConnect (const char *readerName) {
+pcscHandleT *pcscConnect (const char*uid, const char *readerName) {
     pcscHandleT *handle= calloc (1, sizeof(pcscHandleT));
     handle->timeout= PCSC_DFLT_TIMEOUT;
   	handle->activeProtocol= -1;
     long rv;
+
+    handle->uid= uid;
 
     // connect to pcscd as system user
 	rv = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &handle->hContext);
@@ -719,7 +734,7 @@ int pcscSetOpt (pcscHandleT *handle, pcscOptsE option, ulong value) {
     return 0;
 
 OnErrorExit:
-    EXT_CRITICAL ("[pcsc-opt-unknown] Invalid option (pcscSetOpt)");
+    EXT_ERROR ("[pcsc-opt-unknown] Invalid option (pcscSetOpt)");
     return -1;
 }
 

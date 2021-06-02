@@ -122,15 +122,25 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state, void *ctx) {
     if (state & SCARD_STATE_EMPTY) {
         EXT_DEBUG ("[pcsc-scard-absent] tid=0x%lx card=absent status=%d", pthread_self(),pcscRqtCtx->status);
         // prevent double detection
-        if (pcscRqtCtx->status != PCSC_STATUS_WAITING) {
 
-            if (pcscRqtCtx->status == PCSC_STATUS_AUTHENTICATED) {
+        switch (pcscRqtCtx->status) {
+
+            // session was authenticated logout session and kill thread
+            case PCSC_STATUS_AUTHENTICATED:
                 fedidsessionReset (pcscRqtCtx->session);
                 pcscRqtCtxFree(pcscRqtCtx);
                 status=1; // terminate thread 
-            }
-            pcscRqtCtx->status=PCSC_STATUS_WAITING;
-        }
+                break;
+
+            // scard was refused wait for card removal and restart a fresh authen session
+            case  PCSC_STATUS_REFUSED: 
+                status=1; 
+                break;   
+
+            // all other case just wait for new card insertion
+            default:    
+                pcscRqtCtx->status=PCSC_STATUS_WAITING;
+        }    
     } 
 
     else if (state & SCARD_STATE_PRESENT) {
@@ -168,7 +178,7 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state, void *ctx) {
 
                     case PCSC_ACTION_READ: 
                         data=malloc(cmd->dlen);
-                        err= pcscExecOneCmd (pcscOpts->handle, cmd, (u_int8_t*)data);
+                        err= pcscExecOneCmd (handle, cmd, (u_int8_t*)data);
                         if (err) {
                             EXT_ERROR ("[pcsc-cmd-exec] command=%s execution fail error=%s", cmd->uid, pcscErrorMsg(handle));
                             goto OnErrorExit;
@@ -244,8 +254,7 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state, void *ctx) {
 
 OnErrorExit:
     {
-        pcscRqtCtx->status=PCSC_STATUS_REFUSED;
-        static char errorMsg[]= "[pcsc-scard-fail] cannot read data on nfc/smartcard (check card/config)";
+        static char errorMsg[]= "[pcsc-scard-fail] invalid token/smartcard (check scard/config)";
         EXT_CRITICAL (errorMsg);
         if (idpRqtCtx->hreq) {
             afb_hreq_reply_error (idpRqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
@@ -255,10 +264,10 @@ OnErrorExit:
             afb_req_v4_reply_hookable (idpRqtCtx->wreq, -1, 1, &reply);
         }
     }
+    pcscRqtCtx->status=PCSC_STATUS_REFUSED;
     fedSocialFreeCB(idpRqtCtx->fedSocial);
     fedUserFreeCB(idpRqtCtx->fedUser);
-    pcscRqtCtxFree(pcscRqtCtx);
-	return 1;  // stop pcsc monitoring thread
+	return 0;  // keep thread waiting for card to be removed
 }
 
 // check pcsc login/passwd using scope as pcsc application
@@ -289,25 +298,14 @@ static int pcscScardGet (oidcIdpT * idp, const oidcProfileT *profile, ulong pin,
     return 0;
 
 OnErrorExit:
-    {
-        static char errorMsg[]= "[pcsc-scard-fail] Fail to get user profile from pscs (nfc/smartcard)";
-        EXT_CRITICAL (errorMsg);
-        if (idpRqtCtx->hreq) {
-            afb_hreq_reply_error (idpRqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
-        } else {
-            afb_data_t reply;
-            afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_STRINGZ, errorMsg, sizeof(errorMsg), NULL, NULL);
-            afb_req_v4_reply_hookable (idpRqtCtx->wreq, -1, 1, &reply);
-        }
-    }
     pcscRqtCtxFree(pcscRqtCtx);
-    return 1;
+    return -1;
 }
 
 // check user email/pseudo attribute
 static void checkLoginVerb (struct afb_req_v4 *wreq, unsigned nparams, struct afb_data *const params[])
 {
-    const char *errmsg = "[pcsc-login] invalid credentials";
+    const char *errmsg = "[pcsc-login-fail] invalid credentials (insert a valid scard)";
     oidcIdpT *idp = (oidcIdpT *) afb_req_v4_vcbdata (wreq);
     struct afb_data *args[nparams];
     const char *scope = NULL;
@@ -476,7 +474,7 @@ static int pcscRegisterConfig (oidcIdpT * idp, json_object * idpJ)
     if (!pcscOpts->config) goto OnErrorExit;
 
     // create pcsc handle and set options
-    pcscOpts->handle =pcscConnect (pcscOpts->config->reader);
+    pcscOpts->handle =pcscConnect (pcscOpts->config->uid, pcscOpts->config->reader);
     if (!pcscOpts->handle) {
         EXT_CRITICAL ("[pcsc-config-reader] Fail to connect to reader=%s\n", pcscOpts->config->reader);
         goto OnErrorExit;

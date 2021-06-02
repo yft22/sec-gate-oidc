@@ -203,7 +203,7 @@ int main (int argc, char *argv[])
     params->config= config;
 
     // create pcsc handle and set options
-    pcscHandleT *handle =pcscConnect (config->reader);
+    pcscHandleT *handle =pcscConnect (config->uid, config->reader);
     if (!handle) {
         fprintf (stderr, "Fail to connect to reader=%s\n", config->reader);
         goto OnErrorExit;

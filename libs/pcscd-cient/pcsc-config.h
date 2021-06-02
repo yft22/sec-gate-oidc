@@ -39,6 +39,7 @@ typedef struct {
 } pcscCmdT;
 
 typedef struct {
+    const char *uid;
     ulong magic;
     const char *reader;
     ulong timeout;

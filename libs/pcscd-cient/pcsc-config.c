@@ -287,7 +287,8 @@ pcscConfigT *pcscParseConfig (json_object *configJ, const int verbosity)
     config->verbose= verbosity;
     config->maxdev= PCSC_MAX_DEV;
 
-    err= wrap_json_unpack (configJ, "{s?s ss s?i s?i s?i s?o s?o !}"
+    err= wrap_json_unpack (configJ, "{s?s s?s ss s?i s?i s?i s?o s?o !}"
+        , "uid", &config->uid
         , "info", &config->info
         , "reader", &config->reader
         , "maxdev", &config->maxdev
@@ -300,6 +301,8 @@ pcscConfigT *pcscParseConfig (json_object *configJ, const int verbosity)
         EXT_CRITICAL ("[pcsc-config-fail] config json supported keys:[into,reader,cmds,keys] (pcscParseConfig)");
         goto OnErrorExit;
     }
+
+    if (!config->uid) config->uid= config->reader;
 
     if (keysJ && !cmdsJ) {
         EXT_CRITICAL ("[pcsc-config-fail] key 'cmds' mandatory when 'keys' present (pcscParseConfig)");

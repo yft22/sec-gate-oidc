@@ -347,8 +347,8 @@ function pcscReadCard(verb) {
         }
         info.innerText=err.response;
         log.reply(err);
+        // wait 3 second and try again
         setTimeout(function(){ pcscReadCard(); }, 3000);
-        pcscReadCard(); // try reading card again
     });
 }
 

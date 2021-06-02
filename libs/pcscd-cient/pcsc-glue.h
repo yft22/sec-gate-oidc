@@ -70,7 +70,7 @@ typedef struct {
 typedef struct pcscHandleS pcscHandleT; // opaque handle for client apps
 typedef int (*pcscStatusCbT) (pcscHandleT *handle, ulong state, void*ctx);
 
-pcscHandleT *pcscConnect (const char *readerName);
+pcscHandleT *pcscConnect (const char *uid, const char *readerName);
 int pcscDisconnect (pcscHandleT *handle);
 int pcscSetOpt (pcscHandleT *handle, pcscOptsE opt, ulong value);
 const char* pcscReaderName (pcscHandleT *handle);
