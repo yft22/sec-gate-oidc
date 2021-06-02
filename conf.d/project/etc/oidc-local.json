@@ -60,6 +60,43 @@
             "profiles": [
                 {"uid":"login", "loa":1, "scope":"login"}
             ]
+        },{
+            "uid": "nfc-scard",
+            "type": "pcsc",
+            "info": "NFC Mifare/Classic smartcard authentication (check ",
+            "plugin": {
+                "ldpath": "libidp-sgate-pcscd-auth.so",
+                "config":     {
+                    "info" : "Mifare/Classic command samples",
+                    "reader": "acr122",
+                    "keys": [
+                        {"uid":"key-a", "idx": 0, "value":["0x01","0x02","0x03","0x04","0x05","0x06"]},
+                        {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]}      
+                    ],
+                    "cmds": [ 
+                        // card should be pre-provision with right keys/acls (pcsc-client --help)          
+                        {"uid":"fedid"   , "action":"uuid"},
+                        {"uid":"pseudo"  , "action":"read","sec": 1, "key":"key-a", "len":48},
+                        {"uid":"email"   , "action":"read","sec": 2, "key":"key-a", "len":48},
+                        {"uid":"name"    , "action":"read","sec": 3, "key":"key-a", "len":48},
+                        {"uid":"company" , "action":"read","sec": 4, "key":"key-a", "len":48},
+                        {"uid":"roles"   , "action":"read","sec": 5, "key":"key-a", "len":48},
+                        {"uid":"apps"    , "action":"read","sec": 6, "key":"key-a", "len":48}
+                    ]
+                }
+            },
+            "statics": {
+                "login": "/sgate/nfc-auth/login",
+                "logo": "/sgate/nfc-auth/logo-64px.png",
+                "timeout": 900
+            },
+            "wellknown": {
+                "tokenid": "/sgate/nfc-auth/login.html"
+            },
+            "profiles": [
+              {"uid":"linked","loa":1, "scope":"fedid", "slave":true},
+              {"uid":"admin", "loa":2, "scope":"fedid,pseudo,name,email,company", "attrs":"roles,apps"}
+            ]
         }
       ],
       "apis": [
@@ -74,8 +111,7 @@
         {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "path":"idps/github" },
         {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "path":"idps/pam" },
         {"uid": "idp-ldap"    , "url":"/sgate/ldap"   ,"loa":0, "path":"idps/ldap" },
-        {"uid": "idp-phantauth" , "url":"/sgate/phantauth"   ,"loa":0, "path":"idps/phantauth" },
-        {"uid": "idp-onelogin" , "url":"/sgate/onelogin"   ,"loa":0, "path":"idps/onelogin" },
+        {"uid": "idp-nfc"    , "url":"/sgate/nfc-auth"   ,"loa":0, "path":"idps/pcsc-nfc" },
         {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },
         {"uid": "private", "info": "Required basic authentication", "url":"/private",  "loa":1, "path":"private" },
         {"uid": "confidential", "info": "Required teams authentication", "url":"/confidential", "loa":2, "path":"confidential" },

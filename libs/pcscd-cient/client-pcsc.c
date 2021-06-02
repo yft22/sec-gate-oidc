@@ -143,8 +143,8 @@ OnErrorExit:
 }
 
 // in asynchronous mode CB is call each time reader status change
-static int readerMonitorCB (pcscHandleT *handle, ulong state) {
-    pcscParamsT *params = (pcscParamsT*) pcscGetCtx(handle);
+static int readerMonitorCB (pcscHandleT *handle, ulong state, void *ctx) {
+    pcscParamsT *params = (pcscParamsT*) ctx;
     int err;
 
     if (state & SCARD_STATE_PRESENT) {
@@ -224,7 +224,7 @@ int main (int argc, char *argv[])
             if (!params->forced) goto OnErrorExit;
         }
         fprintf (stderr, " -- Waiting: %ds events for reader=%s (ctrl-C to quit)\n", params->async, pcscReaderName(handle));
-        err= pcscMonitorWait (handle, PCSC_MONITOR_WAIT);
+        err= pcscMonitorWait (handle, PCSC_MONITOR_WAIT, tid);
         if (err) goto OnErrorExit;
 
     } else {

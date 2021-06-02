@@ -71,11 +71,7 @@
         ],
       "alias": [
         {"uid": "idp-common", "url":"/sgate/common", "path":"idps/common" },
-        {"uid": "idp-github"  , "url":"/sgate/github","loa":0, "path":"idps/github" },
-        {"uid": "idp-pam"     , "url":"/sgate/pam"   ,"loa":0, "path":"idps/pam" },
         {"uid": "idp-nfc"    , "url":"/sgate/nfc-auth"   ,"loa":0, "path":"idps/pcsc-nfc" },
-        {"uid": "idp-phantauth" , "url":"/sgate/phantauth"   ,"loa":0, "path":"idps/phantauth" },
-        {"uid": "idp-onelogin" , "url":"/sgate/onelogin"   ,"loa":0, "path":"idps/onelogin" },
         {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },
         {"uid": "private", "info": "Required basic authentication", "url":"/private",  "loa":1, "path":"private" },
         {"uid": "confidential", "info": "Required teams authentication", "url":"/confidential", "loa":2, "path":"confidential" },

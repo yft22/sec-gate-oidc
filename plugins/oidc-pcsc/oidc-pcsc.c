@@ -80,6 +80,14 @@ static const oidcWellknownT dfltWellknown = {
     .authorize = NULL,
 };
 
+typedef enum {
+   PCSC_STATUS_UNKNOWN=0,
+   PCSC_STATUS_AUTHENTICATED,
+   PCSC_STATUS_WAITING,
+   PCSC_STATUS_REFUSED,
+
+} pcscCardStatusE;
+
 typedef struct {
    ulong pin;
    idpRqtCtxT *idpRqtCtx;
@@ -87,7 +95,7 @@ typedef struct {
    const char *scope;
    const char *label;
    afb_session *session;
-   int present;
+   pcscCardStatusE status;
 } pcscRqtCtxT;
 
 static void pcscRqtCtxFree (pcscRqtCtxT *rqt) {
@@ -97,12 +105,12 @@ static void pcscRqtCtxFree (pcscRqtCtxT *rqt) {
 // if needed stop pcsc thread when session finish
 static void pcscResetSession (oidcProfileT *idpProfil, void *ctx) {
     pcscHandleT *handle= (pcscHandleT*)ctx;
-    pcscMonitorWait (handle, PCSC_MONITOR_CANCEL);
+    pcscMonitorWait (handle, PCSC_MONITOR_CANCEL, 0);
 }
 
-static int readerMonitorCB (pcscHandleT *handle, ulong state) {
+static int readerMonitorCB (pcscHandleT *handle, ulong state, void *ctx) {
     extern const nsKeyEnumT oidcFedidSchema[];
-    pcscRqtCtxT *pcscRqtCtx= (pcscRqtCtxT*) pcscGetCtx(handle);
+    pcscRqtCtxT *pcscRqtCtx= (pcscRqtCtxT*) ctx;
     idpRqtCtxT  *idpRqtCtx= pcscRqtCtx->idpRqtCtx;
     pcscOptsT   *pcscOpts= pcscRqtCtx->opts;
     int status=0;
@@ -112,22 +120,24 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state) {
 
     // is card was previously inserted logout user (session loa=0)
     if (state & SCARD_STATE_EMPTY) {
-        EXT_DEBUG ("[pcsc-monitor-absent] tid=0x%lx handle=0x%p  card=absent present=%d (reset session)", pcscGetTid(handle),handle, pcscRqtCtx->present);
+        EXT_DEBUG ("[pcsc-scard-absent] tid=0x%lx card=absent status=%d", pthread_self(),pcscRqtCtx->status);
         // prevent double detection
-        if (pcscRqtCtx->present) {
-            pcscRqtCtx->present=0;
-            fedidsessionReset (pcscRqtCtx->session);
-            pcscRqtCtxFree(pcscRqtCtx);
-            status=1; // terminate thread 
+        if (pcscRqtCtx->status != PCSC_STATUS_WAITING) {
+
+            if (pcscRqtCtx->status == PCSC_STATUS_AUTHENTICATED) {
+                fedidsessionReset (pcscRqtCtx->session);
+                pcscRqtCtxFree(pcscRqtCtx);
+                status=1; // terminate thread 
+            }
+            pcscRqtCtx->status=PCSC_STATUS_WAITING;
         }
     } 
 
-    if (state & SCARD_STATE_PRESENT) {
-        EXT_DEBUG ("[pcsc-monitor-authenticated] tid=0x%lx id=0x%lx handle=0x%p card=0x%lx ctx=0x%p present=%d", pcscGetTid(handle), pthread_self(), handle, pcscGetCardUuid(handle), pcscRqtCtx, pcscRqtCtx->present);
+    else if (state & SCARD_STATE_PRESENT) {
+        EXT_DEBUG ("[pcsc-scard-present] tid=0x%lx card=0x%lx ctx=0x%p status=%d", pthread_self(), pcscGetCardUuid(handle), pcscRqtCtx, pcscRqtCtx->status);
 
         // prevent from double detection
-        if (!pcscRqtCtx->present) {
-            pcscRqtCtx->present=1;
+        if (pcscRqtCtx->status == PCSC_STATUS_WAITING) {
 
             // reserve federation and social user structure
             idpRqtCtx->fedSocial= calloc (1, sizeof (fedSocialRawT));
@@ -188,7 +198,7 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state) {
                     default:
                         EXT_ERROR ("[pcsc-cmd-action] command=%s action=%d not supported for authentication", cmd->uid, cmd->action);
                         goto OnErrorExit;
-                }     
+                }   
             }
 
             // map security atributes to pcsc read commands
@@ -219,12 +229,14 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state) {
                     }
                 }
             }
-            // do federate authentication
+            // try do federate user
             idpRqtCtx->userData = (void*) handle;
             err = fedidCheck (idpRqtCtx);
             if (err) goto OnErrorExit;
+
+            // authentication was successful 
+            pcscRqtCtx->status=PCSC_STATUS_AUTHENTICATED;
         }
-        status=0;   // keep thread running
     }
 
     // we done idpRqtCtx is cleared by fedidCheck
@@ -232,7 +244,8 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state) {
 
 OnErrorExit:
     {
-        static char errorMsg[]= "[pcsc-monitor-fail] Fail to get user profile from pscs (nfc/smartcard)";
+        pcscRqtCtx->status=PCSC_STATUS_REFUSED;
+        static char errorMsg[]= "[pcsc-scard-fail] cannot read data on nfc/smartcard (check card/config)";
         EXT_CRITICAL (errorMsg);
         if (idpRqtCtx->hreq) {
             afb_hreq_reply_error (idpRqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
@@ -245,7 +258,7 @@ OnErrorExit:
     fedSocialFreeCB(idpRqtCtx->fedSocial);
     fedUserFreeCB(idpRqtCtx->fedUser);
     pcscRqtCtxFree(pcscRqtCtx);
-	return -1;  // on error exit kill thread
+	return 1;  // stop pcsc monitoring thread
 }
 
 // check pcsc login/passwd using scope as pcsc application
@@ -277,7 +290,7 @@ static int pcscScardGet (oidcIdpT * idp, const oidcProfileT *profile, ulong pin,
 
 OnErrorExit:
     {
-        static char errorMsg[]= "[pcsc-monitor-fail] Fail to get user profile from pscs (nfc/smartcard)";
+        static char errorMsg[]= "[pcsc-scard-fail] Fail to get user profile from pscs (nfc/smartcard)";
         EXT_CRITICAL (errorMsg);
         if (idpRqtCtx->hreq) {
             afb_hreq_reply_error (idpRqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);

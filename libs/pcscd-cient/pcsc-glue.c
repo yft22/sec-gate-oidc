@@ -41,6 +41,12 @@ typedef struct {
   atrIsoCardid  cardid;
 } isoAtrCardIdMapT;
 
+typedef struct {
+    pthread_t tid;
+    pcscHandleT *pcsc;
+    void *userData;
+    pcscStatusCbT callback;
+} pcscThreadT;
 
 // map 16 bits blockindex on two bytes
 typedef union {
@@ -93,11 +99,9 @@ typedef struct pcscHandleS {
   SCARDHANDLE hCard;
   const SCARD_IO_REQUEST *pioSendPci;
   DWORD  activeProtocol;
-  pthread_t threadId;
   ulong timeout;
   ulong verbose;
   const char *error;
-  pcscStatusCbT callback;
   void *ctx;
 } pcscHandleT;
 
@@ -471,13 +475,10 @@ OnErrorExit:
     return -1;
 }
 
-ulong pcscGetTid (pcscHandleT *handle) {
-    return handle->threadId;
-}
-
 // thread monitoring reader status change
 static void *pcscMonitorThread (void *ptr) {
-    pcscHandleT *handle = (pcscHandleT*)ptr;
+    pcscThreadT *threadCtx = (pcscThreadT*) ptr;
+    pcscHandleT *handle = threadCtx->pcsc;
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     long rv;
     int err;
@@ -485,7 +486,7 @@ static void *pcscMonitorThread (void *ptr) {
     SCARD_READERSTATE rgReaderStates;
     rgReaderStates.szReader = handle->readerName; // reader ID to test
     rgReaderStates.dwCurrentState = SCARD_STATE_UNAWARE;
-    EXT_DEBUG ("[pcsc-thread-monitor] starting tid=0x%lx", handle->threadId);
+    EXT_DEBUG ("[pcsc-thread-monitor] starting new thread tid=0x%lx", pthread_self());
 
     // loop forever until reader is disconnected
     while (1) {
@@ -502,6 +503,8 @@ static void *pcscMonitorThread (void *ptr) {
 
                 case SCARD_S_SUCCESS:
                     if (rgReaderStates.dwCurrentState != rgReaderStates.dwEventState) {
+
+                        // update pcsc handle status change
                         rgReaderStates.dwCurrentState = rgReaderStates.dwEventState;
 
                         // card was inserted retreive uuid/atr
@@ -534,7 +537,7 @@ static void *pcscMonitorThread (void *ptr) {
                     }
 
                     if (handle->verbose) fprintf (stderr, "\n -- async: reader=%s status=0x%lx\n", handle->readerName, rgReaderStates.dwEventState);
-                    err= handle->callback (handle, rgReaderStates.dwEventState);
+                    err= threadCtx->callback (handle, rgReaderStates.dwEventState, threadCtx->userData);
                     if (err < 0) goto OnErrorExit;
                     if (err > 0) goto OnRequestExit;
                     break;
@@ -544,32 +547,35 @@ static void *pcscMonitorThread (void *ptr) {
     }
 
 OnRequestExit:    
-    EXT_DEBUG ("[pcsc-thread-monitor] card-remove exit tid=0x%lx", handle->threadId);
-    handle->threadId=0;
+    EXT_DEBUG ("[pcsc-thread-monitor] card-remove exit tid=0x%lx", pthread_self());
+    free (threadCtx);
     return NULL;
 
 OnCancelExit:
-    EXT_DEBUG ("[pcsc-thread-monitor] session-cancel exit tid=0x%lx", handle->threadId);
-    handle->threadId=0;
+    EXT_DEBUG ("[pcsc-thread-monitor] session-cancel exit tid=0x%lx", pthread_self());
+    free(threadCtx);
     return NULL;
 
 OnErrorExit:
     handle->error= pcsc_stringify_error(rv);
-    EXT_CRITICAL ("[pcsc-thread-monitor] Reader not avaliable tid=0x%lx exited err=%s", handle->threadId, handle->error);
-    handle->threadId=0;
+    EXT_CRITICAL ("[pcsc-thread-monitor] Reader not avaliable tid=0x%lx exited err=%s", pthread_self(), handle->error);
+    free(threadCtx);
     return NULL;
 }
 
 // start a posix thread to monitor reader status
-ulong pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx) {
+ulong pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *userData) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
-    handle->ctx= ctx;
-    handle->callback=callback;
     int err;
 
-    err= pthread_create (&handle->threadId, NULL, pcscMonitorThread, (void*) handle);
+    pcscThreadT *threadCtx= calloc (1, sizeof(pcscThreadT));
+    threadCtx->userData= userData;
+    threadCtx->pcsc= handle;
+    threadCtx->callback=callback;
+
+    err= pthread_create (&threadCtx->tid, NULL, pcscMonitorThread, (void*) threadCtx);
     if (err) goto OnErrorExit;
-    return handle->threadId;
+    return (ulong)threadCtx->tid;
 
 OnErrorExit:
     handle->error= strerror(errno);
@@ -578,54 +584,41 @@ OnErrorExit:
 }
 
 // start a posix thread to monitor reader status
-int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action) {
+int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action, ulong tid) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
 
     switch (action) {
         case PCSC_MONITOR_WAIT:
-            if (!handle->threadId) goto OnErrorExit;
-            EXT_DEBUG ("[pcsc-thread-join] tid=0x%lx (pcscMonitorWait)", handle->threadId);
-            pthread_join(handle->threadId, NULL); // infinit wait for monitor to quit
+            EXT_DEBUG ("[pcsc-thread-join] tid=0x%lx (pcscMonitorWait)", tid);
+            pthread_join(tid, NULL); // infinit wait for monitor to quit
             break;
 
         case PCSC_MONITOR_CANCEL:
-            EXT_DEBUG ("[pcsc-thread-cancel] tid=0x%lx (pcscMonitorWait)", handle->threadId);
+            EXT_DEBUG ("[pcsc-thread-cancel] tid=0x%lx (pcscMonitorWait)", tid);
             SCardCancel (handle->hContext);
-            break;
-
-        case PCSC_MONITOR_KILL:
-            EXT_DEBUG ("[pcsc-thread-kill] tid=0x%lx (pcscMonitorWait)", handle->threadId);
-            if (handle->threadId) {
-                pthread_cancel (handle->threadId);
-                handle->threadId=0;
-            }
             break;
 
         default: 
             goto OnErrorExit;
     }
 
-    return (int)handle->threadId;
+    return 0;
 
 OnErrorExit:
     handle->error= strerror(errno);
     EXT_CRITICAL ("[pcsc-sccard-monitor] Unknown action on monitor reader=%s. (pcscMonitorWait err=%s)", handle->readerName, strerror(errno)) ;
-    return 0;
+    return -1;
 }
 
 
 int pcscDisconnect (pcscHandleT *handle) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     long rv;
-    int err;
 
-    if (handle->threadId) {
-        err= pcscMonitorWait (handle, PCSC_MONITOR_CANCEL);
-        if (err) {
-            EXT_NOTICE ("[pcsc-disconnect-thread] fail to stop monitoring thread");
-        }
-    }
+    // abandon any pending operation
+    SCardCancel (handle->hContext);
 
+    // disconnect reader
   	rv = SCardReleaseContext(handle->hContext);
 	if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 

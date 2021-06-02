@@ -68,7 +68,7 @@ typedef struct {
 } pcscTrailerT;
 
 typedef struct pcscHandleS pcscHandleT; // opaque handle for client apps
-typedef int (*pcscStatusCbT) (pcscHandleT *handle, ulong state);
+typedef int (*pcscStatusCbT) (pcscHandleT *handle, ulong state, void*ctx);
 
 pcscHandleT *pcscConnect (const char *readerName);
 int pcscDisconnect (pcscHandleT *handle);
@@ -79,9 +79,7 @@ u_int64_t pcscGetCardUuid (pcscHandleT *handle);
 
 int pcscReaderCheck (pcscHandleT *handle, int ticks);
 ulong pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
-int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action);
-void* pcscGetCtx (pcscHandleT *handle);
-ulong pcscGetTid (pcscHandleT *handle);
+int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action, ulong tid);
 
 const pcscKeyT *pcscNewKey (const char *uid, u_int8_t *value, size_t len);
 int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, ulong *dlen);
