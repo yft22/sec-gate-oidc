@@ -117,27 +117,13 @@ userCheckAttr (afb_req_t wreq, unsigned argc, afb_data_t const argv[])
     afb_req_reply (wreq, -100, 0, NULL);
 }
 
-// get result from /fedid/create-user
-static void idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
-{
-    char *errorMsg = "[user-link-fail] internal error (idpQueryUserCB)";
-    fedSocialRawT *fedSocial, *fedToLink;
-    json_object *idpsJ, *responseJ, *aliasJ;
-    afb_data_t reply[1];
-    afb_data_t argd[1];
+static json_object *idpQueryList (afb_req_t wreq, const char **idps) {
+    json_object *responseJ, *idpsJ, *aliasJ;
     int err;
-
-    if (argc != 1) goto OnErrorExit;
 
     // retreive OIDC global context from API handle
     oidcCoreHdlT *oidc = afb_api_get_userdata (afb_req_get_api (wreq));
     if (!oidc || oidc->magic != MAGIC_OIDC_MAIN) goto OnErrorExit;
-
-    // convert and retreive input arguments
-    const afb_type_t argt[] = {fedUserIdpsObjType, FEDID_TRAILLER};
-    err = afb_data_array_convert (argc, argv, argt, argd);
-    if (err < 0) goto OnErrorExit;
-    const char **idps = (void *) afb_data_ro_pointer (argd[0]);
 
     // retreive oidc config from current alias cookie
     oidcAliasT *alias;
@@ -145,14 +131,40 @@ static void idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data
     afb_session_cookie_get (session, oidcAliasCookie, (void **) &alias);
 
     // build IDP list with corresponding scope for requested LOA
-    idpsJ = idpLoaProfilsGet (oidc, 0, idps);
+    idpsJ = idpLoaProfilsGet (oidc, 0, idps,1);
     if (alias) wrap_json_pack (&aliasJ, "{ss ss* ss si}", "uid", alias->uid, "info", alias->info, "url", alias->url, "loa", alias->loa);
     else  aliasJ = NULL;
 
     err = wrap_json_pack (&responseJ, "{so so*}", "idps", idpsJ, "alias", aliasJ);
     if (err) goto OnErrorExit;
 
-    afb_create_data_raw (reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void *) json_object_put, responseJ);
+    return responseJ;
+
+OnErrorExit: 
+    return NULL;
+}
+
+// get result from /fedid/create-user
+static void idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data_t argv[], afb_req_t wreq)
+{
+    char *errorMsg = "[user-link-fail] internal error (idpQueryUserCB)";
+    fedSocialRawT *fedSocial, *fedToLink;
+    afb_data_t reply[1];
+    afb_data_t argd[1];
+    int err;
+
+    if (argc != 1) goto OnErrorExit;
+
+    // convert and retreive input arguments
+    const afb_type_t argt[] = {fedUserIdpsObjType, FEDID_TRAILLER};
+    err = afb_data_array_convert (argc, argv, argt, argd);
+    if (err < 0) goto OnErrorExit;
+    const char **idps = (void *) afb_data_ro_pointer (argd[0]);
+
+    json_object *responseJ= idpQueryList (wreq, idps);
+    if (!responseJ) goto OnErrorExit;
+
+    afb_create_data_raw (reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void*)json_object_put, responseJ);
     afb_req_reply (wreq, 0, 1, reply);
     return;
 
@@ -164,7 +176,7 @@ static void idpQueryUserCB (void *ctx, int status, unsigned argc, const afb_data
 
 // Return user register social IDPs for a given pseudo/email
 static void idpQueryUser (afb_req_t wreq, unsigned argc, afb_data_t const argv[]) {
-    static char errorMsg[] = "[idp-query-user] (idpQueryUser) internal error";
+    static char errorMsg[] = "[idp-query-user] federated user unknown within DB (idpQueryUser) ";
 
     int err;
     fedidLinkT *fedBackup=NULL;
@@ -174,15 +186,24 @@ static void idpQueryUser (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
     // get current social data for further account linking
     afb_session *session = afb_req_v4_get_common (wreq)->session;
     afb_session_cookie_get (session, oidcFedLinkCookie, (void **) &fedBackup);
-    if (!fedBackup) goto OnErrorExit;
 
-    wrap_json_pack (&queryJ, "{ss ss}"
+    // if not a slave IDP then use email/pseudo to get IDP list
+    if (fedBackup) {
+        wrap_json_pack (&queryJ, "{ss ss}"
         ,"email", fedBackup->email
         ,"pseudo", fedBackup->pseudo
         );
-    afb_create_data_raw (&query, AFB_PREDEFINED_TYPE_JSON_C, queryJ, 0, (void *) json_object_put, queryJ);
-    afb_req_subcall (wreq, API_OIDC_USR_SVC, "social-idps", 1, &query, afb_req_subcall_on_behalf, idpQueryUserCB, NULL);
-    afb_session_cookie_delete(session, oidcFedLinkCookie);
+        afb_create_data_raw (&query, AFB_PREDEFINED_TYPE_JSON_C, queryJ, 0, (void *) json_object_put, queryJ);
+        afb_req_subcall (wreq, API_OIDC_USR_SVC, "social-idps", 1, &query, afb_req_subcall_on_behalf, idpQueryUserCB, NULL);
+        afb_session_cookie_delete(session, oidcFedLinkCookie);
+
+    } else {
+        // return list on configured IDPs
+        json_object *responseJ= idpQueryList (wreq, NULL);
+        if (!responseJ) goto OnErrorExit;
+        afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void *)json_object_put, responseJ);
+        afb_req_reply (wreq, 0, 1, &reply);
+    }
     return;
 
   OnErrorExit:
@@ -466,11 +487,11 @@ static void idpQueryConf (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
 
     // build IDP list with corresponding scope for requested LOA
     if (alias) {
-        idpsJ = idpLoaProfilsGet (oidc, alias->loa, NULL);
+        idpsJ = idpLoaProfilsGet (oidc, alias->loa, NULL, 0);
         wrap_json_pack (&aliasJ, "{ss ss* ss si}", "uid", alias->uid, "info", alias->info, "url", alias->url, "loa", alias->loa);
 
     } else {
-        idpsJ = idpLoaProfilsGet (oidc, 0, NULL);
+        idpsJ = idpLoaProfilsGet (oidc, 0, NULL,0);
         aliasJ = NULL;
     }
 

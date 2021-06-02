@@ -154,6 +154,7 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
 
         if (idpProfil->slave) {
             targetUrl= idpRqtCtx->idp->oidc->globals->fedlinkUrl;
+            afb_session_set_loa (session, oidcFedSocialCookie, FEDID_LINK_REQUESTED);
         } else {
             targetUrl= idpRqtCtx->idp->oidc->globals->registerUrl;
         }
@@ -164,7 +165,7 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
                 goto OnErrorExit;
             }
         } else {
-            target = idpRqtCtx->idp->oidc->globals->registerUrl;
+            target = targetUrl;
         }
 
     } else { // fedid is already registered

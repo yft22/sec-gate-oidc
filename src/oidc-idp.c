@@ -75,7 +75,7 @@ void idpRqtCtxFree (idpRqtCtxT * rqtCtx)
 }
 
 // return the idp list to display corresponding login page.
-json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
+json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps, int noslave)
 {
     json_object *idpsJ = NULL;
 
@@ -87,7 +87,8 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
         for (int jdx = 0; idp->profiles[jdx].uid; jdx++) {
 
             // if loa does not fit ignore IDP
-            if (idp->profiles[jdx].loa < loa) continue;
+            if (idp->profiles[jdx].loa < loa && idp->profiles[jdx].loa != abs(loa)) continue;
+            if (noslave && idp->profiles[jdx].slave) continue;
 
             // idp is not within idps list excluse it from list
             if (idps) {
@@ -96,8 +97,7 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
                     if (!strcasecmp (idps[kdx], idp->uid))
                         break;
                 }
-                if (!idps[kdx])
-                    continue;
+                if (!idps[kdx]) continue;
             }
 
             json_object *profileJ;
