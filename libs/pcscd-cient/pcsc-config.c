@@ -1,27 +1,24 @@
 /*
- * Copyright (C) 2021 "IoT.bzh"
- * Author "Fulup Ar Foll" <fulup@iot.bzh>
+ * Copyright (C) 2015-2021 IoT.bzh Company
+ * Author "Fulup Ar Foll"
  *
- * Use of this source code is governed by an MIT-style
- * license that can be found in the LICENSE file or at https://opensource.org/licenses/MIT.
+ * $RP_BEGIN_LICENSE$
+ * Commercial License Usage
+ *  Licensees holding valid commercial IoT.bzh licenses may use this file in
+ *  accordance with the commercial license agreement provided with the
+ *  Software or, alternatively, in accordance with the terms contained in
+ *  a written agreement between you and The IoT.bzh Company. For licensing terms
+ *  and conditions see https://www.iot.bzh/terms-conditions. For further
+ *  information use the contact form at https://www.iot.bzh/contact.
  *
- * sample config file
-    {
-        "info" : "free config comment",
-        "reader": "reader name",
-        "keys": [
-            {"uid":"abc, "idx": 0, "value":"asci value" }
-            {"uid":"cde, "idx": 1, "value":["0x01","0x02","0x03","0x04","0x05","0x06"] }
-            ...
-        ],
-        "cmds": [
-            {"uid":"aaa", "action":"read", "blk": xx, "len": 32},
-            {"uid":"bbb", "action":"read", "blk": xx, "len": 16, "key":"keyuuid"},
-            {"uid":"yyy", "action":"write", "blk": xx, "data": "my_asci_data"},
-            {"uid":"zzz", "action":"write", "blk": xx, "data": ["0xab", "0x01", ....]},
-            {"uid":"zzz", "action":"write", "blk": xx, "data": ["0xab", "0x01", ....]},
-        ]
-    }
+ * GNU General Public License Usage
+ *  Alternatively, this file may be used under the terms of the GNU General
+ *  Public license version 3. This license is as published by the Free Software
+ *  Foundation and appearing in the file LICENSE.GPLv3 included in the packaging
+ *  of this file. Please review the following information to ensure the GNU
+ *  General Public License requirements will be met
+ *  https://www.gnu.org/licenses/gpl-3.0.html.
+ * $RP_END_LICENSE$
 */
 
 #define _GNU_SOURCE

@@ -37,6 +37,8 @@ The code was testing with Mifare classic tokens but pcsc-lite supports most of C
 * online acl: http://calc.gmss.ru/Mifare1k/
 * SpringCore https://docs.springcard.com/books/SpringCore/PCSC_Operation/APDU_Interpreter/Command_list
 * ACR 122 reader http://downloads.acs.com.hk/drivers/en/API-ACR122U-2.02.pdf
+* Card IDs  http://pcscworkgroup.com/Download/Specifications/pcsc3_v2.01.09_sup.pdf
+
 
 ## Testing
 
@@ -208,13 +210,13 @@ High level API, hopefully match most application requirement.
 ### Connecting to pcsc reader
 ```c
  #include <pcsc-glue.h>
- pcscHandleT *pcscConnect (const char *readerName);
+ pcscHandleT *pcscConnect (const char uid, const char *readerName);
  int pcscDisconnect (pcscHandleT *handle);
  int pcscSetOpt (pcscHandleT *handle, pcscOptsE opt, ulong value);
  const char* pcscErrorMsg (pcscHandleT *handle);
 ```
 
-* **pcscConnect**: connect to a given reader: "readername" should be a be a subset of full reader name. When NULL first reader available is used.
+* **pcscConnect**: connect to a given reader: "readername" should be a be a subset of full reader name. When NULL first reader available is used. "uid" is a free *human-readable* string use to track debug messages.
 * **pcscDisconnect**: close and free reader connection.
 * **pcscSetOpt**: pcsc handle is opaque and options require a setter (
     * PCSC_OPT_TIMEOUT

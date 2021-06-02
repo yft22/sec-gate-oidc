@@ -17,14 +17,16 @@ books:
     - url: 5-running-and-testing.md
       name: Running and Testing
       children
-      - url: 5.1-onelogin-kickstart.md
+      - url: ../idps/onelogin-kickstart.md
         name: OneLogin IDP config
-      - url: 5.2-github-kickstart.md
+      - url: ../idps/github-kickstart.md
         name: Github IDP config
-      - url: 5.3-ldap-kickstart.md
+      - url: ../idps/ldap-kickstart.md
         name: LDAP config
-      - url: 5.4-pam-kickstart.md
-        name: PAM config
-      - url: 5.5-phantauth-kickstart.md
+      - url: ../idps/phantauth-kickstart.md
         name: Phantauth IDP config
+      - url: ../plugins/oidc-pam/README.md
+        name: PAM config
+      - url: ../plugins/oidc-pcsc/README.md
+        name: NFC/Smartcard pcsc config
 

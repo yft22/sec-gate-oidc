@@ -9,8 +9,12 @@
   "extension": "./package/lib/libafb-sgate-oidc-ext.so",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
-  "binding" : [{"uid": "fedid-api", "path": "/usr/local/fedid-binding/lib/fedid-binding.so", "config": {"dbpath":"/var/tmp/fedid-sqllite.db"}}],
-  "@extconfig": {
+  "binding" : [{
+    "uid": "fedid-api",
+    "path": "/usr/local/fedid-binding/lib/fedid-binding.so",
+    "config": {"dbpath":"/var/tmp/fedid-oauth2.sqlite"}
+}],
+"@extconfig": {
     "sgate-oidc": {
       "api": "sgate",
       "info": "oidc secure gate demo config",
