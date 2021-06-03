@@ -59,6 +59,7 @@ typedef struct {
     const char* respondLabel;
     const char* authLabel;
     const char* errorLabel;
+    int lazy;
 } oidcWellknownT;
 
 typedef struct {

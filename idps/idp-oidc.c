@@ -735,7 +735,7 @@ int oidcRegisterConfig (oidcIdpT * idp, json_object * configJ)
     if (idp->wellknown->discovery) {
         EXT_NOTICE ("[oidc-wellknown-get] oidc wellknown url=%s",  idp->wellknown->discovery);
         int err = httpSendGet (idp->oidc->httpPool, idp->wellknown->discovery, &dfltOpts, NULL, oidcDiscoveryCB, idp);
-        if (err) {
+        if (err && !idp->wellknown->lazy) {
             EXT_CRITICAL ("[fail-wellknown-discovery] invalid url='%s' (oidcDiscoveryCB)", idp->wellknown->discovery);
             goto OnErrorExit;
         }

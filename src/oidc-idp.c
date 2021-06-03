@@ -339,7 +339,8 @@ static const oidcWellknownT *idpParseWellknown (oidcIdpT * idp, json_object * we
     oidcWellknownT *wellknown = calloc (1, sizeof (oidcWellknownT));
     if (defaults) memcpy (wellknown, defaults, sizeof (oidcWellknownT));
 
-    int err = wrap_json_unpack (wellknownJ, "{s?s,s?s,s?s,s?s,s?s,s?s,s?s !}"
+    int err = wrap_json_unpack (wellknownJ, "{s?b s?s,s?s,s?s,s?s,s?s,s?s,s?s !}"
+                , "lazy", &wellknown->lazy
                 , "discovery", &wellknown->discovery
                 , "tokenid", &wellknown->tokenid
                 , "authorize",&wellknown->authorize

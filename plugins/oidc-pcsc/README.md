@@ -1,6 +1,6 @@
 # PCSC NFC Quick start IDP configuration
 
-oidc-pcsc somehow fakes sgate openid-connect handshake. It relies on pcscd-client library and pcscd daemon to access nfc tokens/smartcards. 
+oidc-pcsc somehow fakes openid-connect handshake. It relies on pcscd-client library and pcscd daemon to access nfc tokens/smartcards. When an application is redirected onto oidc-pcscd for authentication, sgate starts a thread that monitor the reader and wait for a card to be inserted. As soon as a valid card is inserted oidc-pscd tries to read scard contend. When successful it then applies federation authentication as it would do with any other openid-connect authority. The authentication thread remains active until the card is remove from the reader, at this point sgate resets the session and notifies client application that session is locked.
 
 Note: pcsc is implemented as an external plugin and released under MIT licence. Reference implementation relies on:
 

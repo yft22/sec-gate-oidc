@@ -36,6 +36,7 @@
                 "secret": "7a180580642702d7b271ba8901a9c3c1503e774dc0a6b5b922ebf4470adfface"
             },
             "wellknown": {
+                "lazy": true,
                 "discovery": "https://iot-bzh-dev.onelogin.com/oidc/2/.well-known/openid-configuration",
             },
             "schema": {
@@ -66,6 +67,7 @@
                 "secret": "3ON5yAxX",
             },
             "wellknown": {
+                "lazy": true,
                 "discovery": "https://phantauth.net/.well-known/openid-configuration",
             },
             "schema": {
@@ -88,8 +90,8 @@
             "uid": "github",
             "info": "Github Social Authentication",
             "credentials": {
-            "clientid": "7899e605a7c15ae42f07",
-            "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
+                "clientid": "7899e605a7c15ae42f07",
+                "secret": "385bbb1d7633e300aea137cf612ecd8ebdc98970",
             },
             "wellknown": {
                 "tokenid": "https://github.com/login/oauth/access_token",

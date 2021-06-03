@@ -127,11 +127,13 @@ A json array defining each authentication authority. Default authority are oAith
 
         When available wellknown URI will be query as sgate startup time and will automatically populate all following parameters. *Note that wellknown URI is require by openid-connect specification. Using a static definition in place of wellknown may save few seconds at sgate service startup time.*
 
-      * **tokenid**: HTTP page to retrieve authentication tokenid code. When an authentication is require, the sgate redirects client UI to this URL. Then if needed the authority prompts user for authentication, in all the other case authority should automatically redirect back sgate in SSO(Single-Sign-On). When authentication is successful IDP redirects back client UI to the secure gate 'login' alias defined later within the 'statics' section of your oidc-config.json
+    * **lazy**: when true sgate will start when discovery-url is invalid or network not accessible. This might help when testing/debugging without network connectivity.
 
-      * **authorize**: REST exchange authentication end-point. Provided an access-token from the authentication tokenid received from 'tokenid' SSO. The request to 'authorize' does not go through user browser, this avoid to expose IDP application secret to user browser.
+    * **tokenid**: HTTP page to retrieve authentication tokenid code. When an authentication is require, the sgate redirects client UI to this URL. Then if needed the authority prompts user for authentication, in all the other case authority should automatically redirect back sgate in SSO(Single-Sign-On). When authentication is successful IDP redirects back client UI to the secure gate 'login' alias defined later within the 'statics' section of your oidc-config.json
 
-      * **userinfo**: REST authority identity service. Provide identity attributes matching requesting scope. Note that some authority as onelogin has multiple identity end point depending requested attributes.
+    * **authorize**: REST exchange authentication end-point. Provided an access-token from the authentication tokenid received from 'tokenid' SSO. The request to 'authorize' does not go through user browser, this avoid to expose IDP application secret to user browser.
+
+    * **userinfo**: REST authority identity service. Provide identity attributes matching requesting scope. Note that some authority as onelogin has multiple identity end point depending requested attributes.
 
 * **statics**: define the REST/HTTP end point created by the secure-gate for IDPs protocol handshake.
 
