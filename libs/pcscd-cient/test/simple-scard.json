@@ -2,12 +2,14 @@
     // ./package/bin/pcsc-client --config=../src/idps-plugins/oidc-pcsc/test/simple-pcsc.json --group=xx --verbose
     // ACL online definition http://calc.gmss.ru/Mifare1k/
     "info" : "Basic PCSC test for Mifare Classic",
-    "reader": "ACR122U",
+    "reader": "AU9540",
     "keys": [
         {"uid":"key-a", "idx": 0, "value":["0x01","0x02","0x03","0x04","0x05","0x06"]},
         {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]}
     ],
     "cmds": [
+
+        {"uid":"get-uuid" ,"group":0,"action":"uuid"},
 
         // provisioning card with default key (new card)
         {"uid":"write-pseudo" ,"group":1,"action":"write","sec":1,"len":48,"data":"fulup-bzh"},

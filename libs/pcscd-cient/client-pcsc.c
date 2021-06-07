@@ -47,11 +47,12 @@
 
 static struct option options[] = {
 	{"verbose", optional_argument, 0,  'v' },
-	{"config", required_argument , 0,  'c' },
+	{"config", optional_argument , 0,  'c' },
 	{"group", optional_argument  , 0,  'g' },
-	{"force", optional_argument  , 0,  'f' },
 	{"async", optional_argument  , 0,  'a' },
-	{"help" , optional_argument  , 0,  'h' },
+	{"force", optional_argument , 0, 'f' },
+	{"list" , optional_argument , 0, 'l' },
+	{"help" , optional_argument , 0, 'h' },
 	{0, 0, 0, 0 } // trailer
 };
 
@@ -62,6 +63,7 @@ typedef struct {
     int group;
     int forced;
     int async;
+    int list;
     pcscConfigT *config;
 } pcscParamsT;
 
@@ -89,6 +91,10 @@ pcscParamsT *parseArgs(int argc, char *argv[]) {
 				params->cnfpath=optarg;
 				break;
 
+			case 'l':
+				params->list++;
+				break;
+
 			case 'g':
 				params->group=atoi(optarg);
 				break;
@@ -109,12 +115,12 @@ pcscParamsT *parseArgs(int argc, char *argv[]) {
 		}
 	}
 
-    if (!params->cnfpath) goto OnErrorExit;
+    if (!params->cnfpath && !params->list) goto OnErrorExit;
 
     return params;
 
 OnErrorExit:
-	fprintf (stderr, "usage: pcsc-client --config=/xxx/my-config.json [--async] [--group=-+0-9] [--verbose] [--force]\n");
+	fprintf (stderr, "usage: pcsc-client --config=/xxx/my-config.json [--async] [--group=-+0-9] [--verbose] [--force] [--list]\n");
 	return NULL;
 }
 
@@ -193,6 +199,8 @@ static void  sigHandlerCB(int  sig) {
 int main (int argc, char *argv[])
 {
     int err;
+    json_object *configJ=NULL;
+    pcscHandleT *handle;
     pcscParamsT *params= parseArgs (argc, argv);
     if (!params) goto OnErrorExit;
 
@@ -201,62 +209,81 @@ int main (int argc, char *argv[])
     signal(SIGSEGV, sigHandlerCB);
     if (setjmp(JumpBuffer) != 0) goto OnSignalExit;
 
-    json_object *configJ;
-    err= json_locator_from_file (&configJ, params->cnfpath);
-    //json_object *configJ= json_tokener_parse(buffer);
-    if (!configJ) {
-        fprintf (stderr, "Fail to parse params.json (try jq < %s\n", params->cnfpath);
-        goto OnErrorExit;
-    }
-
-    // parse json config and store with params for asynchronous callback
-    pcscConfigT *config= pcscParseConfig (configJ, params->verbose);
-    if (!config) goto OnErrorExit;
-    params->config= config;
-
-    // create pcsc handle and set options
-    pcscHandleT *handle =pcscConnect (config->uid, config->reader);
-    if (!handle) {
-        fprintf (stderr, "Fail to connect to reader=%s\n", config->reader);
-        goto OnErrorExit;
-    }
-
-    // set options
-    pcscSetOpt (handle, PCSC_OPT_VERBOSE, config->verbose);
-    pcscSetOpt (handle, PCSC_OPT_TIMEOUT, config->timeout);
-
-    // check async handling
-    if (params->async) {
-        pthread_t tid;
-
-        // start smartcard reader monitoring pass params as context to handle option in CB
-        tid= pcscMonitorReader (handle, readerMonitorCB, (void*)params);
-        if (!tid) {
-            fprintf (stderr, " -- Fail monitoring reader reader=%s error=%s\n", pcscReaderName(handle), pcscErrorMsg(handle));
-            if (!params->forced) goto OnErrorExit;
-        }
-        fprintf (stderr, " -- Waiting: %ds events for reader=%s (ctrl-C to quit)\n", params->async, pcscReaderName(handle));
-        err= pcscMonitorWait (handle, PCSC_MONITOR_WAIT, tid);
-        if (err) goto OnErrorExit;
-
-    } else {
-
-        // get reader status and wait 10 timeout for card
-        err= pcscReaderCheck (handle, 10);
-        if (err) {
-        fprintf (stderr, "Fail to detect scard on reader=%s error=%s\n", pcscReaderName(handle), pcscErrorMsg(handle));
-        goto OnErrorExit;
-        }
-
-        // try to get card UUID (work with almost any model)
-        u_int64_t uuid= pcscGetCardUuid (handle);
-        if (!uuid) {
-            fprintf (stderr, "Fail reading smart card UUID error=%s\n", pcscErrorMsg(handle));
+    if (params->cnfpath) {
+        err= json_locator_from_file (&configJ, params->cnfpath);
+        //json_object *configJ= json_tokener_parse(buffer);
+        if (!configJ) {
+            fprintf (stderr, "Fail to parse params.json (try jq < %s\n", params->cnfpath);
             goto OnErrorExit;
         }
-        fprintf (stderr, " -- Reader=%s smart uuid=%ld\n", config->reader, uuid);
-        err= execGroupCmd (handle, params); // synchronous command exec
-        if (err) goto OnErrorExit;
+    }
+
+    // list connected readers to pcscd
+    if (params->list) {
+        ulong readerCount=16;
+        const char* readerList[readerCount];
+        fprintf(stderr, "Scanning pscsc reader ...\n");
+        handle= pcscList(readerList, &readerCount);
+        if (!handle) {
+            fprintf(stderr, "-- Fail to connect to pcscd\n");
+            goto OnErrorExit;
+        }
+
+        for (ulong idx=0; idx < readerCount; idx++) {
+            fprintf (stdout, " -- reader[%ld]=%s\n", idx, readerList[idx]);
+        }
+    }
+
+    if (configJ) {
+        // parse json config and store with params for asynchronous callback
+        pcscConfigT *config= pcscParseConfig (configJ, params->verbose);
+        if (!config) goto OnErrorExit;
+        params->config= config;
+
+        // create pcsc handle and set options
+        handle =pcscConnect (config->uid, config->reader);
+        if (!handle) {
+            fprintf (stderr, "Fail to connect to reader=%s\n", config->reader);
+            goto OnErrorExit;
+        }
+
+        // set options
+        pcscSetOpt (handle, PCSC_OPT_VERBOSE, config->verbose);
+        pcscSetOpt (handle, PCSC_OPT_TIMEOUT, config->timeout);
+
+        // check async handling
+        if (params->async) {
+            pthread_t tid;
+
+            // start smartcard reader monitoring pass params as context to handle option in CB
+            tid= pcscMonitorReader (handle, readerMonitorCB, (void*)params);
+            if (!tid) {
+                fprintf (stderr, " -- Fail monitoring reader reader=%s error=%s\n", pcscReaderName(handle), pcscErrorMsg(handle));
+                if (!params->forced) goto OnErrorExit;
+            }
+            fprintf (stderr, " -- Waiting: %ds events for reader=%s (ctrl-C to quit)\n", params->async, pcscReaderName(handle));
+            err= pcscMonitorWait (handle, PCSC_MONITOR_WAIT, tid);
+            if (err) goto OnErrorExit;
+
+        } else {
+
+            // get reader status and wait 10 timeout for card
+            err= pcscReaderCheck (handle, 10);
+            if (err) {
+            fprintf (stderr, "Fail to detect scard on reader=%s error=%s\n", pcscReaderName(handle), pcscErrorMsg(handle));
+            goto OnErrorExit;
+            }
+
+            // try to get card UUID (work with almost any model)
+            u_int64_t uuid= pcscGetCardUuid (handle);
+            if (!uuid) {
+                fprintf (stderr, "Fail reading smart card UUID error=%s\n", pcscErrorMsg(handle));
+                goto OnErrorExit;
+            }
+            fprintf (stderr, " -- Reader=%s smart uuid=%ld\n", config->reader, uuid);
+            err= execGroupCmd (handle, params); // synchronous command exec
+            if (err) goto OnErrorExit;
+        }
     }
 
     err= pcscDisconnect (handle);

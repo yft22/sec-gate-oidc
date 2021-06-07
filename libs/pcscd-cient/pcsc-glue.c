@@ -46,16 +46,6 @@
 #include <pcsclite.h>
 
 
-typedef union {
-    u_int16_t  id;
-    BYTE data[2];
-} atrIsoCardid;
-
-typedef struct {
-  atrCardidEnumT uid;
-  atrIsoCardid  cardid;
-} isoAtrCardIdMapT;
-
 typedef struct {
     pthread_t tid;
     pcscHandleT *pcsc;
@@ -71,6 +61,16 @@ typedef union {
 
 static BYTE defaultKey[]= {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 static BYTE pcPsRid[]= {0xA0,0x00,0x00,0x03,0x06};
+
+typedef union {
+    u_int16_t  id;
+    BYTE data[2];
+} atrIsoCardid;
+
+typedef struct {
+  atrCardidEnumT uid;
+  atrIsoCardid  cardid;
+} isoAtrCardIdMapT;
 
 static isoAtrCardIdMapT isoArtCardIds[] = {
     {.uid=ATR_MIFARE_1K,   .cardid={.data= {0x00, 0x01}}},
@@ -177,7 +177,7 @@ static atrCardidEnumT isoAtrParseCard (pcscHandleT *handle, BYTE *buffer, DWORD 
     isoAtrDataP3T *atr;
     atrCardidEnumT atrUid=ATR_UNKNOWN;
     atrIsoCardid   cardid;
-
+    // reference http://ludovic.rousseau.free.fr/softwares/pcsc-tools/smartcard_list.txt
     switch (len) {
 
         case sizeof(isoAtrDataP3T):
@@ -197,6 +197,12 @@ static atrCardidEnumT isoAtrParseCard (pcscHandleT *handle, BYTE *buffer, DWORD 
                     break;
                 }
             }
+            break;
+
+        case 9: 
+            // loosely handle bank card
+            atr= (isoAtrDataP3T*)buffer;
+            atrUid= ATR_BANK_FR;
             break;
 
         default:
@@ -659,14 +665,12 @@ OnErrorExit:
     return -1;
 }
 
-// search for reader and create corresponding pcsc-lite handle
-pcscHandleT *pcscConnect (const char*uid, const char *readerName) {
+pcscHandleT *pcscList(const char** readerList, ulong *readerMax) {
+
     pcscHandleT *handle= calloc (1, sizeof(pcscHandleT));
     handle->timeout= PCSC_DFLT_TIMEOUT;
   	handle->activeProtocol= -1;
     long rv;
-
-    handle->uid= uid;
 
     // connect to pcscd as system user
 	rv = SCardEstablishContext(SCARD_SCOPE_SYSTEM, NULL, NULL, &handle->hContext);
@@ -686,14 +690,29 @@ pcscHandleT *pcscConnect (const char*uid, const char *readerName) {
 
     // extract reader name from tokenized string
     int readerCount=0;
-    const char* readerList[PCSC_READER_DEV_MAX];
     for (char *ptr= readerListStr; *ptr != '\0'; ptr += strlen(ptr)+1) {
-        if (readerCount == PCSC_READER_DEV_MAX) {
-            EXT_CRITICAL ("[pcsc-reader-scan] too many readers increase 'maxdev=%d' (remaining ignored)", PCSC_READER_DEV_MAX);
+        if (readerCount == *readerMax) {
+            EXT_CRITICAL ("[pcsc-reader-scan] too many readers increase 'maxdev=%ld' (remaining ignored)", *readerMax);
             break;
         }
 		readerList[readerCount++]= ptr;
 	}
+    *readerMax= readerCount;
+    handle->magic= PCSC_HANDLE_MAGIC;
+    return handle;
+
+OnErrorExit: 
+    return NULL;
+}
+
+// search for reader and create corresponding pcsc-lite handle
+pcscHandleT *pcscConnect (const char*uid, const char *readerName) {
+
+    // extract reader name from tokenized string
+    const char* readerList[PCSC_READER_DEV_MAX];
+    ulong readerCount=PCSC_READER_DEV_MAX;
+    pcscHandleT *handle= pcscList(readerList, &readerCount);
+    if (!handle) goto OnErrorExit;
 
     // if readername == NULL take 1st one from the list else search within the list
     if (readerName) {
@@ -709,7 +728,7 @@ pcscHandleT *pcscConnect (const char*uid, const char *readerName) {
         if (handle->readerId < 0 ) {
             EXT_CRITICAL ("[pcsc-reader-unknown] reader=%s", handle->readerName);
             if (handle->verbose) {
-                EXT_NOTICE ("-- reader list count=%d", readerCount);
+                EXT_NOTICE ("-- reader list count=%ld", readerCount);
                 for (int jdx=0; jdx < readerCount-1; jdx++) {
                     EXT_NOTICE (" -- reader[%d]=%s", jdx, readerList[jdx]);
                 }
@@ -720,7 +739,6 @@ pcscHandleT *pcscConnect (const char*uid, const char *readerName) {
         handle->readerId= 0;
         handle->readerName= strdup (readerList[0]);
     }
-    handle->magic= PCSC_HANDLE_MAGIC;
     return (handle);
 
 OnErrorExit:

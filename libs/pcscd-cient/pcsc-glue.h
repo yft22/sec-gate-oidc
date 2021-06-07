@@ -58,6 +58,7 @@ typedef enum {
     ATR_MIFARE_MINI,
     ATR_FELICA_212K,
     ATR_FELICA_424K,
+    ATR_BANK_FR,
 } atrCardidEnumT;
 
 typedef enum {
@@ -94,6 +95,7 @@ u_int64_t pcscGetCardUuid (pcscHandleT *handle);
 int pcscReaderCheck (pcscHandleT *handle, int ticks);
 ulong pcscMonitorReader (pcscHandleT *handle, pcscStatusCbT callback, void *ctx);
 int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action, ulong tid);
+pcscHandleT *pcscList(const char** readerList, ulong *readerMax);
 
 const pcscKeyT *pcscNewKey (const char *uid, u_int8_t *value, size_t len);
 int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, ulong *dlen);
