@@ -1,0 +1,10 @@
+# Target labels
+ LIBRARY
+# Source files and their labels
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-alias.c
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-apis.c
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-core.c
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-fedid.c
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-idp.c
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-idsvc.c
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-utils.c

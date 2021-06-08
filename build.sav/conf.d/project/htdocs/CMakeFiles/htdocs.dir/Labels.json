@@ -1,0 +1,22 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/htdocs/CMakeFiles/htdocs"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/htdocs/CMakeFiles/htdocs.rule"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/htdocs/htdocs.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"HTDOCS"
+		],
+		"name" : "htdocs"
+	}
+}

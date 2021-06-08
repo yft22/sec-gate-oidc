@@ -1,0 +1,2 @@
+/usr/bin/ar qc libidps-builtin.a CMakeFiles/idps-builtin.dir/idp-builtin.c.o CMakeFiles/idps-builtin.dir/idp-github.c.o CMakeFiles/idps-builtin.dir/idp-ldap.c.o CMakeFiles/idps-builtin.dir/idp-oidc.c.o
+/usr/bin/ranlib libidps-builtin.a

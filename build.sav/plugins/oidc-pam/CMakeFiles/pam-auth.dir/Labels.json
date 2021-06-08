@@ -1,0 +1,16 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/plugins/oidc-pam/oidc-pam.c"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"PLUGIN"
+		],
+		"name" : "pam-auth"
+	}
+}

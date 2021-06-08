@@ -1,0 +1,16 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/libs/pcscd-cient/client-pcsc.c"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"EXECUTABLE"
+		],
+		"name" : "pcscd-client"
+	}
+}

@@ -45,7 +45,7 @@ typedef enum {
 } oidcFedidSchemaE;
 
 int fedidCheck (idpRqtCtxT *rqtCtx);
-void fedidsessionReset (afb_session *session);
+void fedidsessionReset (afb_session *session, const oidcProfileT *idpProfile);
 
 extern void *oidcFedUserCookie;
 extern void *oidcFedSocialCookie;

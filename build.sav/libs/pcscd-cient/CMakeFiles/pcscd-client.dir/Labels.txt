@@ -1,0 +1,4 @@
+# Target labels
+ EXECUTABLE
+# Source files and their labels
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/libs/pcscd-cient/client-pcsc.c

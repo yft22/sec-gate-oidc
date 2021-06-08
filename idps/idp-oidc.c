@@ -521,6 +521,7 @@ static int oidcLoginCB (afb_hreq * hreq, void *ctx) {
 static int oidcLogoutCB (afb_hreq * hreq, void *ctx) {
     oidcIdpT *idp = (oidcIdpT *) ctx;
     oidcSchemaT *schema= (oidcSchemaT*) idp->userData;
+    oidcProfileT *idpProfile;
     const char *sessionUid;
     struct afb_session *session;
     sidMapT *sidMap;
@@ -542,7 +543,8 @@ static int oidcLogoutCB (afb_hreq * hreq, void *ctx) {
     // search session uuid and close it when exist
     session= afb_session_search (sessionUid);
     if (!session) goto OnErrorExit;
-    fedidsessionReset (session);
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfile);
+    fedidsessionReset (session, idpProfile);
 
     // remove sid from sidmap table
     HASH_DEL(sidHead, sidMap);

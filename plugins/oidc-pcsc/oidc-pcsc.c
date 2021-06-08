@@ -103,7 +103,7 @@ static void pcscRqtCtxFree (pcscRqtCtxT *rqt) {
 }
 
 // if needed stop pcsc thread when session finish
-static void pcscResetSession (oidcProfileT *idpProfil, void *ctx) {
+static void pcscResetSession (const oidcProfileT *idpProfile, void *ctx) {
     pcscHandleT *handle= (pcscHandleT*)ctx;
     pcscMonitorWait (handle, PCSC_MONITOR_CANCEL, 0);
 }
@@ -113,6 +113,7 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state, void *ctx) {
     pcscRqtCtxT *pcscRqtCtx= (pcscRqtCtxT*) ctx;
     idpRqtCtxT  *idpRqtCtx= pcscRqtCtx->idpRqtCtx;
     pcscOptsT   *pcscOpts= pcscRqtCtx->opts;
+    oidcProfileT *idpProfile;
     int status=0;
     int err;
 
@@ -127,7 +128,8 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state, void *ctx) {
 
             // session was authenticated logout session and kill thread
             case PCSC_STATUS_AUTHENTICATED:
-                fedidsessionReset (pcscRqtCtx->session);
+                afb_session_cookie_get (pcscRqtCtx->session, oidcIdpProfilCookie, (void **) &idpProfile);
+                fedidsessionReset (pcscRqtCtx->session, idpProfile);
                 pcscRqtCtxFree(pcscRqtCtx);
                 status=1; // terminate thread 
                 break;

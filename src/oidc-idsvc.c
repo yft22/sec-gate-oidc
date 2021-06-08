@@ -371,11 +371,12 @@ static void sessionReset (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
     json_object *responseJ;
     afb_session *session = afb_req_v4_get_common (wreq)->session;
     const oidcProfileT *profile;
-    fedidsessionReset (session);
     afb_data_t reply;
 
     afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profile);
     if (!profile) goto OnErrorExit;
+
+    fedidsessionReset (session, profile);
 
     wrap_json_pack (&responseJ, "{ss ss* ss*}"
         , "home", profile->idp->oidc->globals->homeUrl ? : "/"

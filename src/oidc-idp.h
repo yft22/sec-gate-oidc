@@ -147,7 +147,7 @@ typedef struct idpPluginS {
     int (*registerConfig) (oidcIdpT * idp, json_object * idpJ);
     int (*registerApis) (oidcIdpT * idp, struct afb_apiset * declare_set, struct afb_apiset * call_set);
     int (*registerAlias) (oidcIdpT * idp, afb_hsrv * hsrv);
-    void (*resetSession)(oidcProfileT *idpProfil, void *ctx);
+    void (*resetSession)(const oidcProfileT *idpProfile, void *ctx);
     void *ctx;
 } idpPluginT;
 

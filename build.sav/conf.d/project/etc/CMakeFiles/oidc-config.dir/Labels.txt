@@ -1,0 +1,6 @@
+# Target labels
+ BINDING-CONFIG
+# Source files and their labels
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/etc/CMakeFiles/oidc-config
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/etc/CMakeFiles/oidc-config.rule
+/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/etc/oidc-config.rule

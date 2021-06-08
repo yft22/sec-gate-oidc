@@ -143,7 +143,7 @@ static int aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
 {
     oidcAliasT *alias = (oidcAliasT *) ctx;
     struct timespec tCurrent;
-    oidcProfileT *idpProfil;
+    oidcProfileT *idpProfile;
     int sessionLoa, tStamp, tNow, err;
 
     if (alias->loa) {
@@ -179,8 +179,8 @@ static int aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
                 idscvPushEvent (hreq->comreq.session, eventJ);
 
                 // if current profile LOA is enough then fire same idp/profile authen
-                err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void *) &idpProfil);
-                if (!err && (idpProfil->loa >= alias->loa || idpProfil->loa == abs (alias->loa))) {
+                err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void *) &idpProfile);
+                if (!err && (idpProfile->loa >= alias->loa || idpProfile->loa == abs (alias->loa))) {
                     aliasRedirectTimeout (hreq, alias);
                 } else {
                     aliasRedirectLogin (hreq, alias);

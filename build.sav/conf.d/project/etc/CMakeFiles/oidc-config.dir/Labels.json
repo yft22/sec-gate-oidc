@@ -1,0 +1,22 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/etc/CMakeFiles/oidc-config"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/etc/CMakeFiles/oidc-config.rule"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/etc/oidc-config.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"BINDING-CONFIG"
+		],
+		"name" : "oidc-config"
+	}
+}

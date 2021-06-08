@@ -1,0 +1,34 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-alias.c"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-apis.c"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-core.c"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-fedid.c"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-idp.c"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-idsvc.c"
+		},
+		{
+			"file" : "/home/fulup/Workspace/AFB-binder/sec-gate-oidc/src/oidc-utils.c"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"LIBRARY"
+		],
+		"name" : "sgate-oidc"
+	}
+}
