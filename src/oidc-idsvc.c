@@ -131,7 +131,7 @@ static json_object *idpQueryList (afb_req_t wreq, const char **idps) {
     afb_session_cookie_get (session, oidcAliasCookie, (void **) &alias);
 
     // build IDP list with corresponding scope for requested LOA
-    idpsJ = idpLoaProfilsGet (oidc, 0, idps,1);
+    idpsJ = idpLoaProfilsGet (oidc, 0, idps ,1);
     if (alias) wrap_json_pack (&aliasJ, "{ss ss* ss si}", "uid", alias->uid, "info", alias->info, "url", alias->url, "loa", alias->loa);
     else  aliasJ = NULL;
 
@@ -198,8 +198,24 @@ static void idpQueryUser (afb_req_t wreq, unsigned argc, afb_data_t const argv[]
         afb_session_cookie_delete(session, oidcFedLinkCookie);
 
     } else {
-        // return list on configured IDPs
-        json_object *responseJ= idpQueryList (wreq, NULL);
+        // if no idps list provided build one from config
+        oidcProfileT *profile;
+        const char *idps[MAX_OIDC_IDPS+1];
+        int index=0;
+        afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &profile);
+        for (int idx = 0; profile->idp->oidc->idps[idx].uid; idx++) {
+            if (index == MAX_OIDC_IDPS) {
+                EXT_ERROR ("[idp-federate-list] too many idps in config MAX_OIDC_IDPS=%d (remaining ignored)", MAX_OIDC_IDPS);
+                break; 
+            }
+            oidcIdpT *idp = &profile->idp->oidc->idps[idx];
+            if (strcasecmp (idp->uid, profile->idp->uid)) {
+                idps[index++]= idp->uid;
+            }
+        }
+        idps[index]=NULL;
+
+        json_object *responseJ= idpQueryList (wreq, idps);
         if (!responseJ) goto OnErrorExit;
         afb_create_data_raw (&reply, AFB_PREDEFINED_TYPE_JSON_C, responseJ, 0, (void *)json_object_put, responseJ);
         afb_req_reply (wreq, 0, 1, &reply);

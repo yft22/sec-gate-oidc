@@ -339,7 +339,7 @@ static const oidcWellknownT *idpParseWellknown (oidcIdpT * idp, json_object * we
     oidcWellknownT *wellknown = calloc (1, sizeof (oidcWellknownT));
     if (defaults) memcpy (wellknown, defaults, sizeof (oidcWellknownT));
 
-    int err = wrap_json_unpack (wellknownJ, "{s?b s?s,s?s,s?s,s?s,s?s,s?s,s?s !}"
+    int err = wrap_json_unpack (wellknownJ, "{s?b,s?s,s?s,s?s,s?s,s?s,s?s,s?s !}"
                 , "lazy", &wellknown->lazy
                 , "discovery", &wellknown->discovery
                 , "tokenid", &wellknown->tokenid
@@ -350,7 +350,7 @@ static const oidcWellknownT *idpParseWellknown (oidcIdpT * idp, json_object * we
                 , "respond", &wellknown->respondLabel
                 );
     if (err) {
-        EXT_CRITICAL ("github parsing fail wellknown expect: discovery,tokenid,authorize,userinfo,authent,respond (idpParseWellknown)");
+        EXT_CRITICAL ("github parsing fail wellknown expect: laszy,discovery,tokenid,authorize,userinfo,authent,respond (idpParseWellknown)");
         goto OnErrorExit;
     }
 

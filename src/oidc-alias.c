@@ -139,8 +139,7 @@ aliasRedirectLogin (afb_hreq * hreq, oidcAliasT * alias)
     afb_hreq_redirect_to (hreq, alias->oidc->globals->loginUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 }
 
-static int
-aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
+static int aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
 {
     oidcAliasT *alias = (oidcAliasT *) ctx;
     struct timespec tCurrent;

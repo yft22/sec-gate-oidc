@@ -11,6 +11,8 @@ Note: pcsc is implemented as an external plugin and released under MIT licence. 
 
 Except if you only use token/scard UUID within a slave profile you should provision your token/scard with adequate datas. If you need a provision tool check pscd-client (here)[/xxxxx]
 
+Note: when card is declared as 'slave' it can only federate with a pre-existing account. If primary federate identity does not exist when using a slave idp profile, oidc will swhich to primary identity creation to grand authentication, but will not link primary with slave identity. As a result in order to use a scard/token as second factor authentication, not only you should declare your profile as 'slave' but you should also link both accounts. This link may happen either by static provisioning or dynamically from scard card 'secret' contend or other mechanisms that fit your security requirements. 
+
 ## 2- configure your plugin
 
 oidc-pscd is loaded at run time and you should provide plugin path+name in order sgate to find it. Note that if */etc/ld.so.conf.d/* or *LD_LIBRARY_PATH* are correctly configured you should not have to provide plugin fullpath within your config.

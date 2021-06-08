@@ -5,66 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-html5.json
-            "name": "oidc-pcsc",
-            "type": "cppdbg",
-            "request": "launch",
-            "program": "/usr/local/bin/afb-binder",
-            "args": [
-              "--name=afb-oidc",
-              "--config=${workspaceFolder}/conf.d/project/etc/oidc-nfc.json",
-              "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
-              "--roothttp=.",
-              "--verbose",
-              "--verbose",
-              "--verbose",
-              "--trap-faults=no"
-            ],
-            "stopAtEntry": false,
-            "cwd": "${workspaceFolder}/build",
-            "environment": [{"name":"LD_LIBRARY_PATH", "value":"package/lib:package/lib/plugins:/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
-            "externalConsole": false,
-            "MIMode": "gdb",
-            "setupCommands": [
-              {
-                "description": "Enable pretty-printing for gdb",
-                "text": "-enable-pretty-printing",
-                "ignoreFailures": true
-              }
-            ],
-            "miDebuggerPath": "/usr/bin/gdb"
-          },
-          {
-          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-html5.json
-          "name": "oidc-oauth2",
-          "type": "cppdbg",
-          "request": "launch",
-          "program": "/usr/local/bin/afb-binder",
-          "args": [
-            "--name=afb-oidc",
-            "--config=${workspaceFolder}/conf.d/project/etc/oidc-oauth2.json",
-            "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
-            "--roothttp=.",
-            "--verbose",
-            "--verbose",
-            "--verbose",
-            "--trap-faults=no"
-          ],
-          "stopAtEntry": false,
-          "cwd": "${workspaceFolder}/build",
-          "environment": [{"name":"LD_LIBRARY_PATH", "value":"package/lib:package/lib/plugins:/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
-          "externalConsole": false,
-          "MIMode": "gdb",
-          "setupCommands": [
-            {
-              "description": "Enable pretty-printing for gdb",
-              "text": "-enable-pretty-printing",
-              "ignoreFailures": true
-            }
-          ],
-          "miDebuggerPath": "/usr/bin/gdb"
-        },
-        {
 
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
           "name": "oidc-local",
@@ -76,9 +16,7 @@
             "--config=${workspaceFolder}/conf.d/project/etc/oidc-local.json",
             "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
             "--roothttp=.",
-            "--verbose",
-            "--verbose",
-            "--verbose",
+            "--verbose","--verbose","--verbose",
             "--trap-faults=no"
           ],
           "stopAtEntry": false,
