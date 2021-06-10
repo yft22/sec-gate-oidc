@@ -1,4 +1,0 @@
-# Target labels
- PLUGIN
-# Source files and their labels
-/home/fulup/Workspace/AFB-binder/sec-gate-oidc/plugins/oidc-pcsc/oidc-pcsc.c

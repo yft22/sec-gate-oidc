@@ -1,1 +1,0 @@
-/usr/bin/cc -g CMakeFiles/pcscd-client.dir/client-pcsc.c.o -o pcscd-client  -Wl,--as-needed -Wl,--gc-sections -lafb -ljson-c -lpthread libpcscd-glue.a -lafb -ljson-c -lsystemd -lcynagora -luuid -lmicrohttpd -lcurl -L/usr/local/fedid-binding/lib -lfedid-types -Wl,--as-needed -Wl,--gc-sections /usr/lib64/libpcsclite.so -lpthread 

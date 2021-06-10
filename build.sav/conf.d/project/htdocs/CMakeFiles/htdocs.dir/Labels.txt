@@ -1,6 +1,0 @@
-# Target labels
- HTDOCS
-# Source files and their labels
-/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/htdocs/CMakeFiles/htdocs
-/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/htdocs/CMakeFiles/htdocs.rule
-/home/fulup/Workspace/AFB-binder/sec-gate-oidc/build/conf.d/project/htdocs/htdocs.rule

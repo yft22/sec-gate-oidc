@@ -1,2 +1,0 @@
-/usr/bin/ar qc libpcscd-glue.a CMakeFiles/pcscd-glue.dir/pcsc-config.c.o CMakeFiles/pcscd-glue.dir/pcsc-glue.c.o
-/usr/bin/ranlib libpcscd-glue.a

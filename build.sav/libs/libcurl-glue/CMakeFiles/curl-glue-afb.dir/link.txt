@@ -1,2 +1,0 @@
-/usr/bin/ar qc libcurl-glue-afb.a CMakeFiles/curl-glue-afb.dir/curl-client.c.o CMakeFiles/curl-glue-afb.dir/http-gluafb.c.o
-/usr/bin/ranlib libcurl-glue-afb.a

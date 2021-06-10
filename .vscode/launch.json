@@ -7,13 +7,13 @@
         {
 
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "oidc-local",
+          "name": "oidc-dex",
           "type": "cppdbg",
           "request": "launch",
           "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-oidc",
-            "--config=${workspaceFolder}/conf.d/project/etc/oidc-local.json",
+            "--config=${workspaceFolder}/conf.d/project/etc/oidc-dex.json",
             "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
             "--roothttp=.",
             "--verbose","--verbose","--verbose",
