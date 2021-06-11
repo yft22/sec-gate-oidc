@@ -31,9 +31,43 @@
 
 #include "oidc-utils.h"
 
+char *utilStr2Token (str2TokenT *handle, u_int8_t separator, const char* data) {
+
+    // on 1st call separator should be defined
+    if (data) {
+        handle->str=NULL;
+        if (!separator) goto OnErrorExit;
+        handle->str= strdup(data);
+        handle->sep = separator;
+        handle->index=0;
+    } else {
+        // no more data
+        if (!handle->str[handle->index]) goto OnErrorExit;
+    }
+
+    size_t idx, onsep=0;
+    char* token;
+
+    for (idx=handle->index; handle->str[idx] != '\0'; idx ++) {
+        if (handle->str[idx] == handle->sep) {
+            handle->str[idx]='\0';
+            onsep=1;
+            break;
+        }
+    }
+    token=&handle->str[handle->index];
+    if (onsep) handle->index= idx+1;
+    else handle->index=idx;
+
+    return token;
+
+OnErrorExit:
+    if (handle->str) free (handle->str);
+    return NULL;    
+}
 
 // search for key label within key/value array
-int utilsMapValue (const nsKeyEnumT *keyvals, const char *label) {
+int utilLabel2Value (const nsKeyEnumT *keyvals, const char *label) {
     int value=0;
     if (!label) goto OnDefaultExit;
 
@@ -48,6 +82,20 @@ int utilsMapValue (const nsKeyEnumT *keyvals, const char *label) {
 OnDefaultExit:
     return keyvals[0].value;
 }
+
+// search for key label within key/value array
+const char* utillValue2Label (const nsKeyEnumT *keyvals, const int value) {
+    const char *label=NULL;
+
+    for (int idx=0; keyvals[idx].label; idx++) {
+        if (keyvals[ idx].value == value) {
+            label= keyvals[idx].label;
+            break;
+        }
+    }
+    return label;
+}
+
 
 // replace any %key% with its coresponding json value (warning: json is case sensitive)
 char *utilsExpandJson (const char* src, json_object *keysJ) {

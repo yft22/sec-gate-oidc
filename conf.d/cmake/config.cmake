@@ -71,7 +71,6 @@ set (gcc_minimal_version 4.9)
 # PKG_CONFIG required packages
 # -----------------------------
 set (PKG_REQUIRED_LIST
-	json-c
 	libafb
 	libcurl
     fedid-types
@@ -176,7 +175,6 @@ set(WIDGET_ENTRY_POINT lib/sec-gate-oidc.so)
 # Optional schema validator about now only XML, LUA and JSON
 # are supported
 #------------------------------------------------------------
-#set(LUA_CHECKER "luac" CACHE STRING "LUA compiler")
 #set(XML_CHECKER "xmllint" CACHE STRING "XML linter")
 #set(JSON_CHECKER "json_verify" CACHE STRING "JSON linter")
 

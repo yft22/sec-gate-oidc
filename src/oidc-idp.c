@@ -29,13 +29,13 @@
 #include "oidc-idp.h"
 #include "oidc-fedid.h"
 #include "oidc-utils.h"
-#include "idps-builtin.h"
 
 #include <string.h>
 #include <dlfcn.h>
 #include <assert.h>
 
 MAGIC_OIDC_SESSION (oidcIdpProfilCookie);
+extern idpPluginT idpBuiltin[];
 
 typedef struct idpRegistryS {
     struct idpRegistryS *next;
@@ -44,7 +44,6 @@ typedef struct idpRegistryS {
 } idpRegistryT;
 
 // registry holds a linked list of core+pugins idps
-idpPluginT idpBuiltin[];
 static idpRegistryT *registryHead = NULL;
 
 const nsKeyEnumT idpAuthMethods[] = {
@@ -53,6 +52,14 @@ const nsKeyEnumT idpAuthMethods[] = {
     {"client_secret_basic"  , IDP_CLIENT_SECRET_BASIC},
     // {"client_secret_jwt", IDP_CLIENT_SECRET_JWT}, not implemented
     // {"private_key_jwt", IDP_PRIVATE_KEY_JWT}, not implemented
+    {NULL} // terminator
+};
+
+const nsKeyEnumT idpRespondTypes[] = {
+    {"respond-type-unknown",  IDP_RESPOND_TYPE_UNKNOWN},
+    {"code"  , IDP_RESPOND_TYPE_CODE},
+    // {"id_token", IDP_RESPOND_TYPE_ID_TOKEN}, // hybrid mode
+    // {"id_token token"  , IDP_RESPOND_TYPE_ID_TOKEN_TOKEN}, // hybrid mode
     {NULL} // terminator
 };
 
@@ -68,20 +75,20 @@ void idpRqtCtxFree (idpRqtCtxT * rqtCtx)
 }
 
 // return the idp list to display corresponding login page.
-json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
+json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps, int noslave)
 {
     json_object *idpsJ = NULL;
 
     for (int idx = 0; oidc->idps[idx].uid; idx++) {
         oidcIdpT *idp = &oidc->idps[idx];
-        json_object *profilsJ = NULL;
+        json_object *profilesJ = NULL;
 
-        // search for requested LOA within idp existing profils
-        for (int jdx = 0; idp->profils[jdx].uid; jdx++) {
+        // search for requested LOA within idp existing profile
+        for (int jdx = 0; idp->profiles[jdx].uid; jdx++) {
 
-            // if loa does not fir ignore IDP
-            if (idp->profils[jdx].loa < loa)
-                continue;
+            // if loa does not fit ignore IDP
+            if (idp->profiles[jdx].loa < loa && idp->profiles[jdx].loa != abs(loa)) continue;
+            if (noslave && idp->profiles[jdx].slave) continue;
 
             // idp is not within idps list excluse it from list
             if (idps) {
@@ -90,24 +97,22 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
                     if (!strcasecmp (idps[kdx], idp->uid))
                         break;
                 }
-                if (!idps[kdx])
-                    continue;
+                if (!idps[kdx]) continue;
             }
 
-            json_object *profilJ;
-            if (!profilsJ)
-                profilsJ = json_object_new_array ();
-            wrap_json_pack (&profilJ, "{si ss ss* ss}"
-                , "loa",  idp->profils[jdx].loa
-                , "uid", idp->profils[jdx].uid
-                , "info", idp->profils[jdx].info
-                , "scope", idp->profils[jdx].scope
+            json_object *profileJ;
+            if (!profilesJ)  profilesJ = json_object_new_array ();
+            wrap_json_pack (&profileJ, "{ss ss* ss si}"
+                , "uid", idp->profiles[jdx].uid
+                , "info", idp->profiles[jdx].info
+                , "scope", idp->profiles[jdx].scope
+                , "loa",  idp->profiles[jdx].loa
                 );
-            json_object_array_add (profilsJ, profilJ);
+            json_object_array_add (profilesJ, profileJ);
         }
 
         // only return IDP with a corresponding loa/scope
-        if (profilsJ) {
+        if (profilesJ) {
             json_object *idpJ;
             if (!idpsJ) idpsJ = json_object_new_array ();
             wrap_json_pack (&idpJ, "{ss ss* ss* ss* ss* so}"
@@ -116,7 +121,7 @@ json_object *idpLoaProfilsGet (oidcCoreHdlT * oidc, int loa, const char **idps)
                 , "logo", idp->statics->aliasLogo
                 , "client-id", idp->credentials->clientId
                 , "login-url", idp->statics->aliasLogin
-                , "profils", profilsJ
+                , "profiles", profilesJ
             );
 
             json_object_array_add (idpsJ, idpJ);
@@ -179,7 +184,7 @@ idpParseOneHeader (oidcIdpT * idp, json_object * headerJ, httpKeyValT * header)
     int err = wrap_json_unpack (headerJ, "{ss,ss}", "tag", &header->tag, "value",
                                 &header->value);
     if (err) {
-        EXT_CRITICAL ("[idp-header-error] idp=%s parsing fail profil expect: tag,value (idpParseOneHeader)", idp->uid);
+        EXT_CRITICAL ("[idp-header-error] idp=%s parsing fail profile expect: tag,value (idpParseOneHeader)", idp->uid);
         goto OnErrorExit;
     }
     return 0;
@@ -227,17 +232,22 @@ static const httpKeyValT *idpParseHeaders (oidcIdpT * idp, json_object * headers
     return NULL;
 }
 
-static int
-idpParseOneProfil (oidcIdpT * idp, json_object * profileJ, oidcProfilsT * profil)
+static int idpParseOneProfil (oidcIdpT * idp, json_object * profileJ, oidcProfileT * profile)
 {
-    profil->sTimeout = idp->statics->sTimeout;
-    profil->idp = idp;
-    int err = wrap_json_unpack (profileJ, "{ss,s?s,si,ss,s?s, s?i}", "uid",
-                                &profil->uid, "info", &profil->info, "loa",
-                                &profil->loa, "scope", &profil->scope, "label",
-                                &profil->label, "timeout", &profil->sTimeout);
+    profile->sTimeout = idp->statics->sTimeout;
+    profile->idp = idp;
+    int err = wrap_json_unpack (profileJ, "{ss,s?s,si,ss,s?s,s?i,s?b,s?i !}"
+        , "uid", &profile->uid
+        , "info", &profile->info
+        , "loa",  &profile->loa
+        , "scope", &profile->scope
+        , "attrs", &profile->attrs
+        , "group",  &profile->group
+        , "slave",  &profile->slave
+        , "timeout", &profile->sTimeout
+    );
     if (err) {
-        EXT_CRITICAL ("[idp-profile-error] idp=%s parsing fail profil expect: loa,scope (idpParseOneProfil)", idp->uid);
+        EXT_CRITICAL ("[idp-profile-error] idp=%s parsing fail expect: uid,loa,scope,label[s],timeout (idpParseOneProfil)", idp->uid);
         goto OnErrorExit;
     }
     return 0;
@@ -246,45 +256,45 @@ idpParseOneProfil (oidcIdpT * idp, json_object * profileJ, oidcProfilsT * profil
     return 1;
 }
 
-static const oidcProfilsT *idpParseProfils (oidcIdpT * idp, json_object * profilsJ, const oidcProfilsT * defaults)
+static const oidcProfileT *idpParseProfils (oidcIdpT * idp, json_object * profilesJ, const oidcProfileT * defaults)
 {
-    oidcProfilsT *profils = NULL;
+    oidcProfileT *profile = NULL;
     int err;
 
     // no config use defaults
-    if (!profilsJ)
+    if (!profilesJ)
         return defaults;
 
-    switch (json_object_get_type (profilsJ)) {
+    switch (json_object_get_type (profilesJ)) {
         int count;
 
     case json_type_array:
-        count = (int) json_object_array_length (profilsJ);
-        profils = calloc (count + 1, sizeof (oidcProfilsT));
+        count = (int) json_object_array_length (profilesJ);
+        profile = calloc (count + 1, sizeof (oidcProfileT));
 
         for (int idx = 0; idx < count; idx++) {
-            json_object *profilJ = json_object_array_get_idx (profilsJ, idx);
-            err = idpParseOneProfil (idp, profilJ, &profils[idx]);
+            json_object *profileJ = json_object_array_get_idx (profilesJ, idx);
+            err = idpParseOneProfil (idp, profileJ, &profile[idx]);
             if (err)
                 goto OnErrorExit;
         }
         break;
 
     case json_type_object:
-        profils = calloc (2, sizeof (oidcProfilsT));
-        err = idpParseOneProfil (idp, profilsJ, &profils[0]);
+        profile = calloc (2, sizeof (oidcProfileT));
+        err = idpParseOneProfil (idp, profilesJ, &profile[0]);
         if (err)
             goto OnErrorExit;
         break;
 
     default:
-        EXT_CRITICAL ("[idp-profil-error] idp=%s should be json_array|json_object", idp->uid);
+        EXT_CRITICAL ("[idp-profile-error] idp=%s should be json_array|json_object", idp->uid);
         goto OnErrorExit;
     }
-    return (profils);
+    return (profile);
 
   OnErrorExit:
-    free (profils);
+    free (profile);
     return NULL;
 }
 
@@ -301,9 +311,12 @@ static const oidcStaticsT *idpParsestatic (oidcIdpT * idp, json_object * staticJ
     if (!statics->sTimeout)
         statics->sTimeout = idp->oidc->globals->sTimeout;
 
-    int err = wrap_json_unpack (staticJ, "{s?s,s?s,s?i}", "login", &statics->aliasLogin,
-                                "logo", &statics->aliasLogo, "timeout",
-                                &statics->sTimeout);
+    int err = wrap_json_unpack (staticJ, "{s?s,s?s,s?s,s?i}"
+            , "login", &statics->aliasLogin
+            , "logout", &statics->aliasLogout
+            , "logo", &statics->aliasLogo
+            , "timeout", &statics->sTimeout
+            );
     if (err) {
         EXT_CRITICAL ("[idp-static-error] idp=%s parsing fail statics expect: login,logo,plugin,timeout (idpParsestatic)", idp->uid);
         goto OnErrorExit;
@@ -321,21 +334,23 @@ static const oidcWellknownT *idpParseWellknown (oidcIdpT * idp, json_object * we
     // no config use default;
     if (!wellknownJ) return defaults;
 
-    const char* authMethod;
+    const char* authMethod=NULL;
 
     oidcWellknownT *wellknown = calloc (1, sizeof (oidcWellknownT));
     if (defaults) memcpy (wellknown, defaults, sizeof (oidcWellknownT));
 
-    int err = wrap_json_unpack (wellknownJ, "{s?s,s?s,s?s,s?s,s?s,s?s !}"
+    int err = wrap_json_unpack (wellknownJ, "{s?b,s?s,s?s,s?s,s?s,s?s,s?s,s?s !}"
+                , "lazy", &wellknown->lazy
                 , "discovery", &wellknown->discovery
                 , "tokenid", &wellknown->tokenid
                 , "authorize",&wellknown->authorize
                 , "userinfo",&wellknown->userinfo
                 , "jwks",&wellknown->jwks
-                , "auth-method", &authMethod
+                , "authent", &wellknown->authLabel
+                , "respond", &wellknown->respondLabel
                 );
     if (err) {
-        EXT_CRITICAL ("github parsing fail wellknown expect: discovery,tokenid,authorize,userinfo (idpParseWellknown)");
+        EXT_CRITICAL ("github parsing fail wellknown expect: laszy,discovery,tokenid,authorize,userinfo,authent,respond (idpParseWellknown)");
         goto OnErrorExit;
     }
 
@@ -348,25 +363,27 @@ static const oidcWellknownT *idpParseWellknown (oidcIdpT * idp, json_object * we
 
 int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * defaults, void *ctx)
 {
-
+    json_object *schemaJ;
     if (!configJ) {
-        EXT_CRITICAL ("ext=%s github config must define client->id & client->secret (githubConfigCB)", idp->uid);
+        EXT_CRITICAL ("ext=%s github config must define client->id & client->secret (githubRegisterConfig)", idp->uid);
         goto OnErrorExit;
     }
     // unpack main IDP config
-    json_object *credentialsJ = NULL, *staticJ = NULL, *wellknownJ = NULL, *headersJ = NULL, *profilsJ;
-    int err = wrap_json_unpack (configJ, "{ss s?s s?s s?o s?o s?o s?o}"
+    json_object *credentialsJ = NULL, *staticJ = NULL, *wellknownJ = NULL, *headersJ = NULL, *profilesJ, *pluginJ=NULL;
+    int err = wrap_json_unpack (configJ, "{ss s?s s?s s?o s?o s?o s?o s?o s?o s?o !}"
         , "uid", &idp->uid
         , "info", &idp->info
         , "type", &idp->type
+        , "plugin", &pluginJ
         , "credentials", &credentialsJ
         , "statics", &staticJ
-        , "profils", &profilsJ
+        , "profiles", &profilesJ
         , "wellknown", &wellknownJ
         , "headers", &headersJ
+        , "schema", &schemaJ
         );
     if (err) {
-        EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (githubConfigCB)", idp->uid);
+        EXT_CRITICAL ("idp=%s parsing fail should define 'credentials','static','alias' (idpParseOidcConfig)", idp->uid);
         goto OnErrorExit;
     }
 
@@ -378,12 +395,12 @@ int idpParseOidcConfig (oidcIdpT * idp, json_object * configJ, oidcDefaultsT * d
     idp->ctx = ctx;
     idp->credentials = idpParseCredentials (idp, credentialsJ, defaults->credentials);
     idp->statics = idpParsestatic (idp, staticJ, defaults->statics);
-    idp->profils = idpParseProfils (idp, profilsJ, defaults->profils);
+    idp->profiles = idpParseProfils (idp, profilesJ, defaults->profiles);
     idp->wellknown = idpParseWellknown (idp, wellknownJ, defaults->wellknown);
     idp->headers = idpParseHeaders (idp, headersJ, defaults->headers);
 
     // any error is fatal, even if section check continue after 1st error
-    if (!idp->wellknown || !idp->statics || !idp->credentials || !idp->headers)
+    if (!idp->wellknown || !idp->statics || !idp->credentials || !idp->headers || !idp->profiles)
         goto OnErrorExit;
 
     idp->ctx = ctx;             // optional idp context specific handle
@@ -453,14 +470,13 @@ static int idpParseOne (oidcCoreHdlT * oidc, json_object * idpJ, oidcIdpT * idp)
         } else {
             void *handle = NULL;
             char *filepath;
-            char *tokpath = strdup (ldpath);
             // split string into multiple configpath
-            for (filepath = strtok (tokpath, ":"); filepath; filepath = strtok (NULL, ":")) {
+            str2TokenT tknHandle;
+            for (filepath= utilStr2Token (&tknHandle,':', ldpath); filepath; filepath= utilStr2Token(&tknHandle,0,0)) {
                 handle = dlopen (filepath, RTLD_NOW | RTLD_LOCAL);
                 if (handle)
                     break;
             }
-            free (tokpath);
             if (!handle) {
                 EXT_ERROR ("[idp-plugin-load] idp=%s plugin=%s error=%s", uid, ldpath, dlerror ());
                 goto OnErrorExit;
@@ -488,8 +504,8 @@ static int idpParseOne (oidcCoreHdlT * oidc, json_object * idpJ, oidcIdpT * idp)
         goto OnErrorExit;
     }
     // when call idp custom config callback
-    if (idp->plugin->configCB)
-        err = idp->plugin->configCB (idp, idpJ);
+    if (idp->plugin->registerConfig)
+        err = idp->plugin->registerConfig (idp, idpJ);
     else
         err = idpParseOidcConfig (idp, idpJ, NULL, NULL);
     if (err)
@@ -541,50 +557,38 @@ oidcIdpT const *idpParseConfig (oidcCoreHdlT * oidc, json_object * idpsJ)
     return NULL;
 }
 
-// register IDP login and authentication callback endpoint
-int idpRegisterOne (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
-{
+int idpRegisterAlias (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv) {
     int err;
 
-    EXT_DEBUG ("[idp-register] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
-
-    // call idp init callback
-    if (idp->plugin->registerCB) {
-        err = idp->plugin->registerCB (idp, declare_set, call_set);
-        if (err) {
-            EXT_ERROR ("[idp-initcb-fail] idp=%s not avaliable within registered idp plugins", idp->uid);
-            goto OnErrorExit;
-        }
+    if (idp->plugin->registerAlias) {
+        EXT_DEBUG ("[idp-register-alias] uid=%s login='%s'", idp->uid, idp->plugin->uid);
+        err = idp->plugin->registerAlias (idp, hsrv);
+        if (err) goto OnErrorExit;
     }
     return 0;
 
-  OnErrorExit:
-    EXT_ERROR ("[idp-register-error] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
-    return 1;
-}
-
-int idpRegisterLogin (oidcCoreHdlT * oidc, oidcIdpT * idp, afb_hsrv * hsrv)
-{
-    int err;
-    EXT_DEBUG ("[idp-register-alias] uid=%s login='%s'", idp->uid, idp->statics->aliasLogin);
-
-    err = afb_hsrv_add_handler (hsrv, idp->statics->aliasLogin, idp->plugin->loginCB, idp, EXT_HIGHEST_PRIO);
-    if (!err)
-        goto OnErrorExit;
-    return 0;
-
-  OnErrorExit:
+ OnErrorExit:
     EXT_ERROR ("[idp-register-alias] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
     return 1;
 }
 
-// Builtin in output formater. Note that first one is used when cmd does not define a format
-idpPluginT idpBuiltin[] = {
-    {.uid = "oidc",.info = "openid connect idp",.configCB = oidcConfigCB,.loginCB= oidcLoginCB},
-    {.uid = "github",.info = "github public oauth2 idp",.configCB = githubConfigCB,.loginCB= githubLoginCB},
-    {.uid = "ldap"  ,.info = "ldap internal users",.configCB = ldapConfigCB,.loginCB= ldapLoginCB, .registerCB=ldapRegisterCB},
-    {.uid = NULL}               // must be null terminated
-};
+// register IDP login and authentication callback endpoint
+int idpRegisterApis (oidcCoreHdlT * oidc, oidcIdpT * idp, struct afb_apiset *declare_set, struct afb_apiset *call_set)
+{
+    int err;
+
+    // call idp init callback
+    if (idp->plugin->registerApis) {
+        EXT_DEBUG ("[idp-register-apis] uid=%s login='%s'", idp->uid, idp->plugin->uid);
+        err = idp->plugin->registerApis (idp, declare_set, call_set);
+        if (err) goto OnErrorExit;
+    }
+    return 0;
+
+  OnErrorExit:
+    EXT_ERROR ("[idp-register-apis] ext=%s idp=%s config should be json/array|object", oidc->uid, idp->uid);
+    return 1;
+}
 
 // register callback and use it to register core idps
 int

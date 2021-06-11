@@ -1,8 +1,8 @@
 var afb = new AFB("api", "mysecret");
+var urlws=afb.setURL;
 var ws;
 var evtidx = 0;
 var count = 0;
-
 
 //**********************************************
 // Logger
@@ -10,7 +10,7 @@ var count = 0;
 var log = {
 	command: function (api, verb, query) {
 		console.log("request api=" + api + " verb=" + verb + " query=", query);
-		var question = urlws + "/" + api + "/" + verb + "?query=" + JSON.stringify(query);
+		var question = "ws:/" + api + "/" + verb + "?query=" + JSON.stringify(query);
 		log._write("question", (count++) + ": " + log.syntaxHighlight(question));
 	},
 
@@ -100,14 +100,14 @@ function init(callback) {
 		//document.getElementById("afb_api").style.visibility = "hidden";
 		document.getElementById("afb_link").innerHTML = "Connected Closed";
 		document.getElementById("afb_link").style.background = "red";
-		
+
         var sgate_box= document.getElementById("sgate_error")
         if (sgate_box) sgate_box.innerHTML= "sgate connection lost"
 
 		var buttons= document.getElementsByClassName("sgate_button");
 		for (var idx=0; idx < buttons.length|0; idx++) {
 			buttons[idx].className = "sgate_button sgate_off";
-		} 
+		}
 	}
 	ws = new afb.ws(onopen, onabort);
 }

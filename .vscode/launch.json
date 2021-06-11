@@ -5,25 +5,23 @@
     "version": "0.2.0",
     "configurations": [
         {
-          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-html5.json
-          "name": "oidc-html5",
+
+          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
+          "name": "oidc-dex",
           "type": "cppdbg",
           "request": "launch",
           "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-oidc",
-            "--binding=${workspaceFolder}/../fedid-binding/build/package/lib/fedid-binding.so",
-            "--config=${workspaceFolder}/conf.d/project/etc/oidc-html5.json",
+            "--config=${workspaceFolder}/conf.d/project/etc/oidc-dex.json",
             "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
             "--roothttp=.",
-            "--verbose",
-            "--verbose",
-            "--verbose",
+            "--verbose","--verbose","--verbose",
             "--trap-faults=no"
           ],
           "stopAtEntry": false,
           "cwd": "${workspaceFolder}/build",
-          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"package/lib:package/lib/plugins:/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
           "externalConsole": false,
           "MIMode": "gdb",
           "setupCommands": [
@@ -36,25 +34,118 @@
           "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "oidc-basic",
+          "name": "sync-group-6",
           "type": "cppdbg",
           "request": "launch",
-          "program": "/usr/local/bin/afb-binder",
+          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
           "args": [
-            "--name=afb-oidc",
-            "--config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json",
-            "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
-            "--roothttp=.",
+            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-pcsc.json",
             "--verbose",
-            "--verbose",
-            "--verbose",
-            "--trap-faults=no"
+            "--group=6",
           ],
-          "stopAtEntry": false,
+          "stopAtEntry": true,
           "cwd": "${workspaceFolder}/build",
-          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
+          "name": "sync-scard-g0",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
+          "args": [
+            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-scard.json",
+            "--verbose",
+            "--group=0",
+          ],
+          "stopAtEntry": true,
+          "cwd": "${workspaceFolder}/build",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
+          "name": "sync-group-5",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
+          "args": [
+            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-pcsc.json",
+            "--verbose",
+            "--group=5",
+            "--async",
+          ],
+          "stopAtEntry": true,
+          "cwd": "${workspaceFolder}/build",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
+          "name": "sync-scard-g0",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
+          "args": [
+            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-scard.json",
+            "--verbose",
+            "--group=0",
+          ],
+          "stopAtEntry": true,
+          "cwd": "${workspaceFolder}/build",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+            {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+            }
+          ],
+          "miDebuggerPath": "/usr/bin/gdb"
+        },
+        {
+          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
+          "name": "list-readers",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
+          "args": [
+            "--list",
+          ],
+          "stopAtEntry": true,
+          "cwd": "${workspaceFolder}/build",
+          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
           "externalConsole": false,
           "MIMode": "gdb",
           "setupCommands": [
@@ -66,5 +157,6 @@
           ],
           "miDebuggerPath": "/usr/bin/gdb"
         }
+
     ]
 }

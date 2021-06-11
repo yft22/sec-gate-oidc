@@ -37,6 +37,7 @@ typedef enum {
 } oidcMagicT;
 
 // redefine debug/log to avoid conflict
+#ifndef EXT_EMERGENCY
 #define EXT_EMERGENCY(...)            _VERBOSE_(Log_Level_Emergency, __VA_ARGS__)
 #define EXT_ALERT(...)                _VERBOSE_(Log_Level_Alert, __VA_ARGS__)
 #define EXT_CRITICAL(...)             _VERBOSE_(Log_Level_Critical, __VA_ARGS__)
@@ -45,6 +46,7 @@ typedef enum {
 #define EXT_NOTICE(...)               _VERBOSE_(Log_Level_Notice, __VA_ARGS__)
 #define EXT_INFO(...)                 _VERBOSE_(Log_Level_Info, __VA_ARGS__)
 #define EXT_DEBUG(...)                _VERBOSE_(Log_Level_Debug, __VA_ARGS__)
+#endif
 
 // few defaults
 #define EXT_HIGHEST_PRIO 100

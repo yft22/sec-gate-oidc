@@ -42,8 +42,10 @@ typedef struct idpPluginS idpPluginT;
 #define URL_OIDC_USR_FEDLINK "/sgate/common/fedlink.html"
 #define URL_OIDC_USR_HOME "/"
 #define URL_OIDC_AUTH_CACHE  5000       // 5sec alias authen cache
+#define MAX_OIDC_IDPS 16 // max number of IDPS in config
 
 #define STATUS_OIDC_AUTH_DENY 403
+#define STATUS_OIDC_LOA_RESET 423
 
 typedef struct {
     const char *loginUrl;
@@ -51,8 +53,8 @@ typedef struct {
     const char *registerUrl;
     const char *fedlinkUrl;
     const char *homeUrl;
-    unsigned long tCache;
-    unsigned long sTimeout;
+    ulong tCache;
+    ulong sTimeout;
 } oidGlobalsT;
 
 // this structure is returned by plugin registration callback

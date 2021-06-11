@@ -21,7 +21,6 @@
  * $RP_END_LICENSE$
 */
 
-
 #pragma once
 
 #include <json-c/json.h>
@@ -39,5 +38,13 @@ typedef struct {
     const int  value;
 } nsKeyEnumT;
 
-int utilsMapValue (const nsKeyEnumT *keyvals, const char *label);
+typedef struct {
+    char *str;
+    u_int8_t sep;
+    size_t index;
+} str2TokenT;
+
+char *utilStr2Token (str2TokenT *handle, u_int8_t separator, const char* data);
+int utilLabel2Value (const nsKeyEnumT *keyvals, const char *label);
 char* utilsExpandJson (const char* src, json_object *keysJ);
+const char *utillValue2Label (const nsKeyEnumT *keyvals, const int value);

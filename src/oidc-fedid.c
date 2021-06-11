@@ -27,8 +27,10 @@
 
 #include "oidc-core.h"
 #include "oidc-alias.h"
-#include <http-client.h>
+#include <curl-glue.h>
 #include "oidc-fedid.h"
+#include "oidc-utils.h"
+#include "oidc-idsvc.h"
 
 #include <assert.h>
 #include <string.h>
@@ -36,6 +38,17 @@
 
 MAGIC_OIDC_SESSION (oidcFedUserCookie);
 MAGIC_OIDC_SESSION (oidcFedSocialCookie);
+MAGIC_OIDC_SESSION (oidcUsrDataCookie);
+
+
+const nsKeyEnumT oidcFedidSchema[] = {
+    {"pseudo"  , OIDC_SCHEMA_PSEUDO},
+    {"name"    , OIDC_SCHEMA_NAME},
+    {"email"   , OIDC_SCHEMA_EMAIL},
+    {"avatar"  , OIDC_SCHEMA_AVATAR},
+    {"company" , OIDC_SCHEMA_COMPANY},
+    {NULL} // terminator
+};
 
 typedef struct {
     afb_hreq *hreq;
@@ -45,30 +58,60 @@ typedef struct {
     fedSocialRawT *fedSocial;
 } oidcFedidHdlT;
 
-// session timeout, reset LOA
-void
-fedidsessionReset (int signal, void *ctx)
+// session timeout, reset LOA 
+void fedidsessionReset (afb_session *session, const oidcProfileT *idpProfile)
 {
-    afb_session *session = (afb_session *) ctx;
+    int err, count;
 
-    // signal should be null
-    if (signal) return;
+    // reset session and alias LOA (this will force authentication)
+    afb_session_set_loa(session, oidcSessionCookie, 0);
+    afb_session_set_loa(session, oidcAliasCookie, 0);
+    EXT_DEBUG ("[fedid-session-reset] logout/timeout session uuid=%s ?", afb_session_uuid (session));
 
-    // reset session LOA (this will force authentication)
-    afb_session_set_loa (session, oidcSessionCookie, 0);
-    EXT_NOTICE ("[fedidsessionReset] timeout ?");
+    if (idpProfile) {
+
+        if (idpProfile->idp->plugin && idpProfile->idp->plugin->resetSession) {
+            void *ctx;
+            afb_session_cookie_get (session, oidcUsrDataCookie, &ctx);
+            if (ctx) {
+                idpProfile->idp->plugin->resetSession(idpProfile, ctx);
+                afb_session_cookie_set (session, oidcUsrDataCookie, NULL, NULL, NULL);
+            }
+        }
+
+        json_object *eventJ;
+        err= wrap_json_pack (&eventJ, "{ss ss ss* ss*}"
+        , "status", "loa-reset"
+        , "home" , idpProfile->idp->oidc->globals->homeUrl ? : "/"
+        , "login", idpProfile->idp->oidc->globals->loginUrl
+        , "error", idpProfile->idp->oidc->globals->errorUrl
+        );
+        if (!err) count= idscvPushEvent (session, eventJ);
+        if (!count) EXT_DEBUG ("[fedid-session-reset] no client subscribed uuid=%s ?", afb_session_uuid (session));
+    }
 }
 
-// if fedkey exists callback receive local store user profil otherwise we should create it
+static void fedidTimerCB (int signal, void *ctx) {
+    afb_session *session = (afb_session *) ctx;
+    oidcProfileT *idpProfile;
+
+    // signal should be null
+    if (signal) return; 
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfile);
+    fedidsessionReset (session, idpProfile); 
+}
+
+
+// if fedkey exists callback receive local store user profile otherwise we should create it
 static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t const argv[], struct afb_api_v4 *api)
 {
-    char *errorMsg = "[invalid-profil] Fail to process user profile (fedidCheckCB)";
+    char *errorMsg = "[invalid-profile] Fail to process user profile (fedidCheckCB)";
     idpRqtCtxT *idpRqtCtx = (idpRqtCtxT *) ctx;
     char url[EXT_URL_MAX_LEN];
     const char *target;
     afb_data_x4_t reply[1], argd[argc];
     fedUserRawT *fedUser;
-    oidcProfilsT *idpProfil;
+    oidcProfileT *idpProfile;
     oidcAliasT *alias;
     afb_session *session;
     const char *redirect;
@@ -95,35 +138,47 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
         goto OnErrorExit;
     }
 
-    if (argc != 1) {  // feduser was not created
+    // user try to login if loa set then reset session
+    int sessionLoa= afb_session_get_loa (session, oidcSessionCookie);
+    if (sessionLoa) fedidsessionReset (session, NULL); 
 
-        // fedkey not fount let's store social authority profil into session and redirect user on userprofil creation
+    afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfile);
+    if (argc != 1) {  // fedid is not registered and we are not facing a secondary authentication
+        const char *targetUrl;
+
+        // fedkey not fount let's store social authority profile into session and redirect user on userprofil creation
         afb_session_cookie_set (session, oidcFedUserCookie, idpRqtCtx->fedUser, fedUserFreeCB, idpRqtCtx->fedUser);
         afb_session_cookie_set (session, oidcFedSocialCookie, idpRqtCtx->fedSocial, fedSocialFreeCB, idpRqtCtx->fedSocial);
-        afb_session_set_loa (session, oidcSessionCookie, 0);    // user not register reset session loa
 
         httpKeyValT query[] = {
             {.tag = "language",.value = setlocale (LC_CTYPE, "")},
             {NULL}              // terminator
         };
 
+        if (idpProfile->slave) {
+            targetUrl= idpRqtCtx->idp->oidc->globals->fedlinkUrl;
+            afb_session_set_loa (session, oidcFedSocialCookie, FEDID_LINK_REQUESTED);
+        } else {
+            targetUrl= idpRqtCtx->idp->oidc->globals->registerUrl;
+        }
         if (hreq) {
-            err = httpBuildQuery (idpRqtCtx->idp->uid, url, sizeof (url), NULL /* prefix */ , idpRqtCtx->idp->oidc->globals->registerUrl, query);
+            err = httpBuildQuery (idpRqtCtx->idp->uid, url, sizeof (url), NULL /* prefix */ , targetUrl, query);
             if (err) {
                 EXT_ERROR ("[fedid-register-unknown] fail to build redirect url");
                 goto OnErrorExit;
             }
         } else {
-            target = idpRqtCtx->idp->oidc->globals->registerUrl;
+            target = targetUrl;
         }
-    } else {     // feduser is avaliable
+
+    } else { // fedid is already registered
 
         err = afb_data_convert (argv[0], fedUserObjType, &argd[0]);
         if (err < 0) goto OnErrorExit;
         fedUser = (fedUserRawT *) afb_data_ro_pointer (argd[0]);
 
         // check if federation linking is pending
-        fedSocialRawT *fedLinkSocial=NULL;
+        fedSocialRawT *fedLinkSocial;
         afb_session_cookie_get (session, oidcFedSocialCookie, (void **) &fedLinkSocial);
         int fedLoa= afb_session_get_loa (session, oidcFedSocialCookie);
 
@@ -149,12 +204,12 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
             }
         }
 
-        // let's store user profil into session cookie (/oidc/profil/get serves it)
+        // let's store user profile into session cookie (/oidc/profile/get serves it)
         afb_session_cookie_set (session, oidcFedUserCookie, fedUser, (void *) afb_data_unref, argd[0]);
         afb_session_cookie_set (session, oidcFedSocialCookie, idpRqtCtx->fedSocial, fedSocialFreeCB, idpRqtCtx->fedSocial);
 
         // everyting looks good let's return user to original page
-        afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfil);
+        afb_session_cookie_get (session, oidcIdpProfilCookie, (void **) &idpProfile);
         afb_session_cookie_get (session, oidcAliasCookie, (void **) &alias);
 
         err = httpBuildQuery (idpRqtCtx->idp->uid, url, sizeof (url), NULL /* prefix */ , alias->url, NULL);
@@ -175,8 +230,8 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
         }
 
         // if idp session as a timeout start a rtimer
-        if (idpProfil->sTimeout) {
-            fedidSessionT *fedSession = NULL;
+        if (idpProfile->sTimeout) {
+            fedidSessionT *fedSession;
             afb_session_cookie_get (session, oidcSessionCookie, (void **) &fedSession);
             if (fedSession && fedSession->timerId) {
                 afb_jobs_abort (fedSession->timerId);
@@ -186,13 +241,18 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
                 afb_session_cookie_set (session, oidcSessionCookie, (void *) fedSession, NULL, NULL);
             }
 
-            fedSession->timerId = afb_sched_post_job (NULL /*group */ , idpProfil->sTimeout * 1000, 0 /*max-exec-time */ , fedidsessionReset, session);
+            fedSession->timerId = afb_sched_post_job (NULL /*group */ , idpProfile->sTimeout * 1000, 0 /*max-exec-time */ , fedidTimerCB, session);
             if (fedSession->timerId < 0) {
-                EXT_ERROR ("[fedid-register-timeout] fail to set idp profil session loa");
+                EXT_ERROR ("[fedid-register-timeout] fail to set idp profile session loa");
                 goto OnErrorExit;
             }
         }
-        afb_session_set_loa (session, oidcSessionCookie, idpProfil->loa);
+
+        // user successfully loggin set session loa to current idp login profile
+        afb_session_set_loa (session, oidcSessionCookie, idpProfile->loa);
+
+        // if idp request get userdata keep track of them (needed by pcscd to kill monitoring thread)
+        if (idpRqtCtx->userData) afb_session_cookie_set (session, oidcUsrDataCookie, (void *)idpRqtCtx->userData, NULL, NULL);
     }
 
     // free user info handle and redirect to initial targeted url
@@ -217,6 +277,7 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
     EXT_NOTICE ("[fedid-authent-redirect] (hoops!!!) internal error");
     if (hreq) afb_hreq_redirect_to (hreq, idpRqtCtx->idp->oidc->globals->errorUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
     if (wreq) afb_req_v4_reply_hookable (wreq, -1, 0, NULL);
+    idpRqtCtxFree (idpRqtCtx);
 }
 
 // try to wreq user profile from its federation key

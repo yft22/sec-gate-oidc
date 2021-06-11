@@ -1,0 +1,60 @@
+{
+    // ./package/bin/pcsc-client --config=../src/idps-plugins/oidc-pcsc/test/simple-pcsc.json --group=xx --verbose
+    // ACL online definition http://calc.gmss.ru/Mifare1k/
+    "info" : "Basic PCSC test for Mifare Classic",
+    "reader": "ACR122U",
+    "keys": [
+        {"uid":"key-a", "idx": 0, "value":["0x01","0x02","0x03","0x04","0x05","0x06"]},
+        {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]}
+    ],
+    "cmds": [
+
+        // provisioning card with default key (new card)
+        {"uid":"write-pseudo" ,"group":1,"action":"write","sec":1,"len":48,"data":"fulup-bzh"},
+        {"uid":"write-email"  ,"group":1,"action":"write","sec":2,"len":48,"data":"fulup@iot.bzh"},
+        {"uid":"write-name"   ,"group":1,"action":"write","sec":3,"len":48,"data":"Fulup Le Foll"},
+        {"uid":"write-company","group":1,"action":"write","sec":4,"len":48,"data":"IoT.bzh"},
+        {"uid":"write-roles"  ,"group":1,"action":"write","sec":5,"len":48,"data":"role1,role2"},
+        {"uid":"write-apps"   ,"group":1,"action":"write","sec":7,"len":48,"data":"app1,app2"},
+
+        // read sector with default key as provision in group=1
+        {"uid":"read-pseudo" ,"group":2,"action":"read","sec":1,"len":48},
+        {"uid":"read-email"  ,"group":2,"action":"read","sec":2,"len":48},
+        {"uid":"read-name"   ,"group":2,"action":"read","sec":3,"len":48},
+        {"uid":"read-company","group":2,"action":"read","sec":4,"len":48},
+        {"uid":"read-roles"  ,"group":2,"action":"read","sec":2,"len":48},
+        {"uid":"read-apps"   ,"group":2,"action":"read","sec":6,"len":48},
+
+        // set acl for previsouly provision sectors
+        {"uid":"acls-1"  , "group":4, "action":"trailer","sec":1,"blk":3, "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0x08","0x77","0x8F","0x00"]}},
+        {"uid":"acls-2"  , "group":4, "action":"trailer","sec":2,"blk":3, "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0x08","0x77","0x8F","0x00"]}},
+        {"uid":"acls-3"  , "group":4, "action":"trailer","sec":3,"blk":3, "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0x08","0x77","0x8F","0x00"]}},
+        {"uid":"acls-4"  , "group":4, "action":"trailer","sec":4,"blk":3, "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0x08","0x77","0x8F","0x00"]}},
+        {"uid":"acls-5"  , "group":4, "action":"trailer","sec":5,"blk":3, "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0x08","0x77","0x8F","0x00"]}},
+        {"uid":"acls-6"  , "group":4, "action":"trailer","sec":6,"blk":3, "trailer": {"keyA": "key-a","keyB":"key-b","acls":["0x08","0x77","0x8F","0x00"]}},
+
+        // read sector with acl set in group=4
+        {"uid":"read-pseudo" ,"group":5,"action":"read","sec":1,"len":48,"key":"key-a"},
+        {"uid":"read-email"  ,"group":5,"action":"read","sec":2,"len":48,"key":"key-a"},
+        {"uid":"read-name"   ,"group":5,"action":"read","sec":3,"len":48,"key":"key-a"},
+        {"uid":"read-company","group":5,"action":"read","sec":4,"len":48,"key":"key-a"},
+        {"uid":"read-roles"  ,"group":5,"action":"read","sec":5,"len":48,"key":"key-a"},
+        {"uid":"read-apps"   ,"group":5,"action":"read","sec":6,"len":48,"key":"key-a"},
+
+        // write sector with acl set in group=4
+        {"uid":"write-pseudo" ,"group":6,"action":"write","sec":1,"len":48,"key":"key-b","data":"youn-bzh"},
+        {"uid":"write-email"  ,"group":6,"action":"write","sec":2,"len":48,"key":"key-b","data":"youn@iot.bzh"},
+        {"uid":"write-name"   ,"group":6,"action":"write","sec":3,"len":48,"key":"key-b","data":"Youn Ar Foll"},
+        {"uid":"write-company","group":6,"action":"write","sec":4,"len":48,"key":"key-b","data":"IoT.bzh"},
+        {"uid":"write-roles"  ,"group":6,"action":"write","sec":5,"len":48,"key":"key-b","data":"roleA,roleB,roleC,roleD"},
+        {"uid":"write-apps"   ,"group":6,"action":"write","sec":6,"len":48,"key":"key-b","data":"appA,appB,appC,appD"},
+
+        // write sector with acl set in group=4
+        {"uid":"write-pseudo" ,"group":7,"action":"write","sec":1,"len":48,"key":"key-b","data":"fulup-bzh"},
+        {"uid":"write-email"  ,"group":7,"action":"write","sec":2,"len":48,"key":"key-b","data":"fulupiot.bzh"},
+        {"uid":"write-name"   ,"group":7,"action":"write","sec":3,"len":48,"key":"key-b","data":"Fulup Ar Foll"},
+        {"uid":"write-company","group":7,"action":"write","sec":4,"len":48,"key":"key-b","data":"IoT.bzh"},
+        {"uid":"write-roles"  ,"group":7,"action":"write","sec":5,"len":48,"key":"key-b","data":"role1,role2,role3,role4"},
+        {"uid":"write-apps"   ,"group":7,"action":"write","sec":6,"len":48,"key":"key-b","data":"app1,app2,app3,app4"},
+    ]
+}

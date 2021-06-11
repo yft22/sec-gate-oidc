@@ -68,8 +68,7 @@ apisCreateSvc (oidcCoreHdlT * oidc, oidcApisT * apiSvc, afb_apiset * declare_set
 }
 
 // import API client from uri and map corresponding roles into apis hashtable
-int
-apisRegisterOne (oidcCoreHdlT * oidc, oidcApisT * api, afb_apiset * declare_set, afb_apiset * call_set)
+int apisRegisterOne (oidcCoreHdlT * oidc, oidcApisT * api, afb_apiset * declare_set, afb_apiset * call_set)
 {
     int err, index;
 
@@ -105,9 +104,9 @@ apisParseOne (oidcCoreHdlT * oidc, json_object * apiJ, oidcApisT * api)
 
     int err =
         wrap_json_unpack (apiJ, "{ss,s?s,s?s,s?i,s?i,s?o}", "uid", &api->uid, "info", &api->info, "uri", &api->uri, "loa", &api->loa, "lazy", &api->lazy,
-                          "requirer", &requirerJ);
+                          "require", &requirerJ);
     if (err) {
-        EXT_CRITICAL ("[idp-api-error] idpmake=%s parsing fail profil expect: uid,uri,loa,role (apisParseOne)", oidc->uid);
+        EXT_CRITICAL ("[idp-api-error] idpmake=%s parsing fail profile expect: uid,uri,loa,role (apisParseOne)", oidc->uid);
         goto OnErrorExit;
     }
     // provide some defaults value based on uid

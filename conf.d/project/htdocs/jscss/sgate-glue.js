@@ -30,14 +30,14 @@ function addOneIdp (div_box, idp) {
     info.innerHTML = idp.info;
 }
 
-// get IDPs list from oidc-sgate
+// get IDPs list from sec-gate-oidc
 function getConfigIdps() {
 
     // ws.call return a Promise
     var api="sgate";
     var verb="idp-query-conf";
     var query="{}";
-    log.command(api, verb, query);   
+    log.command(api, verb, query);
     ws.call(api + "/" + verb, query)
     .then(function (res) {
         log.reply(res);
@@ -46,14 +46,14 @@ function getConfigIdps() {
         sgate_div.className="sgate_box";
 
         if (sgate_div === null) {
-            window.alert("getConfigIdps() requirer <div id='sgate_data'> in page");
-            return; 
+            window.alert("getConfigIdps() require <div id='sgate_data'> in page");
+            return;
         }
 
         // div box is recreated/deleted each time we get/lost binding connection
         sgate_box= document.createElement("div");
         sgate_box.id="sgate_box";
-        sgate_div.appendChild(sgate_box); 
+        sgate_div.appendChild(sgate_box);
 
         // when exit add alias info data
         if (res.response.alias) {
@@ -61,8 +61,8 @@ function getConfigIdps() {
             div_box.id="alias_json";
             div_box.className="sgate_extra";
             div_box.innerText= "Request: " + JSON.stringify(res.response.alias);
-            sgate_box.appendChild(div_box); 
-        }        
+            sgate_box.appendChild(div_box);
+        }
 
         // add all IDP in a share div
         div_box= document.createElement("div");
@@ -76,16 +76,16 @@ function getConfigIdps() {
     .catch(function (err) {
         log.reply(err);
     });
-} 
+}
 
-// get IDPs list from oidc-sgate
+// get IDPs list from sec-gate-oidc
 function getUserIdps() {
 
     // ws.call return a Promise
     var api="sgate";
     var verb="idp-query-user";
     var query="{}";
-    log.command(api, verb, query);   
+    log.command(api, verb, query);
     ws.call(api + "/" + verb, query)
     .then(function (res) {
         log.reply(res);
@@ -94,14 +94,14 @@ function getUserIdps() {
         sgate_div.className="sgate_box";
 
         if (sgate_div === null) {
-            window.alert("getConfigIdps() requirer <div id='sgate_data'> in page");
-            return; 
+            window.alert("getConfigIdps() require <div id='sgate_data'> in page");
+            return;
         }
 
         // div box is recreated/deleted each time we get/lost binding connection
         sgate_box= document.createElement("div");
         sgate_box.id="sgate_box";
-        sgate_div.appendChild(sgate_box); 
+        sgate_div.appendChild(sgate_box);
 
         // when exit add alias info data
         if (res.response.alias) {
@@ -109,8 +109,8 @@ function getUserIdps() {
             div_box.id="alias_json";
             div_box.className="sgate_extra";
             div_box.innerText= "Request: " + JSON.stringify(res.response.alias);
-            sgate_box.appendChild(div_box); 
-        }        
+            sgate_box.appendChild(div_box);
+        }
 
         // add all IDP in a share div
         div_box= document.createElement("div");
@@ -124,30 +124,30 @@ function getUserIdps() {
     .catch(function (err) {
         log.reply(err);
     });
-} 
+}
 
 
-// get IDPs list from oidc-sgate
+// get IDPs list from sec-gate-oidc
 function getSession() {
 
     // ws.call return a Promise
     var api="sgate";
     var verb="session-get";
     var query="{}";
-    log.command(api, verb, query);   
+    log.command(api, verb, query);
     ws.call(api + "/" + verb, query)
     .then(function (res) {
         log.reply(res);
 
         var form= document.getElementById ("sgate_form");
         if (form === null) {
-            window.alert("getSession() requirer <form id='sgate_form'> in page");
-           return; 
+            window.alert("getSession() require <form id='sgate_form'> in page");
+           return;
         }
 
-        // loop on every object field and update value when exit 
+        // loop on every object field and update value when exit
         // res.response[0] => social user definition
-        // res.response[1] => idp & loa 
+        // res.response[1] => idp & loa
         // res.response[2] => used scope
         for (const [key, value] of Object.entries(res.response[0])) {
             var idx;
@@ -161,13 +161,13 @@ function getSession() {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("getSession() requirer <form id='sgate_error'> in page");
-           return; 
+            window.alert("getSession() require <form id='sgate_error'> in page");
+           return;
         }
         info.innerText=err.response;
         log.reply(err);
     });
-} 
+}
 
 function sgateCheckAttr(label) {
 
@@ -177,19 +177,19 @@ function sgateCheckAttr(label) {
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
-        window.alert("registerUser() requirer <form id='sgate_form'> in page");
-        return; 
+        window.alert("registerUser() require <form id='sgate_form'> in page");
+        return;
     }
 
     // retrieve value from HTML form
-    var value=form[label].value; 
+    var value=form[label].value;
     var query={"label":label};
     query["value"]=value;
 
     // call user-registration
     var api="sgate";
     var verb="usr-check";
-    log.command(api, verb, query);   
+    log.command(api, verb, query);
     ws.call(api + "/" + verb, query)
     .then(function (res) {
         log.reply(res);
@@ -207,26 +207,25 @@ function sgateCheckAttr(label) {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("checkAttribute() requirer <form id='sgate_error'> in page");
-           return; 
+            window.alert("checkAttribute() require <form id='sgate_error'> in page");
+           return;
         }
         info.innerText=err.response;
         log.reply(err);
     });
 }
 
-function sgateCancel() {
+function sgateReset() {
     var api="sgate";
     var query={};
 
     verb="session-reset";
-    log.command(api, verb, query);   
+    log.command(api, verb, query);
     ws.call(api + "/" + verb, query)
     .then(function (res) {
         log.reply(res);
         // redirect to requested URL
         window.location.replace(res.response.login);
-
     })
     .catch(function (err) {
         window.location.replace("/")
@@ -241,14 +240,14 @@ function sgateSubmit() {
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
-        window.alert("registerUser() requirer <form id='sgate_form'> in page");
-        return; 
+        window.alert("registerUser() require <form id='sgate_form'> in page");
+        return;
     }
 
     var register= document.getElementById ("sgate_register");
     if (register === null) {
-        window.alert("registerUser() requirer <button id='sgate_register'> in page");
-        return; 
+        window.alert("registerUser() require <button id='sgate_register'> in page");
+        return;
     }
 
     // retrieve value from HTML form
@@ -267,7 +266,7 @@ function sgateSubmit() {
     if (register.value == "Federate") verb="usr-federate";
     if (register.value === "Register") verb="usr-register";
 
-    log.command(api, verb, query);   
+    log.command(api, verb, query);
     ws.call(api + "/" + verb, query)
     .then(function (res) {
         log.reply(res);
@@ -278,8 +277,8 @@ function sgateSubmit() {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("sgateSubmit() requirer <form id='sgate_error'> in page");
-        return; 
+            window.alert("sgateSubmit() require <form id='sgate_error'> in page");
+        return;
         }
         info.innerText=err.response;
         log.reply(err);
@@ -290,8 +289,8 @@ function passwordUser(verb) {
     // make sure form id march with html page
     var form= document.getElementById ("sgate_form");
     if (form === null) {
-        window.alert("passwordUser() requirer <form id='sgate_form'> in page");
-        return; 
+        window.alert("passwordUser() require <form id='sgate_form'> in page");
+        return;
     }
 
     // retrieve value from HTML form
@@ -302,11 +301,11 @@ function passwordUser(verb) {
         if (value) {
             query[uid]=value;
         }
-    } 
+    }
 
     // call user-registration
     var api="sgate";
-    log.command(api, verb, query);   
+    log.command(api, verb, query);
     ws.call(api + "/" + verb, query)
     .then(function (res) {
         log.reply(res);
@@ -317,11 +316,63 @@ function passwordUser(verb) {
     .catch(function (err) {
         var info= document.getElementById ("sgate_error");
         if (info === null) {
-            window.alert("passwordUser() requirer <form id='sgate_error'> in page");
-           return; 
+            window.alert("passwordUser() require <form id='sgate_error'> in page");
+           return;
         }
         info.innerText=err.response;
         log.reply(err);
     });
 
+}
+
+// wait for smart-card/nfc/mifare token authentication
+function pcscReadCard(verb) {
+    // call user-registration
+    var api="sgate";
+    var verb="nfc-scard"
+    var query= {"state": urlQuery["state"]};
+    log.command(api, verb, query);
+    ws.call(api + "/" + verb, query)
+    .then(function (res) {
+        log.reply(res);
+        // redirect to requested URL
+        window.location.replace(res.response.target);
+
+    })
+    .catch(function (err) {
+        var info= document.getElementById ("sgate_error");
+        if (info === null) {
+            window.alert("passwordUser() require <form id='sgate_error'> in page");
+           return;
+        }
+        info.innerText=err.response;
+        log.reply(err);
+        // wait 3 second and try again
+        setTimeout(function(){ pcscReadCard(); }, 3000);
+    });
+}
+
+// try to reload page when session terminate if page is protected this will force login
+function sessionEventCB(event, name) {
+    log.reply(event);
+    if (event.data.status === "loa-reset") location.reload(); 
+}
+
+function monitorEvents() {
+
+    // register event handler
+    ws.onevent ("sgate/session", sessionEventCB);
+
+    // call user-registration
+    var api="sgate";
+    var verb="session-event"
+    var query= {};
+    log.command(api, verb, query);
+    ws.call(api + "/" + verb, query)
+    .then(function (res) {
+        log.reply(res);
+    })
+    .catch(function (err) {
+        log.reply(err);
+    });
 }

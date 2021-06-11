@@ -21,7 +21,7 @@
         "type_traits": "cpp",
         "afb-http.h": "c",
         "condition_variable": "cpp",
-        "libafb-config.h": "c",
-        "oidc-defaults.h": "c"
+        "winscard.h": "c",
+        "verbose.h": "c"
     }
 }

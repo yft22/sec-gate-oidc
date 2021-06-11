@@ -31,7 +31,7 @@
 #include "oidc-alias.h"
 #include "oidc-apis.h"
 #include "oidc-idp.h"
-#include "http-client.h"
+#include "curl-glue.h"
 #include "oidc-idsvc.h"
 
 #include <stdlib.h>
@@ -40,43 +40,44 @@
 #include <json-c/json.h>
 #include <wrap-json.h>
 
-AFB_EXTENSION (oidc-sgate)
+AFB_EXTENSION (sec-gate-oidc)
     const struct argp_option AfbExtensionOptionsV1[] = {
         {.name = "logo",.key = 'L',.arg = 0,.doc = "requires a logo"},
         {.name = 0,.key = 0,.doc = 0}
     };
 
-static oidGlobalsT * globalConfig (json_object * globalJ)
+static oidGlobalsT * globalConfig (json_object * globalsJ)
 {
     int err;
     json_object *commentJ;
-    oidGlobalsT *global = (oidGlobalsT *) calloc (1, sizeof (oidGlobalsT));
+    oidGlobalsT *globals = (oidGlobalsT *) calloc (1, sizeof (oidGlobalsT));
 
-    if (globalJ) {
+    if (globalsJ) {
         err =
-            wrap_json_unpack (globalJ, "{s?o s?s s?s s?s s?s s?s s?i s?i}"
-            , "info", &commentJ, "login", &global->loginUrl
-            , "error", &global->errorUrl
-            , "register", &global->registerUrl
-            , "federate", &global->fedlinkUrl
-            , "home", &global->homeUrl
-            , "cache", &global->tCache
-            , "timeout", &global->sTimeout);
+            wrap_json_unpack (globalsJ, "{s?o s?s s?s s?s s?s s?s s?i s?i !}"
+            , "info", &commentJ, "login", &globals->loginUrl
+            , "error", &globals->errorUrl
+            , "register", &globals->registerUrl
+            , "login", &globals->loginUrl
+            , "home", &globals->homeUrl
+            , "cache", &globals->tCache
+            , "timeout", &globals->sTimeout);
         if (err < 0) goto OnErrorExit;
     }
 
-    if (!global->loginUrl) global->loginUrl = URL_OIDC_USR_LOGIN;
-    if (!global->registerUrl) global->registerUrl = URL_OIDC_USR_REGISTER;
-    if (!global->fedlinkUrl) global->fedlinkUrl = URL_OIDC_USR_FEDLINK;
-    if (!global->homeUrl) global->homeUrl = URL_OIDC_USR_HOME;
-    if (!global->errorUrl) global->errorUrl = URL_OIDC_USR_ERROR;
-    if (!global->tCache) global->tCache = URL_OIDC_AUTH_CACHE;
-    if (!global->sTimeout) global->sTimeout = EXT_SESSION_TIMEOUT;
+    if (!globals->loginUrl) globals->loginUrl = URL_OIDC_USR_LOGIN;
+    if (!globals->registerUrl) globals->registerUrl = URL_OIDC_USR_REGISTER;
+    if (!globals->fedlinkUrl) globals->fedlinkUrl = URL_OIDC_USR_FEDLINK;
+    if (!globals->homeUrl) globals->homeUrl = URL_OIDC_USR_HOME;
+    if (!globals->errorUrl) globals->errorUrl = URL_OIDC_USR_ERROR;
+    if (!globals->tCache) globals->tCache = URL_OIDC_AUTH_CACHE;
+    if (!globals->sTimeout) globals->sTimeout = EXT_SESSION_TIMEOUT;
 
-    return (global);
+    return (globals);
 
   OnErrorExit:
-    free (global);
+    EXT_CRITICAL ("[oidc-parsing-error] globals keys: info,error,register,federate,home,cache,timeout (globalConfig)");
+    free (globals);
     return NULL;
 }
 
@@ -93,12 +94,12 @@ int AfbExtensionConfigV1 (void **ctx, struct json_object *oidcJ, char const *uid
     err = idpPLuginRegistryInit ();
     if (err) goto OnErrorExit;
 
-    json_object *idpsJ = NULL, *aliasJ = NULL, *apisJ = NULL, *globalJ = NULL;
+    json_object *idpsJ = NULL, *aliasJ = NULL, *apisJ = NULL, *globalsJ = NULL;
     err =
         wrap_json_unpack (oidcJ, "{s?s,s?s,s?o,s?o,s?o,s?o,s?o,s?i}"
             , "api", &oidc->api
             , "info", &oidc->info
-            , "globals", &globalJ
+            , "globals", &globalsJ
             , "idp", &idpsJ
             , "idps", &idpsJ
             , "alias", &aliasJ
@@ -111,7 +112,7 @@ int AfbExtensionConfigV1 (void **ctx, struct json_object *oidcJ, char const *uid
     }
 
     if (!oidc->api) oidc->api = oidc->uid;
-    oidc->globals = globalConfig (globalJ);
+    oidc->globals = globalConfig (globalsJ);
     oidc->idps = (oidcIdpT *) idpParseConfig (oidc, idpsJ);
     oidc->aliases = (oidcAliasT *) aliasParseConfig (oidc, aliasJ);
     oidc->apis = (oidcApisT *) apisParseConfig (oidc, apisJ);
@@ -143,7 +144,7 @@ int AfbExtensionDeclareV1 (void *ctx, struct afb_apiset *declare_set, struct afb
     if (err) goto OnErrorExit;
 
     for (int idx = 0; oidc->idps[idx].uid; idx++) {
-        err = idpRegisterOne (oidc, &oidc->idps[idx], declare_set, call_set);
+        err = idpRegisterApis (oidc, &oidc->idps[idx], declare_set, call_set);
         if (err) goto OnErrorExit;
     }
 
@@ -172,7 +173,7 @@ int AfbExtensionHTTPV1 (void *ctx, afb_hsrv * hsrv)
     if (!oidc->httpPool) goto OnErrorExit;
 
     for (int idx = 0; oidc->idps[idx].uid; idx++) {
-        err = idpRegisterLogin (oidc, &oidc->idps[idx], hsrv);
+        err = idpRegisterAlias (oidc, &oidc->idps[idx], hsrv);
         if (err) goto OnErrorExit;
     }
 

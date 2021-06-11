@@ -6,11 +6,28 @@ books:
     description: sec-gate-oidc binding documentation
     keywords:
     chapters:
-    - url: 1-architecture_presentation.md
+    - url: 1-architecture-presentation.md
       name: Architecture presentation
-    - url: 2-installation_guide.md
+    - url: 2-installation-guide.md
       name: Installation Guide
     - url: 3-configuration.md
       name: Configuration
-    - url: 4-running_and_testing.md
+    - url: 4-sgate-svc-api.md
+      name: sgate UI api
+    - url: 5-running-and-testing.md
       name: Running and Testing
+    - name: Kickstarts
+      children:
+      - url: ../idps/docs/onelogin-kickstart.md
+        name: OneLogin IDP config
+      - url: ../idps/docs/github-kickstart.md
+        name: Github IDP config
+      - url: ../idps/docs/ldap-kickstart.md
+        name: LDAP config
+      - url: ../idps/docs/phantauth-kickstart.md
+        name: Phantauth IDP config
+      - url: ../plugins/oidc-pam/README.md
+        name: PAM config
+      - url: ../plugins/oidc-pcsc/README.md
+        name: NFC/Smartcard pcsc config
+

@@ -31,7 +31,7 @@
 #include "oidc-alias.h"
 #include "oidc-fedid.h"
 #include "oidc-idsvc.h"
-#include "http-client.h"
+#include "curl-glue.h"
 
 #include <string.h>
 #include <microhttpd.h>
@@ -70,33 +70,33 @@ aliasCheckAttrs (afb_session * session, oidcAliasT * alias)
     return 1;
 };
 
-// create aliasFrom cookie and redirect to idp profil page
+// create aliasFrom cookie and redirect to idp profile page
 static void
 aliasRedirectTimeout (afb_hreq * hreq, oidcAliasT * alias)
 {
-    oidcProfilsT *profil = NULL;
+    oidcProfileT *profile;
     int err;
 
     afb_session_cookie_set (hreq->comreq.session, oidcAliasCookie, alias, NULL, NULL);
-    afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &profil);
+    afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void **) &profile);
 
     // add afb-binder endpoint to login redirect alias
     char redirectUrl[EXT_HEADER_MAX_LEN];
-    err = afb_hreq_make_here_url (hreq, profil->idp->statics->aliasLogin, redirectUrl, sizeof (redirectUrl));
+    err = afb_hreq_make_here_url (hreq, profile->idp->statics->aliasLogin, redirectUrl, sizeof (redirectUrl));
     if (err < 0) goto OnErrorExit;
 
     char url[EXT_URL_MAX_LEN];
     httpKeyValT query[] = {
-        {.tag = "client_id",.value = profil->idp->credentials->clientId},
-        {.tag = "response_type",.value = "code"},
+        {.tag = "client_id",.value = profile->idp->credentials->clientId},
+        {.tag = "response_type",.value = profile->idp->wellknown->respondLabel},
         {.tag = "state",.value = afb_session_uuid (hreq->comreq.session)},
-        {.tag = "scope",.value = profil->scope},
+        {.tag = "scope",.value = profile->scope},
         {.tag = "redirect_uri",.value = redirectUrl},
         {.tag = "language",.value = setlocale (LC_CTYPE, "")},
         {NULL}                  // terminator
     };
 
-    err = httpBuildQuery (alias->uid, url, sizeof (url), NULL /* prefix */ , profil->idp->statics->aliasLogin, query);
+    err = httpBuildQuery (alias->uid, url, sizeof (url), NULL /* prefix */ , profile->idp->statics->aliasLogin, query);
     if (err) {
         EXT_ERROR ("[fail-login-redirect] fail to build redirect url (aliasRedirectLogin)");
         goto OnErrorExit;
@@ -139,12 +139,11 @@ aliasRedirectLogin (afb_hreq * hreq, oidcAliasT * alias)
     afb_hreq_redirect_to (hreq, alias->oidc->globals->loginUrl, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
 }
 
-static int
-aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
+static int aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
 {
     oidcAliasT *alias = (oidcAliasT *) ctx;
     struct timespec tCurrent;
-    oidcProfilsT *idpProfil;
+    oidcProfileT *idpProfile;
     int sessionLoa, tStamp, tNow, err;
 
     if (alias->loa) {
@@ -168,15 +167,20 @@ aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
             if (alias->loa > sessionLoa && sessionLoa != abs (alias->loa)) {
                 json_object *eventJ;
 
-                wrap_json_pack (&eventJ, "{si ss ss si si}", "status", STATUS_OIDC_AUTH_DENY, "uid", alias->uid, "url", alias->url, "loa-target", alias->loa,
-                                "loa-session", sessionLoa);
+                wrap_json_pack (&eventJ, "{ss ss ss si si}"
+                    , "status", "loa-mismatch"
+                    , "uid", alias->uid
+                    , "url", alias->url
+                    , "loa-target", alias->loa
+                    , "loa-session", sessionLoa
+                    );
 
                 // try to push event to notify the access deny and replay with redirect to login
-                idscvPushEvent (hreq, eventJ);
+                idscvPushEvent (hreq->comreq.session, eventJ);
 
-                // if current profil LOA is enough then fire same idp/profil authen
-                err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void *) &idpProfil);
-                if (!err && (idpProfil->loa >= alias->loa || idpProfil->loa == abs (alias->loa))) {
+                // if current profile LOA is enough then fire same idp/profile authen
+                err = afb_session_cookie_get (hreq->comreq.session, oidcIdpProfilCookie, (void *) &idpProfile);
+                if (!err && (idpProfile->loa >= alias->loa || idpProfile->loa == abs (alias->loa))) {
                     aliasRedirectTimeout (hreq, alias);
                 } else {
                     aliasRedirectLogin (hreq, alias);
@@ -239,9 +243,9 @@ idpParseOneAlias (oidcCoreHdlT * oidc, json_object * aliasJ, oidcAliasT * alias)
 
     int err =
         wrap_json_unpack (aliasJ, "{ss,s?s,s?s,s?s,s?i,s?i,s?i,s?o}", "uid", &alias->uid, "info", &alias->info, "url", &alias->url, "path", &alias->path,
-                          "prio", &alias->priority, "loa", &alias->loa, "cache", &alias->tCache, "requirer", &requirerJ);
+                          "prio", &alias->priority, "loa", &alias->loa, "cache", &alias->tCache, "require", &requirerJ);
     if (err) {
-        EXT_CRITICAL ("[idp-alias-error] oidc=%s parsing fail profil expect: uid,url,fullpath,prio,loa,role (idpParseOneAlias)", oidc->uid);
+        EXT_CRITICAL ("[idp-alias-error] oidc=%s parsing fail profile expect: uid,url,fullpath,prio,loa,role (idpParseOneAlias)", oidc->uid);
         goto OnErrorExit;
     }
     // provide some defaults value based on uid

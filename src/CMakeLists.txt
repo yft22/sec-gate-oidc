@@ -14,26 +14,22 @@
 # limitations under the License.
 ###########################################################################
 
-# should include static http-client lib before main source
-add_subdirectory(oidc-http)
-add_subdirectory(idps-builtin)
-add_subdirectory(idps-plugins)
-
 # Add target to project dependency list
-PROJECT_TARGET_ADD(oidc)
+PROJECT_TARGET_ADD(sec-gate-oidc)
 
 	# compile any C file starting with a lower case
 	file(GLOB CSOURCES [a-z]*.c)
 	file(GLOB CHEADERS [a-z]*.h)
 
 	# Define project Targets
-	add_library(${TARGET_NAME} MODULE ${CSOURCES})
+	add_library(${TARGET_NAME} SHARED ${CSOURCES})
+
+    add_dependencies(${TARGET_NAME} curl-glue-afb idps-builtin)
+    target_link_libraries(${TARGET_NAME} curl-glue-afb idps-builtin)
 
    	target_include_directories(${TARGET_NAME}
-        PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/oidc-http ${CMAKE_CURRENT_SOURCE_DIR}/autorities ${PROJECT_SOURCE_DIR}/../fedid-binding/src/fedid-types
+       INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}
     )
-    add_dependencies(${TARGET_NAME} afb-http-client idps-builtin)
-    target_link_libraries(${TARGET_NAME} afb-http-client idps-builtin)
 
     target_compile_options(${TARGET_NAME}
         PUBLIC  -Wno-unused-variable
@@ -41,11 +37,11 @@ PROJECT_TARGET_ADD(oidc)
 
 	# Binder exposes a unique public entry point
 	SET_TARGET_PROPERTIES(${TARGET_NAME} PROPERTIES
-		PREFIX "sec-gate-"
+		PREFIX "libafb-"
 		LABELS "LIBRARY"
-        SUFFIX ".extso"
+        SUFFIX "-ext.so"
 		# LINK_FLAGS "-Wl,--version-script=${PROJECT_SOURCE_DIR}/conf.d/cmake/afb-ext-link.flags"
-		IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/sec-gate-${TARGET_NAME}.extso
+		IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/libafb-${TARGET_NAME}-ext.so
 		OUTPUT_NAME ${TARGET_NAME}
 	)
 
