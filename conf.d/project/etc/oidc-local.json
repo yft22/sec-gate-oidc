@@ -6,7 +6,7 @@
   "https": true,
   "https-cert": "../conf.d/project/ssl/devel-cert.pem",
   "https-key": "../conf.d/project/ssl/devel-key.pem",
-  "extension": "/home/devel/src/redpesk_OS_Common_Components/afb-oidc-sgate/build/src/libafb-sec-gate-oidc-ext.so",
+  "extension": "libafb-sec-gate-oidc-ext.so",
   "roothttp": ".",
   "rootdir":  "../conf.d/project/htdocs",
   "binding" : [{
@@ -26,23 +26,23 @@
           "timeout": 600
       },
       "idps": [
-        // {
-        //     "uid": "pam",
-        //     "info": "Linux local authentication",
-        //     "plugin": {
-        //       "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
-        //       "ldpath": "libidp-sgate-pam-auth.so",
-        //       "gids":16
-        //     },
-        //     "statics": {
-        //         "login": "/sgate/pam/login",
-        //         "logo": "/sgate/pam/logo-64px.png",
-        //         "timeout": 900
-        //     },
-        //     "profiles": [
-        //         {"uid":"login", "loa":1, "scope":"login"}
-        //     ]
-        // }, 
+        {
+            "uid": "pam",
+            "info": "Linux local authentication",
+            "plugin": {
+              "info": "custom params for pam plugin (note: idp->uid:pam-login should match one plugin idp uid)",
+              "ldpath": "libidp-sgate-pam-auth.so",
+              "gids":16
+            },
+            "statics": {
+                "login": "/sgate/pam/login",
+                "logo": "/sgate/pam/logo-64px.png",
+                "timeout": 900
+            },
+            "profiles": [
+                {"uid":"login", "loa":1, "scope":"login"}
+            ]
+        }, 
         {
             "uid": "ldap-iotbzh",
             "type": "ldap",
