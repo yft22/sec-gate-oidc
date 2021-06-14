@@ -83,7 +83,7 @@ Define where user should be redirected when hitting a protected resource. Note t
 }
 ```
 * **api**: name of the sgate api as view from external application.
-* **login**: redirect URL where application are redirected when an authentication is not strong enough. This page should present to end user and IDP selection list.
+* **login**: redirect URL for authority selection when an authentication is not strong enough. This page should present to client browser the IDP selection list. **Note:** when login is not defined and only one idp with one profile is present in config.json sgate bypasses authorities selection page and uses directly redirect client browser to the 1st idp/profile login page. This is typically when your authority already get an IDP selection page.
 * **register**:  redirect URL when on first authentication of a given user from a given authority. This page should request some basic user attributes as pseudo and email.
 * **fedlink**: redirect URL to link two external identities to a unique local identity.
 * **timeout**: global default timeout session in seconds. Defined how often an authority authentication token should be rechecked (from last authentication time and not from HTTP/REST request). Default:600s

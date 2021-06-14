@@ -43,8 +43,7 @@ MAGIC_OIDC_SESSION (oidcSessionCookie);
 MAGIC_OIDC_SESSION (oidcAliasCookie);
 
 // check if one of requested role exist within social cookie
-int
-aliasCheckAttrs (afb_session * session, oidcAliasT * alias)
+int aliasCheckAttrs (afb_session * session, oidcAliasT * alias)
 {
     fedSocialRawT *fedSocial;
     int err, requestCount = 0, matchCount = 0;
@@ -71,8 +70,7 @@ aliasCheckAttrs (afb_session * session, oidcAliasT * alias)
 };
 
 // create aliasFrom cookie and redirect to idp profile page
-static void
-aliasRedirectTimeout (afb_hreq * hreq, oidcAliasT * alias)
+static void aliasRedirectTimeout (afb_hreq * hreq, oidcAliasT * alias)
 {
     oidcProfileT *profile;
     int err;
@@ -112,25 +110,54 @@ aliasRedirectTimeout (afb_hreq * hreq, oidcAliasT * alias)
 
 
 // create aliasFrom cookie and redirect to common login page
-static void
-aliasRedirectLogin (afb_hreq * hreq, oidcAliasT * alias)
+static void aliasRedirectLogin (afb_hreq * hreq, oidcAliasT * alias)
 {
     int err;
+    char url[EXT_URL_MAX_LEN];
 
     afb_session_cookie_set (hreq->comreq.session, oidcAliasCookie, alias, NULL, NULL);
 
-    char url[EXT_URL_MAX_LEN];
-    httpKeyValT query[] = {
-        {.tag = "language",.value = setlocale (LC_CTYPE, "")},
-        {NULL}                  // terminator
-    };
+    if (alias->oidc->globals->loginUrl) {
+        httpKeyValT query[] = {
+            {.tag = "language",.value = setlocale (LC_CTYPE, "")},
+            {NULL}                  // terminator
+        };
 
-    err = httpBuildQuery (alias->uid, url, sizeof (url), NULL /* prefix */ , alias->oidc->globals->loginUrl, query);
-    if (err) {
-        EXT_ERROR ("[fail-login-redirect] fail to build redirect url (aliasRedirectLogin)");
-        goto OnErrorExit;
+        err = httpBuildQuery (alias->uid, url, sizeof (url), NULL /* prefix */ , alias->oidc->globals->loginUrl, query);
+        if (err) {
+            EXT_ERROR ("[fail-login-redirect] fail to build redirect url (aliasRedirectLogin)");
+            goto OnErrorExit;
+        }
+    } else {
+        // when no global login page defined use idp[0]+profile[0] with openid url form
+        int status;
+        oidcIdpT *idp= &alias->oidc->idps[0];
+        const oidcProfileT *profile= &idp->profiles[0];
+        const char *session = afb_session_uuid (hreq->comreq.session);
+        char redirectUrl[EXT_HEADER_MAX_LEN];
+
+        status = afb_hreq_make_here_url (hreq, idp->statics->aliasLogin, redirectUrl, sizeof (redirectUrl));
+        if (status < 0) goto OnErrorExit;
+
+        httpKeyValT query[] = {
+            {.tag = "client_id",.value = idp->credentials->clientId},
+            {.tag = "response_type",.value = idp->wellknown->respondLabel},
+            {.tag = "state",.value = session},
+            {.tag = "nonce",.value = session},
+            {.tag = "scope",.value = profile->scope},
+            {.tag = "redirect_uri",.value = redirectUrl},
+            {.tag = "language",.value = setlocale (LC_CTYPE, "")},
+            {NULL}  // terminator
+        };
+
+        // build wreq and send it
+        err = httpBuildQuery (idp->uid, url, sizeof (url), NULL /* prefix */ , idp->wellknown->authorize, query);
+        if (err) goto OnErrorExit;
+
+        // keep track of selected idp profile
+        afb_session_cookie_set (hreq->comreq.session, oidcIdpProfilCookie, (void *) profile, NULL, NULL);
+
     }
-
     EXT_DEBUG ("[alias-redirect-login] %s (aliasRedirectLogin)", url);
     afb_hreq_redirect_to (hreq, url, HREQ_QUERY_EXCL, HREQ_REDIR_TMPY);
     return;
@@ -208,8 +235,7 @@ static int aliasCheckLoaCB (afb_hreq * hreq, void *ctx)
     return 1;                   // we're done stop scanning alias callback
 }
 
-int
-aliasRegisterOne (oidcCoreHdlT * oidc, oidcAliasT * alias, afb_hsrv * hsrv)
+int aliasRegisterOne (oidcCoreHdlT * oidc, oidcAliasT * alias, afb_hsrv * hsrv)
 {
     const char *rootdir;
     int status;
@@ -233,8 +259,7 @@ aliasRegisterOne (oidcCoreHdlT * oidc, oidcAliasT * alias, afb_hsrv * hsrv)
     return 1;
 }
 
-static int
-idpParseOneAlias (oidcCoreHdlT * oidc, json_object * aliasJ, oidcAliasT * alias)
+static int idpParseOneAlias (oidcCoreHdlT * oidc, json_object * aliasJ, oidcAliasT * alias)
 {
     json_object *requirerJ = NULL;
 
@@ -285,8 +310,7 @@ idpParseOneAlias (oidcCoreHdlT * oidc, json_object * aliasJ, oidcAliasT * alias)
     return 1;
 }
 
-oidcAliasT *
-aliasParseConfig (oidcCoreHdlT * oidc, json_object * aliasesJ)
+oidcAliasT *aliasParseConfig (oidcCoreHdlT * oidc, json_object * aliasesJ)
 {
 
     oidcAliasT *aliases;

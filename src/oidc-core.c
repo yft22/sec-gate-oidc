@@ -53,19 +53,20 @@ static oidGlobalsT * globalConfig (json_object * globalsJ)
     oidGlobalsT *globals = (oidGlobalsT *) calloc (1, sizeof (oidGlobalsT));
 
     if (globalsJ) {
-        err =
-            wrap_json_unpack (globalsJ, "{s?o s?s s?s s?s s?s s?s s?i s?i !}"
-            , "info", &commentJ, "login", &globals->loginUrl
+        err= wrap_json_unpack (globalsJ, "{s?o s?s s?s s?s s?s s?s s?i s?i s?b !}"
+            , "info", &commentJ
+            , "login", &globals->loginUrl
             , "error", &globals->errorUrl
             , "register", &globals->registerUrl
-            , "login", &globals->loginUrl
+            , "fedlink", &globals->fedlinkUrl
             , "home", &globals->homeUrl
             , "cache", &globals->tCache
-            , "timeout", &globals->sTimeout);
+            , "timeout", &globals->sTimeout
+            , "debug", &globals->debug
+            );
         if (err < 0) goto OnErrorExit;
     }
 
-    if (!globals->loginUrl) globals->loginUrl = URL_OIDC_USR_LOGIN;
     if (!globals->registerUrl) globals->registerUrl = URL_OIDC_USR_REGISTER;
     if (!globals->fedlinkUrl) globals->fedlinkUrl = URL_OIDC_USR_FEDLINK;
     if (!globals->homeUrl) globals->homeUrl = URL_OIDC_USR_HOME;
@@ -76,7 +77,7 @@ static oidGlobalsT * globalConfig (json_object * globalsJ)
     return (globals);
 
   OnErrorExit:
-    EXT_CRITICAL ("[oidc-parsing-error] globals keys: info,error,register,federate,home,cache,timeout (globalConfig)");
+    EXT_CRITICAL ("[oidc-parsing-error] globals keys: info,error,register,federate,home,cache,timeout,debug (globalConfig)");
     free (globals);
     return NULL;
 }
@@ -113,10 +114,15 @@ int AfbExtensionConfigV1 (void **ctx, struct json_object *oidcJ, char const *uid
 
     if (!oidc->api) oidc->api = oidc->uid;
     oidc->globals = globalConfig (globalsJ);
+    if (!oidc->globals) goto OnErrorExit;
+
     oidc->idps = (oidcIdpT *) idpParseConfig (oidc, idpsJ);
     oidc->aliases = (oidcAliasT *) aliasParseConfig (oidc, aliasJ);
     oidc->apis = (oidcApisT *) apisParseConfig (oidc, apisJ);
-    if (!oidc->idps || !oidc->aliases || !oidc->apis || !oidc->globals) goto OnErrorExit;
+    if (!oidc->idps || !oidc->aliases || !oidc->apis) goto OnErrorExit;
+
+    if (!oidc->globals->loginUrl && ( oidc->idps[1].uid || oidc->idps[0].profiles[1].uid))
+        oidc->globals->loginUrl= URL_OIDC_USR_LOGIN;
 
     *ctx = oidc;
     return 0;

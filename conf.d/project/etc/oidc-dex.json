@@ -20,7 +20,6 @@
       "info": "oidc secure gate demo config",
       "globals": {
           "info" : "Relative location to HTML pages",
-          "login": "/sgate/common/login.html",
           "register": "/sgate/common/register.html",
           "fedlink": "/sgate/common/fedlink.html",
           "error": "/sgate/common/error.html",
@@ -52,8 +51,7 @@
                 "logo": "/sgate/dex/logo-64px.png",
             },
             "profiles": [
-                {"uid":"basic", "loa":1, "scope":"openid+profile"},
-                {"uid":"basic", "loa":2, "scope":"openid+profile+email"}
+                {"uid":"basic", "loa":2, "scope":"openid+profile+email"},
             ]
         }
       ],

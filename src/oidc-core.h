@@ -55,6 +55,7 @@ typedef struct {
     const char *homeUrl;
     ulong tCache;
     ulong sTimeout;
+    int debug;
 } oidGlobalsT;
 
 // this structure is returned by plugin registration callback

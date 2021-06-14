@@ -302,8 +302,7 @@ static int githubLoginCB (afb_hreq * hreq, void *ctx) {
 
     // add afb-binder endpoint to login redirect alias
     status = afb_hreq_make_here_url (hreq, idp->statics->aliasLogin, redirectUrl, sizeof (redirectUrl));
-    if (status < 0)
-        goto OnErrorExit;
+    if (status < 0) goto OnErrorExit;
 
     // if no code then set state and redirect to IDP
     if (!code) {

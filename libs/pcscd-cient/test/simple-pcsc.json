@@ -56,5 +56,21 @@
         {"uid":"write-company","group":7,"action":"write","sec":4,"len":48,"key":"key-b","data":"IoT.bzh"},
         {"uid":"write-roles"  ,"group":7,"action":"write","sec":5,"len":48,"key":"key-b","data":"role1,role2,role3,role4"},
         {"uid":"write-apps"   ,"group":7,"action":"write","sec":6,"len":48,"key":"key-b","data":"app1,app2,app3,app4"},
+
+        // provisioning card with default key (new card)
+        {"uid":"write-pseudo" ,"group":10,"action":"write","sec":1,"len":16,"data":"fulup-bzh"},
+        {"uid":"write-email"  ,"group":10,"action":"write","sec":2,"len":16,"data":"fulup@iot.bzh"},
+        {"uid":"write-name"   ,"group":10,"action":"write","sec":3,"len":16,"data":"Fulup Le Foll"},
+        {"uid":"write-company","group":10,"action":"write","sec":4,"len":16,"data":"IoT.bzh"},
+        {"uid":"write-roles"  ,"group":10,"action":"write","sec":5,"len":16,"data":"role1,role2"},
+        {"uid":"write-apps"   ,"group":10,"action":"write","sec":7,"len":16,"data":"app1,app2"},
+        
+        {"uid":"read-pseudo" ,"group":11,"action":"read","sec":1,"len":48},
+        {"uid":"read-email"  ,"group":11,"action":"read","sec":2,"len":48},
+        {"uid":"read-name"   ,"group":11,"action":"read","sec":3,"len":48},
+        {"uid":"read-company","group":11,"action":"read","sec":4,"len":48},
+        {"uid":"read-roles"  ,"group":11,"action":"read","sec":5,"len":48},
+        {"uid":"read-apps"   ,"group":11,"action":"read","sec":7,"len":48},
+        
     ]
 }
