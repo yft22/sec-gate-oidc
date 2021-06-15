@@ -118,7 +118,7 @@ A json array defining each authentication authority. Default authority are oAith
 * **uid**: IDP unique label
 * **type**: define buildin/plugin idp code to be used, when not defined type=uid.
 * **info**: Misc text presented with IDP list page
-* **credentials**: This information should be provided from your external authority. OpenID-Connect typically require a ClientID and a Secret, but depending on the IDP you may have other form of credential. You may check OpenID-Connect generic protocol [here](https://openid.net/connect)  and onelogin specifics [here](https://docs.onelogin.com/en/developers/apps/authorizing-oauth-apps)
+* **credentials**: This information should be provided from your external authority. OpenID-Connect typically require a ClientID and a Secret, but depending on the IDP you may have other form of credential. You may check OpenID-Connect generic protocol [here](https://openid.net/connect)  and onelogin specifics [here](https://docs.onelogin.com) (go to **developers/apps/authorizing-oauth-apps** after signup/login)
 
 * **wellknown**: remote IDP authority URLs. Following URL/URI should be available without your IDP administration console, as here after:
 ![onelogin-discovery-uri](./assets/onelogin-discovery.png)

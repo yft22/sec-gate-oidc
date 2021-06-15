@@ -57,7 +57,7 @@
                 "uri": "ldap://ldap.ovh.iot",
                 "login": "uid=%login%,ou=People,dc=vannes,dc=iot",
                 "groups": "ou=groups,dc=vannes,dc=iot?dn?sub?(memberUid=%login%)",
-                "people": "ou=people,dc=vannes,dc=iot?uid,gecos,mail?sub?(cn=%login%)",
+                "people": "ou=people,dc=vannes,dc=iot?uid,gecos,mail?sub?(cn=%login%)"
             },
             "wellknown": {
                 "tokenid": "/sgate/ldap/login.html"
@@ -120,7 +120,7 @@
         {"uid": "public" , "info": "Anonymous access allowed", "url":"/public", "path":"public" },
         {"uid": "private", "info": "Required basic authentication", "url":"/private",  "loa":1, "path":"private" },
         {"uid": "confidential", "info": "Required teams authentication", "url":"/confidential", "loa":2, "path":"confidential" },
-        {"uid": "admin", "info": "Required admin security attribute", "url":"/admin", "loa":1, "path":"admin", "require": ["wheel","iotbzh","sudo"]},
+        {"uid": "admin", "info": "Required admin security attribute", "url":"/admin", "loa":1, "path":"admin", "require": ["wheel","iotbzh","sudo"]}
       ]
     }
   }
