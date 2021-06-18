@@ -12,7 +12,7 @@ Hooked input request can be checked again:
     * loa=3 more trusted authentication (two factors ?)
     * loa=6 live critical authentication.
 
-* Security attributes: allows to add fine grain access controls. They define a set of labels that should be provided by your IDP.
+* Security attributes: allows fine grain access controls to be added. They define a set of labels that should be provided by your IDP.
 
     * Enterprise IDPs typically provide either groups or roles.
     * github' provides organizations, repositories, ...
@@ -27,7 +27,7 @@ Typical access control:
 
 ## workflow
 
-sec-gate-oidc handshake relies on openid-connect specification. Any non openid authentication authority as to fake an official openid-c IDP. Social oAuh2 authority as github or Facebook are very close of OpenID require little customization, some other as PAM or LDAP require a specific adapter plugin.
+sec-gate-oidc handshake relies on openid-connect specification. Any non openid authentication authority has to fake an official openid-c IDP. Social oAuh2 authority such as github or Facebook are very close to OpenID and require little customization, some others such as PAM or LDAP require a specific adapter plugin.
 
 To make a long story short:
 * When user try to access a protected resource (loa > 0), sgate intercepts the request and check for current session LOA(Level of Assurance) and security attributes(groups/roles). When session does not hold enough privileges to access requested resource, sgate redirects client browser toward a list of configured IDPs that match resource requested LOA.
