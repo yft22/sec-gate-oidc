@@ -40,7 +40,7 @@
 #include <json-c/json.h>
 #include <wrap-json.h>
 
-AFB_EXTENSION (sec-gate-oidc)
+AFB_EXTENSION ("sec-gate-oidc")
     const struct argp_option AfbExtensionOptionsV1[] = {
         {.name = "logo",.key = 'L',.arg = 0,.doc = "requires a logo"},
         {.name = 0,.key = 0,.doc = 0}
