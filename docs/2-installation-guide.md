@@ -25,20 +25,20 @@ sudo apt-get install sec-gate-oidc-bin sec-gate-fedid-binding afb-oidc-webui
 
 Note:
 
-* afb-oidc-webui: is an optional angular/html5 frontend. If you do not use Angular, you rather check basic HTML/JS testing UI and write your own one.
+* afb-oidc-webui: is an optional angular/html5 frontend. If you do not use Angular, you should check basic HTML/JS testing UI and write your own one.
 
-* sec-gate-fedid-binding: is the companion binding that handle federation database.  It implements local an identity storage with an sqllite backend. Identity store is implemented as an external binding to allow developer to replace it with there preferred identity store model.
+* sec-gate-fedid-binding: is the companion binding that handles the federation database.  It implements locally an identity storage with a sqllite backend. The Identity store is implemented as an external binding to allow developers to replace it with their preferred identity store model.
 
 # Quick test
 
 ## start afb-sec-gate-oidc samples
-Use one of the default config template to write your own one and start the binder with your own oidc-config.json
+Use one of the default config templates to write your own one and start the binder with your own oidc-config.json
 
 ```
  # check with PAM login as fake IDP
  afb-binder --config=/my_config/oidc-local.json
 ```
-**Note:** *any test with as external authority require a minimum level of remote configuration. Check specific IDPs requirement before trying oidc-oauth2.json samples.*
+**Note:** *any test with an external authority requires a minimum level of remote configuration. Check specific IDPs requirement before trying oidc-oauth2.json samples.*
 
 ## Connect to HTML5 test page
 
@@ -46,17 +46,17 @@ Connect your browser to your sec-gate-oidc service with ```https://target:port``
 
 * Note:
 
-    * HTTPS require SSL certificates. Check $PROJECT/conf.d/project/ssl/gen-cert.sh to generated self signed SSL certificates. For development you may also choose remove SSL. To remove SSL simply set 'HTTPS':false within your oidc-config.json
+    * HTTPS requires SSL certificates. Check $PROJECT/conf.d/project/ssl/gen-cert.sh to generated self signed SSL certificates. For development you may also choose to remove SSL. To remove SSL simply set 'HTTPS':false within your oidc-config.json
 
     * Warning: most IDPs impose HTTPS connection when using anything different from localhost as redirect login URL.
 
 
 ## Rebuild 'afb-sec-gate-oidc' from sources
 
-**Notice**: recompiling afb-sec-gate-oidc is not require to implement your own set rules. You should recompile 'afb-sec-gate-oidc' when:
+**Notice**: recompiling afb-sec-gate-oidc is not required to implement your own set of rules. You should recompile 'afb-sec-gate-oidc' when:
 
 * targeting a not supported environment/distribution.
-* changing code to fix bug or propose improvement *(contributions are more than welcome)*
+* changing code to fix bugs or propose improvements *(contributions are more than welcome)*
 * adding custom/unsupported IDPs*
 
 ### Install building dependencies
@@ -93,7 +93,7 @@ Connect your browser to your sec-gate-oidc service with ```https://target:port``
     git clone https://github.com/redpesk-common/sec-gate-oidc-afbext.git
 ```
 
-### Build your fedid binding and sgate binder extention
+### Build your fedid binding and sgate binder extension
 
 Build and install fedid-binding first, as the secure gate extension depends on fedid types converters ship as part of fedid-binding.
 
@@ -109,7 +109,7 @@ Both should compile with standard AGL cmake template.
 
 ### Run a test from building tree
 
-Create a custom config file from samples avaliable at '../conf.d/project/etc/oidc-*.json'. When config looks good try it with afb-binder --config. Note that it is a good 'best-practice' to check your json config with 'jq' on an equivalent tools before trying to use it.
+Create a custom config file from samples avaliable at '../conf.d/project/etc/oidc-*.json'. When config looks good try it with afb-binder --config. Note that it is a good 'best-practice' to check your json config with 'jq' on equivalent tools before trying to use it.
 
 ```bash
     jq < ../conf.d/project/etc/my-oidc-config.json
