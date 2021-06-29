@@ -1,10 +1,10 @@
 # github Quick start IDP configuration
 
-github is not openid-connect compliant but propose similar functionality on base of oAuth2. The main advantage of Github is that every developer on the planet already have an account, and the admin work to add a new application remains simple and 100% free, this even when going from development phase to production.
+github is not openid-connect compliant but proposes similar functionality on base of oAuth2. The main advantage of Github is that every developer on the planet already has an account, and the admin work to add a new application remains simple and 100% free, even when going from development phase to production.
 
 ## 1- request a developer account.
 
-As everyone should already have an account, I suppose that we should replace this chapter title with "log with your existing github account".
+As everyone should already have an account, I suppose that we should replace this chapter title with "log on with your existing github account".
 
 ![registration](../../docs/assets/github/01-register-account.png)
 
@@ -23,7 +23,7 @@ On order to get a client-id for your application, you should
 
 ## 3- register your login url
 
-In order your redirected login to be accepted by github IDP, the url from your static config should match with the one your register at github. Note that github does not care about your application port, but does about hostname.
+In order your redirected login is accepted by github IDP, the url from your static config should match with the one you register at github. Note that github does not care about your application port, but does about hostname.
 
 ```json
     "statics": {
@@ -34,9 +34,9 @@ In order your redirected login to be accepted by github IDP, the url from your s
 
 Note:
 
-* application login uri should also be declared within the IDP static section of your sgate config in such a way that internal alias and external url match. The login redirect is not an HTML page as such, but a GET/POST endpoint automatically create by sgate and thust does not requirer a dedicate alias. On the other hand 'logo' is a real url and depending on your config may requirer an alias.
+* application login uri should also be declared within the IDP static section of your sgate config in such a way that internal alias and external url match. The login redirect is not an HTML page as such, but a GET/POST endpoint automatically created by sgate and thus does not require a dedicated alias. On the other hand 'logo' is a real url and depending on your config may require an alias.
 
-* redirect login url should be a valid url for your browser, it does not have to be valid for github idp. As a result https://localhost or https://my.target.local are perfectly acceptable. Github does not impose any constrains on redirect url, you may use http/https. Furthermore your application port (i.e. 1234) does not need to be register on the admin console and github will just redirect you on the same port as the one asking the question.
+* redirect login url should be a valid url for your browser, it does not have to be valid for github idp. As a result https://localhost or https://my.target.local are perfectly acceptable. Github does not impose any constraints on redirect url, you may use http/https. Furthermore your application port (i.e. 1234) does not need to be registered on the admin console and github will just redirect you to the same port as the one asking the question.
 
 * redirect logout is not supported by github.
 
@@ -47,7 +47,7 @@ Note:
 
 As soon as your application is created under github admin console, your may retrieve its clientid/secret from 'setting/developerSettings/app-name' page. Clientid and secret should be copied into the credentials section of your sgate config.
 
-When this is done your should be able to login with openid-connect and github.
+When this is done you should be able to login with openid-connect and github.
 
 ```json
     "credentials": {
@@ -59,11 +59,11 @@ When this is done your should be able to login with openid-connect and github.
 
 ## 5- Add users
 
-you do not have to add user, any github user may sign with his own account on your your newly created application.
+you do not have to add user, any github user may sign with his own account on your newly created application.
 
 ## 6- mapping role on sgate security attributes
 
-Github does not support neither user groups or roles. In order to by this limit, you may map github 'organizations, repositories, ...' as sgate security attributs. For this you only have to declare which github profile end point you choose as security attributes provider.
+Github does not support neither user groups nor roles. In order to by this limit, you may map github 'organizations, repositories, ...' as sgate security attributs. For this you only have to declare which github profile end point you choose as security attributes provider.
 
 ```json
     "profiles": [
@@ -71,7 +71,7 @@ Github does not support neither user groups or roles. In order to by this limit,
         {"uid":"teams", "loa":2, "scope":"read:org", "attrs":"organizations_url"}
     ]
 ```
-Here after an extract of gibhub developer documentation, a full list of github endpoint [here](https://docs.github.com/en/rest/reference/users) Depending on requesting roles those urls are returned as part of user profile after authentication
+Hereafter an extract of gibhub developer documentation, a full list of github endpoint [here](https://docs.github.com/en/rest/reference/users) Depending on requesting roles those urls are returned as part of user profile after authentication
 ```json
   "followers_url": "https://api.github.com/users/octocat/followers",
   "following_url": "https://api.github.com/users/octocat/following{/other_user}",
@@ -86,7 +86,7 @@ Here after an extract of gibhub developer documentation, a full list of github e
 
 ## 7 Minimalist github config.
 
-A minimalist configuration may look like following one. Check for config chapter for full config options.
+A minimalist configuration may look like the following one. Check for config chapter for full config options.
 
 ```json
 {

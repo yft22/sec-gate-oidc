@@ -1,14 +1,14 @@
 # phantauth Quick start IDP configuration
 
-phantauth is not a readl IDP, but more a tool for for openid-connect client test and certification. It almost does not require configuration and might be very convenient for your CI/QA testing environment.
+phantauth is not a readl IDP, but more a tool for openid-connect client test and certification. It almost does not require configuration and might be very convenient for your CI/QA testing environment.
 
-Note that Phantauth provide a quite complete set od REST api to automate your CI testing scenario. Check API documentation [here](https://www.phantauth.net/api/)
+Note that Phantauth provides a quite complete set od REST api to automate your CI testing scenario. Check API documentation [here](https://www.phantauth.net/api/)
 
 ![home-documentation](../../docs/assets/phantauth/01-documentation-api.png)
 
 ## 1- request a developer account.
 
-Phantauth is fully opensource, and no registration is requirer. This does not prevent your from doing a small donation to cover operation cost [pricing](https://www.phantauth.net/doc/#pricing)
+Phantauth is fully opensource, and no registration is required. This does not prevent you from giving a small donation to cover operation costs [pricing](https://www.phantauth.net/doc/#pricing)
 
 ## 2- get your application client-id
 
@@ -29,16 +29,16 @@ No need to register your redirect_uri, any one will do the job. This being said,
 
 ## 4- Add users
 
-No need to request a user. Phantauth provide a fake login with no password. At login time user may choose its own attributes.
+No need to request a user. Phantauth provides a fake login with no password. At login time user may choose its own attributes.
 
 ![register-user](../../docs/assets/phantauth/04-authenticate-user.png)
 
 
 ## 6- mapping role on sgate security attributes
 
-Phantauth does not handle groups/roles as such. Nevertheless for testing purpose your may still use gender or order other attributes as a fake security attributes.
+Phantauth does not handle groups/roles as such. Nevertheless for testing purposes you may still use gender or order other attributes as fake security attributes.
 
-For this create a profile that request corresponding identity attributes. Available scope [here](https://www.phantauth.net/doc/integration#scope)
+For this, create a profile that requests corresponding identity attributes. Available scope [here](https://www.phantauth.net/doc/integration#scope)
 
 ```json
 
@@ -49,7 +49,7 @@ For this create a profile that request corresponding identity attributes. Availa
 
 ```
 
-Then map one of the return key from JWT token_id as sgate security attribute.
+Then map one of the return keys from JWT token_id as sgate security attribute.
 
 ```json
     "schema": {
@@ -59,7 +59,7 @@ Then map one of the return key from JWT token_id as sgate security attribute.
 
 ## 7 Minimalist phantauth config.
 
-A minimalist configuration may look like following one. Check for config chapter for full config options.
+A minimalist configuration may look like the following one. Check for config chapter for full config options.
 
 ```json
 {

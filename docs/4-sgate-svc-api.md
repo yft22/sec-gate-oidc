@@ -96,7 +96,7 @@ The API return IDPs list to present to end-user as well as the alias that reques
 
 ## idp-query-usr
 
-Return the list of IDP used by and existing user. This API is use to link two federated accounts.
+Return the list of IDP used by an existing user. This API is used to link two federated accounts.
 
 ```json
 // request
@@ -143,9 +143,9 @@ The API return IDPs list to present to end-user as well as the alias that reques
 ## session-get
 
 Return current session cookies values as a json array
-* 1st contains federated user as returned from the IDP user info service. The contend of this may vary depending on IDP requested scope and are typically what is presented to user for initial provisioning.
-* 2nd contains social identity at the idp side, the two potentially useful information are: idp->uid and the idp->fedkey.
-* 3rd contains use authentication profile. It contains the requested scaope and the attached loa.
+* 1st contains federated user as returned from the IDP user info service. The content of this may vary depending on IDP requested scope and are typically what is presented to user for initial provisioning.
+* 2nd contains social identity at the idp side, the two potentially useful pieces of information are: idp->uid and the idp->fedkey.
+* 3rd contains use authentication profile. It contains the requested scope and the attached loa.
 
 Question
 ```json
@@ -210,7 +210,7 @@ Response:
 
 ## session-event
 
-Subscribe to sgate notification event. A new event is generated each time a privilege is refused or a session reset. It is the responsibility of client UI to process those event, and generate adequate authentication request to provide requested privileges.
+Subscribe to sgate notification event. A new event is generated each time a privilege is refused or a session reset. It is the responsibility of client UI to process these events, and generate an adequate authentication request to provide requested privileges.
 
 Question:
 ```json
@@ -229,7 +229,7 @@ Response:
 
 ## usr-check
 
-Check if a user attribute is already present in database federated user store. Technically this request is processed by fedid binding. Response is either 'available' when not present of 'locked' if already present in base.
+Check if a user attribute is already present in the database federated user store. Technically this request is processed by fedid binding. Response is either 'available' when not present or 'locked' if already present in base.
 
 Question:
 ```json
@@ -251,7 +251,7 @@ Response
 
 ## usr-register
 
-Register a new user if email/pseudo are available. The response when successful include a target where UI should redirect the end-user. When pseudo/user already exit usr-register fail with an error status, in this case application should try usr-federate api.
+Register a new user if email/pseudo are available. The response when successful includes a target where UI should redirect the end-user. When pseudo/user already exists usr-registers fail with an error status, in this case application should try usr-federate api.
 
 Question:
 ```json
@@ -275,7 +275,7 @@ Response:
 
 ## usr-federate
 
-When a user email/pseudo is already used within federated dbstore both social idp accounts need to be linked. In order to initiate account federation linking, UI should call usr-federate api. This API prepare federation and notify UI where to go to proof ownership of both social accounts and return the target HTML page where the user should be redirect.
+When a user email/pseudo is already used within federated dbstore both social idp accounts need to be linked. In order to initiate account federation linking, UI should call usr-federate api. This API prepares federation and notifies UI where to go to prove ownership of both social accounts and return the target HTML page where the user should be redirected.
 
 Question:
 ```json
