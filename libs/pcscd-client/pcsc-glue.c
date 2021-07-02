@@ -19,7 +19,7 @@
  *  General Public License requirements will be met
  *  https://www.gnu.org/licenses/gpl-3.0.html.
  * $RP_END_LICENSE$
- * 
+ *
  * general utilities to read/write smart card with pcsc-lite
  *  ATR http://pcscworkgroup.com/Download/Specifications/pcsc3_v2.01.09_sup.pdf
  *  CMD https://docs.springcard.com/books/SpringCore/PCSC_Operation/APDU_Interpreter/Standard_instructions/UPDATE_BINARY
@@ -103,7 +103,7 @@ typedef union {
 
 
 typedef struct pcscHandleS {
-  const char *uid;  
+  const char *uid;
   ulong magic;
   const char *readerName;
   int readerId;
@@ -199,7 +199,7 @@ static atrCardidEnumT isoAtrParseCard (pcscHandleT *handle, BYTE *buffer, DWORD 
             }
             break;
 
-        case 9: 
+        case 9:
             // loosely handle bank card
             atr= (isoAtrDataP3T*)buffer;
             atrUid= ATR_BANK_FR;
@@ -266,7 +266,8 @@ static long pcscAuthSCard (pcscHandleT *handle, const char *uid, u_int8_t secIdx
 
             // mifare only use block index
             if (secIdx) {
-                blkIdx= (u_int8_t)((secIdx*4) + blkIdx);
+                //blkIdx= (u_int8_t)((secIdx*4) + blkIdx);
+                blkIdx= (u_int8_t)(secIdx*4); // authent is per page
                 secIdx= 0;
             }
 
@@ -318,8 +319,8 @@ static long pcscAuthSCard (pcscHandleT *handle, const char *uid, u_int8_t secIdx
     }
     return SCARD_S_SUCCESS;
 
-OnErrorExit: 
-    return -1;    
+OnErrorExit:
+    return -1;
 }
 
 // try to read data bloc
@@ -385,7 +386,7 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
     for (ulong idx=blkIdx%blkSector; (idx<blkSector && dataIdx < dataLen); idx++) {
 
         mifareSecBlkT sIdx;
-        sIdx.u16= (u_int16_t)(secIdx*4 + blkIdx + idx);
+        sIdx.u16= (u_int16_t)(secIdx*4 + idx);
 
         BYTE writeCmd[] = {0xFF, 0xD6, sIdx.u8[1], sIdx.u8[0], (u_int8_t)blkLength};
         BYTE bufferRqt[blkLength+sizeof(writeCmd)];
@@ -395,7 +396,7 @@ int pcsWriteBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int
 
         rv= pcscSendCmd (handle, uid, "write", bufferRqt, sizeof(bufferRqt), dataBuf, &length);
         if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
-        
+
         // move to new block if any
         dataIdx += blkLength;
     }
@@ -515,12 +516,12 @@ static void *pcscMonitorThread (void *ptr) {
     while (1) {
             // wait timeout second for card to be inserted
             rv = SCardGetStatusChange(handle->hContext, handle->timeout*1000, &rgReaderStates, 1);
-            
+
             switch (rv) {
                 case SCARD_E_CANCELLED:
                     goto OnCancelExit;
 
-                case SCARD_E_TIMEOUT: 
+                case SCARD_E_TIMEOUT:
                     if (!handle->timeout) continue;
                     break;
 
@@ -564,12 +565,12 @@ static void *pcscMonitorThread (void *ptr) {
                     if (err < 0) goto OnErrorExit;
                     if (err > 0) goto OnRequestExit;
                     break;
-                default: 
+                default:
                     goto OnErrorExit;
         }
     }
 
-OnRequestExit:    
+OnRequestExit:
     EXT_DEBUG ("[pcsc-thread-monitor] card-remove exit tid=0x%lx", pthread_self());
     free (threadCtx);
     handle->tid=0;
@@ -632,7 +633,7 @@ int pcscMonitorWait (pcscHandleT *handle, pcscMonitorActionE action, ulong tid) 
             SCardCancel (handle->hContext);
             break;
 
-        default: 
+        default:
             goto OnErrorExit;
     }
 
@@ -701,7 +702,7 @@ pcscHandleT *pcscList(const char** readerList, ulong *readerMax) {
     handle->magic= PCSC_HANDLE_MAGIC;
     return handle;
 
-OnErrorExit: 
+OnErrorExit:
     return NULL;
 }
 

@@ -68,7 +68,7 @@ Connect your browser to your sec-gate-oidc service with ```https://target:port``
 
 #### Install AFB binder and sec-gate-oidc dependencies
 
-* application framework: 'afb-binding-devel', 'afb-binder-dev', 'afb-lib-afb-devel'
+* application framework: 'afb-binding-devel', 'afb-binder-dev', 'afb-libafb-devel'
 * cmake template 'afb-cmake-modules'
 
 >Note: For Ubuntu/OpenSuse/Fedora specific instructions check [redpesk-developer-guide]({% chapter_link host-configuration-doc.setup-your-build-host#install-the-application-framework-1 %})
@@ -82,7 +82,7 @@ Connect your browser to your sec-gate-oidc service with ```https://target:port``
 
 * Redpesk AFB application framework dependencies
     * afb-cmake-modules
-    * afb-lib-afb-devel
+    * afb-libafb-devel
 
 >Note: all previous dependencies should be available out-of-the-box for major Linux distrutions (Fedora, OpenSuse, Ubuntu). Note that Debian/Ubuntu use '.dev' in place of '.devel'.
 

@@ -40,7 +40,7 @@
           "request": "launch",
           "program": "${workspaceFolder}/build/package/bin/pcscd-client",
           "args": [
-            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-scard.json",
+            "--config=${workspaceFolder}/libs/pcscd-client/test/simple-scard.json",
             "--verbose",
             "--group=0",
           ],
@@ -60,15 +60,14 @@
         },
         {
           // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "sync-group-5",
+          "name": "sync-group-20",
           "type": "cppdbg",
           "request": "launch",
           "program": "${workspaceFolder}/build/package/bin/pcscd-client",
           "args": [
-            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-pcsc.json",
+            "--config=${workspaceFolder}/libs/pcscd-client/test/simple-pcsc.json",
             "--verbose",
-            "--group=5",
-            "--async",
+            "--group=20",
           ],
           "stopAtEntry": true,
           "cwd": "${workspaceFolder}/build",
@@ -91,7 +90,7 @@
           "request": "launch",
           "program": "${workspaceFolder}/build/package/bin/pcscd-client",
           "args": [
-            "--config=${workspaceFolder}/libs/pcscd-cient/test/simple-scard.json",
+            "--config=${workspaceFolder}/libs/pcscd-client/test/simple-scard.json",
             "--verbose",
             "--group=0",
           ],

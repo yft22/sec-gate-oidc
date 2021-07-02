@@ -4,10 +4,27 @@
     "info" : "Basic PCSC test for Mifare Classic",
     "reader": "ACR122U",
     "keys": [
+        {"uid":"key-0", "idx": 0, "value":["0xFF","0xFF","0xFF","0xFF","0xFF","0xFF"]},
         {"uid":"key-a", "idx": 0, "value":["0x01","0x02","0x03","0x04","0x05","0x06"]},
-        {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]}
+        {"uid":"key-b", "idx": 1, "value":["0x0A","0x0B","0x0C","0x0D","0x0E","0x0F"]},
+        {"uid":"key-c", "idx": 1, "value":["0x1F","0x1F","0xFC","0x97","0x03","0x00"]},
     ],
     "cmds": [
+
+        // provisioning card with default key (new card)
+        {"uid":"sellor-blk0" ,"group":20,"action":"write"  ,"sec":5,"blk":0, "len":16,"data":["0x72", "0x40", "0x10", "0x00", "0x9D", "0x1B", "0x07", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00"]},
+        {"uid":"sellor-blk1" ,"group":20,"action":"write"  ,"sec":5,"blk":1, "len":16,"data":["0x34", "0x36", "0x35", "0x38", "0x32", "0x31", "0x2D", "0x4C", "0x45", "0x20", "0x46", "0x4F", "0x4C", "0x4C", "0x00", "0x00"]},
+        {"uid":"sellor-blk2" ,"group":21,"action":"write"  ,"sec":5,"blk":2, "len":16,"data":["0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x60", "0xA1", "0x57", "0x5B", "0xE4", "0x67", "0xAB", "0x66"]},
+
+        {"uid":"sellor-sec" ,"group":22,"action":"write"  ,"sec":1,"blk":0, "len":48,"data":
+           [
+               "0x72", "0x40", "0x10", "0x00", "0x9D", "0x1B", "0x07", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00",
+               "0x34", "0x36", "0x35", "0x38", "0x32", "0x31", "0x2D", "0x4C", "0x45", "0x20", "0x46", "0x4F", "0x4C", "0x4C", "0x00", "0x00",
+               "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x00", "0x60", "0xA1", "0x57", "0x5B", "0xE4", "0x67", "0xAB", "0x66",
+           ]
+        },
+        {"uid":"sellor-acls" ,"group":23,"action":"trailer","sec":1,"blk":3, "trailer": {"keyA": "key-0","keyB":"key-c","acls":["0xFF","0x07","0x80","0x00"]}},
+
 
         // provisioning card with default key (new card)
         {"uid":"write-pseudo" ,"group":1,"action":"write","sec":1,"len":48,"data":"fulup-bzh"},
@@ -64,13 +81,13 @@
         {"uid":"write-company","group":10,"action":"write","sec":4,"len":16,"data":"IoT.bzh"},
         {"uid":"write-roles"  ,"group":10,"action":"write","sec":5,"len":16,"data":"role1,role2"},
         {"uid":"write-apps"   ,"group":10,"action":"write","sec":7,"len":16,"data":"app1,app2"},
-        
+
         {"uid":"read-pseudo" ,"group":11,"action":"read","sec":1,"len":48},
         {"uid":"read-email"  ,"group":11,"action":"read","sec":2,"len":48},
         {"uid":"read-name"   ,"group":11,"action":"read","sec":3,"len":48},
         {"uid":"read-company","group":11,"action":"read","sec":4,"len":48},
         {"uid":"read-roles"  ,"group":11,"action":"read","sec":5,"len":48},
         {"uid":"read-apps"   ,"group":11,"action":"read","sec":7,"len":48},
-        
+
     ]
 }
