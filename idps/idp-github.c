@@ -139,6 +139,8 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
 {
     idpRqtCtxT *rqtCtx = (idpRqtCtxT *) httpRqt->userData;
     oidcIdpT *idp = rqtCtx->idp;
+    fedSocialRawT *fedSocial = NULL;
+    fedUserRawT *fedUser = NULL;
     int err;
 
     // something when wrong
@@ -151,12 +153,12 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
         goto OnErrorExit;
 
     // build social fedkey from idp->uid+github->id
-    fedSocialRawT *fedSocial = calloc (1, sizeof (fedSocialRawT));
+    fedSocial = calloc (1, sizeof (fedSocialRawT));
     fedSocial->fedkey = json_object_dup_key_value (profileJ, "id");
     fedSocial->idp = strdup (idp->uid);
     rqtCtx->fedSocial= fedSocial;
 
-    fedUserRawT *fedUser = calloc (1, sizeof (fedUserRawT));
+    fedUser = calloc (1, sizeof (fedUserRawT));
     fedUser->pseudo = json_object_dup_key_value (profileJ, "login");
     fedUser->avatar = json_object_dup_key_value (profileJ, "avatar_url");
     fedUser->name = json_object_dup_key_value (profileJ, "name");
@@ -180,8 +182,8 @@ static httpRqtActionT githubUserGetByTokenCB (httpRqtT * httpRqt)
   OnErrorExit:
     EXT_CRITICAL ("[github-fail-user-profile] Fail to get user profile from github status=%ld body='%s'", httpRqt->status, httpRqt->body);
     afb_hreq_reply_error (rqtCtx->hreq, EXT_HTTP_UNAUTHORIZED);
-    fedSocialFreeCB(fedSocial);
-    fedUserFreeCB(fedUser);
+    if (fedSocial) fedSocialFreeCB(fedSocial);
+    if (fedUser) fedUserFreeCB(fedUser);
     return HTTP_HANDLE_FREE;
 }
 
