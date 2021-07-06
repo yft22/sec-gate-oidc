@@ -88,7 +88,7 @@ set(PACKAGE_MESSAGE "Install widget file using in the target : afm-util install 
 
 # Customize link option
 # -----------------------------
-#list(APPEND link_libraries -an-option)
+list(APPEND link_libraries "-ldl")
 
 # Compilation options definition
 set(CONTROL_CONFIG_PATH "${CMAKE_SOURCE_DIR}/conf.d/project/etc:${CMAKE_BINARY_DIR}/package/etc:${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}/etc" CACHE STRING "CONTROL_CONFIG_PATH")
