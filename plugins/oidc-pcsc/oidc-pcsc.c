@@ -155,7 +155,7 @@ static int readerMonitorCB (pcscHandleT *handle, ulong state, void *ctx) {
             idpRqtCtx->fedSocial= calloc (1, sizeof (fedSocialRawT));
             idpRqtCtx->fedUser= calloc (1, sizeof (fedUserRawT));
             u_int64_t uuid;
-            char *data;
+            char *data = NULL;
 
             // map scope to pcsc commands
             str2TokenT scopeTkn;

@@ -61,7 +61,8 @@ typedef struct {
 // session timeout, reset LOA 
 void fedidsessionReset (afb_session *session, const oidcProfileT *idpProfile)
 {
-    int err, count;
+    int err;
+    int count=-1;
 
     // reset session and alias LOA (this will force authentication)
     afb_session_set_loa(session, oidcSessionCookie, 0);
@@ -113,7 +114,7 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
     fedUserRawT *fedUser;
     oidcProfileT *idpProfile;
     oidcAliasT *alias;
-    afb_session *session;
+    afb_session *session = NULL;
     const char *redirect;
     afb_hreq *hreq = NULL;
     struct afb_req_v4 *wreq = NULL;
