@@ -1,6 +1,6 @@
 # phantauth Quick start IDP configuration
 
-phantauth is not a readl IDP, but more a tool for openid-connect client test and certification. It almost does not require configuration and might be very convenient for your CI/QA testing environment.
+phantauth is not a readl IDP, but more a tool for openid-connect client test and certification. It hardly requires configuration and might be very convenient for your CI/QA testing environment.
 
 Note that Phantauth provides a quite complete set od REST api to automate your CI testing scenario. Check API documentation [here](https://www.phantauth.net/api/)
 

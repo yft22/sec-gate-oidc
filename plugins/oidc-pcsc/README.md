@@ -1,17 +1,17 @@
 # PCSC NFC Quick start IDP configuration
 
-oidc-pcsc somehow fakes openid-connect handshake. It relies on pcscd-client library and pcscd daemon to access nfc tokens/smartcards. When an application is redirected onto oidc-pcscd for authentication, sgate starts a thread that monitor the reader and wait for a card to be inserted. As soon as a valid card is inserted oidc-pscd tries to read scard contend. When successful it then applies federation authentication as it would do with any other openid-connect authority. The authentication thread remains active until the card is remove from the reader, at this point sgate resets the session and notifies client application that session is locked.
+oidc-pcsc somehow fakes openid-connect handshake. It relies on pcscd-client library and pcscd daemon to access nfc tokens/smartcards. When an application is redirected onto oidc-pcscd for authentication, sgate starts a thread that monitors the reader and waits for a card to be inserted. As soon as a valid card is inserted oidc-pscd tries to read scard contend. When successful it then applies federation authentication as it would do with any other openid-connect authority. The authentication thread remains active until the card is removed from the reader, at this point sgate resets the session and notifies client application that session is locked.
 
 Note: pcsc is implemented as an external plugin and released under MIT licence. Reference implementation relies on:
 
 * Mifare-classic NFC scard and you probably should hack the code to interface any other token/scard.
-* CCID ACR122U NFC reader. Chaging for an other CCID reader should hopefully only requirer configuration change. Changing for a non supported reader more or less impose to fully rewrite oidc-pcsc. 
+* CCID ACR122U NFC reader. Changing to another CCID reader should hopefully only require configuration change. Changing for a non supported reader more or less imposes one to fully rewrite oidc-pcsc. 
 
 ## 1- provision your card
 
 Except if you only use token/scard UUID within a slave profile you should provision your token/scard with adequate datas. If you need a provision tool check pscd-client (here)[/xxxxx]
 
-Note: when card is declared as 'slave' it can only federate with a pre-existing account. If primary federate identity does not exist when using a slave idp profile, oidc will swhich to primary identity creation to grand authentication, but will not link primary with slave identity. As a result in order to use a scard/token as second factor authentication, not only you should declare your profile as 'slave' but you should also link both accounts. This link may happen either by static provisioning or dynamically from scard card 'secret' contend or other mechanisms that fit your security requirements. 
+Note: when card is declared as 'slave' it can only federate with a pre-existing account. If primary federate identity does not exist when using a slave idp profile, oidc will switch from primary identity creation to grand authentication, but will not link primary with slave identity. As a result in order to use a scard/token as second factor authentication, not only should you declare your profile as 'slave' but you should also link both accounts. This link may happen either by static provisioning or dynamically from scard card 'secret' content or other mechanisms that fit your security requirements. 
 
 ## 2- configure your plugin
 
