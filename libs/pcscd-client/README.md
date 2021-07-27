@@ -22,7 +22,7 @@ Relies on use-space pcscd resource manager to read/write NFC scard/token.
 
 ## Supported readers/cards
 
-The code was testing with Mifare classic tokens but pcsc-lite supports most of CCID compliant tokens. Nevertheless note that each scard/token has it own flavor or API and data organization which may require config/code customization.
+The code was tested with Mifare classic tokens but pcsc-lite supports most of CCID compliant tokens. Nevertheless note that each scard/token has it own flavor or API and data organization which may require config/code customization.
 
 * <https://ccid.apdu.fr/ccid/supported.html>
 
@@ -36,7 +36,7 @@ The code was testing with Mifare classic tokens but pcsc-lite supports most of C
 
 ## Testing
 
-The simplest way to test your reader/token it to use pcsc-client with a custom config.json. Note that pcsc-client should be available for major Linux distributions.
+The simplest way to test your reader/token is to use pcsc-client with a custom config.json. Note that pcsc-client should be available for major Linux distributions.
 
 ```dotnetcli
  ~/$SOURCES/sec-gate-oidc/build> ./package/bin/pcsc-client --config=../src/idps-plugins/oidc-pcsc/test/simple-pcsc.json --group=0 --async --verbose
@@ -53,13 +53,13 @@ The simplest way to test your reader/token it to use pcsc-client with a custom c
 Json configuration is organized in sections:
 
 * **reader**: a subset of reader full name
-* **keys**: defined keys used when a command require authentication
+* **keys**: defined keys used when a command requires authentication
 * **cmds**: your commands list
 * **verbose**: level of verbosity when not passed from API with --verbose
 
 ### Reader
 
-It is a subset of reader name. When multiple reader respond to the subset first reader found is used. When no reader name is provided, oidc-pcsc uses first available reader. As a result is your have only one reader you do not have to know its name.
+It is a subset of reader name. When multiple readers respond to the subset first reader found is used. When no reader name is provided, oidc-pcsc uses first available reader. As a result if your have only one reader you do not have to know its name.
 
 ```json
     // "ACR122U" for "ACS ACR122U PICC Interface 00 00"
@@ -86,7 +86,7 @@ Mifare-Classic support two keys A/B where both should have 6 bytes. Default keys
 
 ### Commands
 
-Each scard model has a private physical organization (page, sector, blocs, ...) as well as it own authentication and API capabilities. As said before oidc-pcsc was tested with Mifare-Classic, if you need to support a different card model you may have to tweak configuration and code. Note that command are store in order and pcsc-client execute then from config order.
+Each scard model has a private physical organization (page, sector, blocs, ...) as well as it own authentication and API capabilities. As said before oidc-pcsc was tested with Mifare-Classic, if you need to support a different card model you may have to tweak configuration and code. Note that commands are stored in order and pcsc-client execute then from config order.
 
 ```json
     "cmds": [
@@ -99,16 +99,16 @@ Each scard model has a private physical organization (page, sector, blocs, ...) 
 
 Each command should have:
 
-* **uid**: [mandatory] information use to identify command within your config
-* **group**: [optional] use to class command in config. pscsc-test command use --group=xx to only execute command from a given group. (default:0)
+* **uid**: [mandatory] information used to identify command within your config
+* **group**: [optional] used to class command in config. pscsc-test command use --group=xx to only execute command from a given group. (default:0)
 * **action**: [mandatory]
   * **read**: read one/multiple blocs
   * **write** read one/multiple blocs
   * **trailer**: write access control bit and authentication keys for a given sector.
 * **sec**: [optional] With Mifare/classic sector is map to 4 blocks also (sec:1,block:1) is equivalent to (block:5). Some token as NFC/type-2 requires a sector index. (default:0)
 * **blk**: [mandatory] block index for read and write commands.
-* **len**: [mandatory/read, optional/write] specify amount of data to read. With write action, 'len' is the maximum of data written, any remaining input is silently ignored. *Warning: it is application responsibility to provided a buffer big enough to hold read data.*
-* **value**: [mandatory for write/trailer] provide information to write on the scard. The information may by provided in hexa or ascii form. Warning: depending on token/scard model writable size diverge. Mifare only support 0x10,0x20,x30 value length. Last bloc written with trailer command is reserved for access control bits/keys.
+* **len**: [mandatory/read, optional/write] specify amount of data to read. With write action, 'len' is the maximum of data written, any remaining input is silently ignored. *Warning: it is the application responsibility to provide a buffer big enough to hold read data.*
+* **value**: [mandatory for write/trailer] provides information to write on the scard. The information may by provided in hexa or ascii form. Warning: depending on token/scard model writable size diverge. Mifare only supports 0x10,0x20,x30 value length. Last bloc written with trailer command is reserved for access control bits/keys.
 
 ## Trailer
 
@@ -120,7 +120,7 @@ Trailer is a specialized version of write command used to simplify access contro
 
 ***WARNING: trailer command can brick you scard/token.*** Writing a wrong ACL/keys will kill concerned block. Double, triple check your command on a single block/card before provisioning a set of cards.
 
-* **group**: [recommended] while not mandatory 'trailer' command are usually isolated in a private group, as they change access control and usually cannot be executed twice.
+* **group**: [recommended] while not mandatory 'trailer' commands are usually isolated in a private group, as they change access control and usually cannot be executed twice.
 * **blk**: [mandatory] with Myfare/classic block index should match the last bloc of a given sector/page with blocIdx modulo 4 == 3.
 * **key**: [optional] authentication key. When not provided trailer command uses default (0xFFFFFF) which should work with any new Mifare/classic card. After changing ACLs authentication key depends on your config.
 * **key-a/b**: [mandatory] The new access control key. Key-a/b should match a predefined key-uid from your 'keys' config section. Key-a/b are written with your acls bloc and will be required for further action on concerned blocs.
@@ -133,7 +133,7 @@ Trailer is a specialized version of write command used to simplify access contro
 
 Trailer access control is composed of 4 bytes.
 
-* The 3 first bytes store the access control as sutch. Acls are store in both normal and inverted bit values.
+* The 3 first bytes store the access control as such. Acls are stored in both normal and inverted bit values.
 * Last byte is free and available as user-data.
 * *Any error in acls data will brick the 4 blocs of concerned page**
 
@@ -189,7 +189,7 @@ Note: the 'set-acls' command (group=2) should work for a new card. But after 1st
 
 ## Config APIs
 
-High level API, hopefully match most application requirement.
+High level API, hopefully match most application requirements.
 
 ```c
  #include <pcsc-config.h>
@@ -214,7 +214,7 @@ High level API, hopefully match most application requirement.
  const char* pcscErrorMsg (pcscHandleT *handle);
 ```
 
-* **pcscConnect**: connect to a given reader: "readername" should be a be a subset of full reader name. When NULL first reader available is used. "uid" is a free *human-readable* string use to track debug messages.
+* **pcscConnect**: connect to a given reader: "readername" should be a subset of full reader name. When NULL first reader available is used. "uid" is a free *human-readable* string used to track debug messages.
 * **pcscDisconnect**: close and free reader connection.
 * **pcscSetOpt**: pcsc handle is opaque and options require a setter (
   * PCSC_OPT_TIMEOUT
@@ -235,15 +235,15 @@ High level API, hopefully match most application requirement.
 ```
 
 * **pcscReaderCheck**: in synchronous mode wait xx ticks for reader to be ready. Default ticks is 60s, and can be changed with timeout option.
-* **pcscMonitorReader**: start monitoring thread and register callback and and context. Unfortunately pcsc-lite does not support asynchronous operation and application should register a dedicated thread to run pcsc operations in background.
+* **pcscMonitorReader**: start monitoring thread and register callback and context. Unfortunately pcsc-lite does not support asynchronous operation and application should register a dedicated thread to run pcsc operations in background.
 * **pcscMonitorWait**: wait for monitor thread to finish. `Action=PCSC_MONITOR_WAIT|PCSC_MONITOR_CANCEL`
 * **pcscGetCtx**: return handle context provided by pcscMonitorReader.
-* **pcscGetCardUuid**: check scard ATR and return UUID. If card is not supported this return an error.
-* **pcscStatusCbT** monitoring callback signature register by pcscMonitorReader. This callback is call each time reader status change. Typically when a scard is inserted/removed. As callback get pcsc handle it can run any commands. Check main-pcsc.c for sample.
+* **pcscGetCardUuid**: check scard ATR and return UUID. If card is not supported this returns an error.
+* **pcscStatusCbT** monitoring callback signature register by pcscMonitorReader. This callback is called each time reader status changes. Typically when a scard is inserted/removed. As callback gets pcsc handle it can run any commands. Check main-pcsc.c for sample.
 
 ### Reading/Writing to scard/token
 
-Low level commands, most user may prefer to rather pcscExecOneCmd.
+Low level commands, most users may prefer to rather pcscExecOneCmd.
 
 ```c
  #include <pcsc-glue.h>
@@ -261,20 +261,20 @@ Low level commands, most user may prefer to rather pcscExecOneCmd.
   * secIdx: sector index. Use with NFC-type2 but not with MiFare
   * blkIdx: block index. Note that with Mifare/classic sector/page is equivalent to blocIdx/4.
   * dataBut: the buffer to write
-  * dataLen: the length to write. Depending on your scard/token length as contrains. With Mifare/classic you should write full block len=0x10,0x20,x30 and should not break page/sector boundary. Do not forget that your may write by block, but then authentication is by sector/page.
-  * key: key handle to be use for operation authentication.
+  * dataLen: the length to write. Depending on your scard/token length as contrains. With Mifare/classic you should write full block len=0x10,0x20,x30 and should not break page/sector boundary. Do not forget that you may write by block, but then authentication is by sector/page.
+  * key: key handle to be used for operation authentication.
 
 * **pcscReadBlock**: read bloc on scard/token.
-  * uuid: is used only for debug purpose.
+  * uuid: is used only for debug purposes.
   * secIdx: sector index. Use with NFC-type2 but not with MiFare
   * blkIdx: block index.
   * dataBut: buffer address where to place result
   * dataLen: input dataBuf size, return amount of effective data read.
-  * key: key handle to be use for operation authentication.
+  * key: key handle to be used for operation authentication.
 
 * **pcsWriteTrailer**: write a bloc on scard/token.
-  * uuid: is used only for debug purpose.
+  * uuid: is used only for debug purposes.
   * secIdx: sector index. Use with NFC-type2 but not with MiFare
   * blkIdx: block index. Block index should match last bloc of a given page/sector.
-  * key: key handle to be use for operation authentication.
+  * key: key handle to be used for operation authentication.
   * trailer: trailer handle as created from pcscNewKey api.
