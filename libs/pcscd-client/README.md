@@ -13,7 +13,7 @@ Relies on use-space pcscd resource manager to read/write NFC scard/token.
   * pcsc-*ccid
   * afb-libafb
 * Blacklist default NFC kernel module
-  * sudo cp $SOURCES/src/idps-plugins/oidc-pcsc/test/nfc-blacklist.conf /etc/modprobe.d
+  * sudo cp $SOURCES/libs/pcscd-client/test/nfc-blacklist.conf /etc/modprobe.d
   * rmmod nfc and dependencies (or reboot)
   * systemctl enable pcscd.service
 * Run pcscd manager

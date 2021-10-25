@@ -5,15 +5,15 @@
     "version": "0.2.0",
     "configurations": [
         {
-
-          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "oidc-dex",
+          // http://localhost:3000
+          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-oauth2.json
+          "name": "oidc-oauth2",
           "type": "cppdbg",
           "request": "launch",
           "program": "/usr/local/bin/afb-binder",
           "args": [
             "--name=afb-oidc",
-            "--config=${workspaceFolder}/conf.d/project/etc/oidc-dex.json",
+            "--config=${workspaceFolder}/conf.d/project/etc/oidc-oauth2.json",
             "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
             "--roothttp=.",
             "--verbose","--verbose","--verbose",
@@ -34,7 +34,36 @@
           "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
+            // http://localhost:3000
+            // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-local.json
+            "name": "oidc-local",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/local/bin/afb-binder",
+            "args": [
+              "--name=afb-oidc",
+              "--config=${workspaceFolder}/conf.d/project/etc/oidc-local.json",
+              "--rootdir=${workspaceFolder}/conf.d/project/htdocs",
+              "--roothttp=.",
+              "--verbose","--verbose","--verbose",
+              "--trap-faults=no"
+            ],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}/build",
+            "environment": [{"name":"LD_LIBRARY_PATH", "value":"package/lib:package/lib/plugins:/usr/local/lib64:/usr/local/lib:/usr/local/fedid-binding/lib"}],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "setupCommands": [
+              {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+              }
+            ],
+            "miDebuggerPath": "/usr/bin/gdb"
+          },
+          {
+          // provision NFC card  
           "name": "sync-scard-g0",
           "type": "cppdbg",
           "request": "launch",
@@ -53,63 +82,13 @@
             {
               "description": "Enable pretty-printing for gdb",
               "text": "-enable-pretty-printing",
-              "ignoreFailures": true
+              "ignoreFailures": false
             }
           ],
           "miDebuggerPath": "/usr/bin/gdb"
         },
         {
-          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "sync-group-20",
-          "type": "cppdbg",
-          "request": "launch",
-          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
-          "args": [
-            "--config=${workspaceFolder}/libs/pcscd-client/test/simple-pcsc.json",
-            "--verbose",
-            "--group=20",
-          ],
-          "stopAtEntry": true,
-          "cwd": "${workspaceFolder}/build",
-          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
-          "externalConsole": false,
-          "MIMode": "gdb",
-          "setupCommands": [
-            {
-              "description": "Enable pretty-printing for gdb",
-              "text": "-enable-pretty-printing",
-              "ignoreFailures": true
-            }
-          ],
-          "miDebuggerPath": "/usr/bin/gdb"
-        },
-        {
-          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
-          "name": "sync-scard-g0",
-          "type": "cppdbg",
-          "request": "launch",
-          "program": "${workspaceFolder}/build/package/bin/pcscd-client",
-          "args": [
-            "--config=${workspaceFolder}/libs/pcscd-client/test/simple-scard.json",
-            "--verbose",
-            "--group=0",
-          ],
-          "stopAtEntry": true,
-          "cwd": "${workspaceFolder}/build",
-          "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
-          "externalConsole": false,
-          "MIMode": "gdb",
-          "setupCommands": [
-            {
-              "description": "Enable pretty-printing for gdb",
-              "text": "-enable-pretty-printing",
-              "ignoreFailures": true
-            }
-          ],
-          "miDebuggerPath": "/usr/bin/gdb"
-        },
-        {
-          // afb-binder --name=afb-oidc --config=${workspaceFolder}/conf.d/project/etc/oidc-basic.json
+          // list installed NFC readers  
           "name": "list-readers",
           "type": "cppdbg",
           "request": "launch",
@@ -117,7 +96,7 @@
           "args": [
             "--list",
           ],
-          "stopAtEntry": true,
+          "stopAtEntry": false,
           "cwd": "${workspaceFolder}/build",
           "environment": [{"name":"LD_LIBRARY_PATH", "value":"/usr/local/lib64"}],
           "externalConsole": false,

@@ -79,6 +79,7 @@ Connect your browser to your sec-gate-oidc service with ```https://target:port``
     * libpam-devel
     * libcurl-devel
     * uthash
+    * pcsc-lite pcsc-lite-libs
 
 * Redpesk AFB application framework dependencies
     * afb-cmake-modules
@@ -115,3 +116,15 @@ Create a custom config file from samples avaliable at '../conf.d/project/etc/oid
     jq < ../conf.d/project/etc/my-oidc-config.json
     afb-binder --config=../conf.d/project/etc/my-oidc-config.json -v
 ```
+
+### Warning NFC USB reader (ACR122U) with pcscd
+* Do not forget to update NFC kernel module blacklist
+  * sudo cp $SOURCES/libs/pcscd-client/test/nfc-blacklist.conf /etc/modprobe.d
+  * rmmod nfc and dependencies (or reboot)
+  * systemctl enable pcscd.service
+
+  Check with you USB reader is visible with
+  ```
+    ./build/package/bin/pcscd-client --list
+    -- reader[?]=ACS ACR122U PICC Interface 01 00
+  ```

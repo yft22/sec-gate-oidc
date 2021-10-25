@@ -55,7 +55,7 @@ int aliasCheckAttrs (afb_session * session, oidcAliasT * alias)
     // this should be replaced by Cynagora request
     for (int idx = 0; alias->roles[idx]; idx++) {
         requestCount++;
-        for (int jdx = 0; fedSocial->attrs[jdx]; jdx++) {
+        if (fedSocial->attrs) for (int jdx = 0; fedSocial->attrs[jdx]; jdx++) {
             if (!strcasecmp (alias->roles[idx], fedSocial->attrs[jdx])) {
                 matchCount++;
                 break;
@@ -63,6 +63,7 @@ int aliasCheckAttrs (afb_session * session, oidcAliasT * alias)
         }
         if (matchCount) break;
     }
+    if (!matchCount) goto OnErrorExit;
     return 0;
 
   OnErrorExit:

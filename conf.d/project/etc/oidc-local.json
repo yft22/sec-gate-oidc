@@ -11,7 +11,7 @@
   "rootdir":  "../conf.d/project/htdocs",
   "binding" : [{
       "uid": "fedid-api",
-      "path": "/usr/local/fedid-binding/lib/fedid-binding.so",
+      "path": "/usr/local/sec-gate-fedid-binding/lib/sec-gate-fedid-binding.so",
       "config": {"dbpath":"/var/tmp/fedid-local.sqlite"}
   }],
   "@extconfig": {
