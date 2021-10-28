@@ -55,7 +55,7 @@
             },
             "profiles": [
                 {"uid":"basic", "loa":1, "scope":"openid profile"},
-                {"uid":"basic", "loa":2, "scope":"openid profile groups"}
+                {"uid":"group", "loa":2, "scope":"openid profile groups"}
             ]
         },
         {
@@ -105,7 +105,7 @@
             },
             "profiles": [
                 {"uid":"basic", "loa":1, "scope":"user:email"},
-                {"uid":"teams", "loa":2, "scope":"read:org", "attrs":"organizations_url"}
+                {"uid":"teams", "loa":2, "scope":"read: org", "attrs":"organizations_url"}
             ]
         }
       ],

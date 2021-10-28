@@ -143,7 +143,8 @@ static httpRqtActionT ldapAccessAttrsCB (httpRqtT * httpRqt)
 	}
 
     // reduse groups attrs size to what ever is needed
-    idpRqtCtx->fedSocial->attrs = realloc(idpRqtCtx->fedSocial->attrs, idx+1);
+    idpRqtCtx->fedSocial->attrs[idx+1]=NULL;
+    idpRqtCtx->fedSocial->attrs = realloc(idpRqtCtx->fedSocial->attrs, sizeof (char *) * (idx+2));
 
     // query federation ldap groups are handle asynchronously
     err = fedidCheck (idpRqtCtx);
