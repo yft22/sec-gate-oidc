@@ -2,7 +2,7 @@
 
 afb-sec-gate-oidc is an afb-binder-v4 extension. It leverages binder hooking capabilities to enforce authentication from an external authority (IDP) to allow/deny HTTP/REST/WEBsocket requests.
 
-Hooked input request can be checked again:
+Hooked input request can be checked against:
 
 * LOA (Level Of Assurance) defines the level of trust you have in a given external authentication source. There is no standard to define LOA. Nevertheless most people loosely map it on NIST definition:
 
@@ -18,7 +18,7 @@ Hooked input request can be checked again:
     * github' provides organizations, repositories, ...
     * onelogin map groups on local roles or ldap/AD memberof request
 
-    Each IDP has it own way to provide attributes. Idp security labels map to AFB-V4 privileged through an independant json configuration file, where security administrator may define a per IDP label/privilege mapping.
+    Each IDP has its own way to provide attributes. Idp security labels map to Cynagora's permissions through an independant json configuration file, where security administrator may define a per IDP label/privilege mapping.
 
 Typical access control:
 ``` json
