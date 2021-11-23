@@ -105,7 +105,11 @@ static int glueSetTimerCB(httpPoolT *httpPool, long timeout)
 
     if (timeout >= 0) {
       // ms delay for OnTimerCB (timeout is dynamic and depends on CURLOPT_LOW_SPEED_TIME)
+#if LIBAFB_BEFORE_VERSION(4,0,4)
       err= afb_sched_post_job (NULL /*group*/, timeout,  0 /*exec-timeout*/,glueOnTimerCB, httpPool);
+#else
+      err= afb_sched_post_job (NULL /*group*/, timeout,  0 /*exec-timeout*/,glueOnTimerCB, httpPool, Afb_Sched_Mode_Normal);
+#endif
 	  if (err <= 0) goto OnErrorExit;
     }
     return 0;

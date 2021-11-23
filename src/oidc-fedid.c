@@ -242,7 +242,11 @@ static void fedidCheckCB (void *ctx, int status, unsigned argc, afb_data_x4_t co
                 afb_session_cookie_set (session, oidcSessionCookie, (void *) fedSession, NULL, NULL);
             }
 
+#if LIBAFB_BEFORE_VERSION(4,0,4)
             fedSession->timerId = afb_sched_post_job (NULL /*group */ , idpProfile->sTimeout * 1000, 0 /*max-exec-time */ , fedidTimerCB, session);
+#else
+            fedSession->timerId = afb_sched_post_job (NULL /*group */ , idpProfile->sTimeout * 1000, 0 /*max-exec-time */ , fedidTimerCB, session, Afb_Sched_Mode_Normal);
+#endif
             if (fedSession->timerId < 0) {
                 EXT_ERROR ("[fedid-register-timeout] fail to set idp profile session loa");
                 goto OnErrorExit;
