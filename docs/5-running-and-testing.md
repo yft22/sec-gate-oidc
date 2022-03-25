@@ -109,7 +109,7 @@ In order to test social authentication we recommend the 3 following authorities:
 
     see onelogin [kick-start](../idps/docs/onelogin-kickstart.html)
 
-They are many other openid-connect authorities such as [forgerock](https://developer.forgerock.com) that proposes free developer accounts. Unfortunately we did not find application registration as intuitive as on github or onelogin.
+They are many other openid-connect authorities that proposes free developer accounts. Unfortunately we did not find application registration as intuitive as on github or onelogin.
 
 
 ## JWT
