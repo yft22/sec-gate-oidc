@@ -140,7 +140,7 @@ set(WIDGET_TYPE application/vnd.agl.service)
 # This is the file that will be executed, loaded,
 # at launch time by the application framework.
 #
-set(WIDGET_ENTRY_POINT lib/sec-gate-oidc.so)
+set(WIDGET_ENTRY_POINT lib/libafb-sec-gate-oidc-ext.so)
 
 # Optional dependencies order
 # ---------------------------
