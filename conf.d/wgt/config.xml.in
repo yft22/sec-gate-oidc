@@ -6,14 +6,14 @@
   <description>@PROJECT_DESCRIPTION@</description>
   <author>@PROJECT_AUTHOR@ &lt;@PROJECT_AUTHOR_MAIL@&gt;</author>
   <license>@PROJECT_LICENSE@</license>
+
   <feature name="urn:AGL:widget:provided-api">
-     <param name="shell" value="ws" />
+    <param name="@API_NAME@" value="ws" />
   </feature>
 
-  	<feature name="urn:AGL:widget:required-permission">
-     <param name="urn:AGL:permission::public:hidden" value="required" />
-		<param name="urn:AGL:permission::system:run-by-default" value="required" />
-	</feature>
+  <feature name="urn:AGL:widget:required-permission">
+    <param name="urn:AGL:permission::public:hidden" value="required" />
+  </feature>
 
   <feature name="urn:AGL:widget:required-binding">
      <param name="@WIDGET_ENTRY_POINT@" value="local" />

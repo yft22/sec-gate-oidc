@@ -30,7 +30,7 @@ set(PROJECT_AUTHOR "Iot-Team")
 set(PROJECT_AUTHOR_MAIL "secretariat@iot.bzh")
 set(PROJECT_LICENSE "APL2.0")
 set(PROJECT_LANGUAGES,"C")
-set(API_NAME "shell")
+set(API_NAME "sec-gate-oidc")
 
 # Where are stored default templates files from submodule or subtree app-templates in your project tree
 # relative to the root project directory
