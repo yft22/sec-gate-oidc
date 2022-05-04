@@ -37,7 +37,7 @@ To cut a long story short:
 
 * Authority authenticates the user with a login/password challenge or any other authentication method it supports. When done it redirects client UI browser to the configured application redirect_uri with an access-token code matching requested application scope.
 
-* sgate requests through a REST back channel the authority 'authorize' end point to retrieve the [JWT(Json-Web-Token)](https://developer.yahoo.com/oauth2/guide/openid_connect/decode_id_token.html)
+* sgate requests through a REST back channel the authority 'authorize' end point to retrieve the [JWT(Json-Web-Token)](https://developer.yahoo.com/sign-in-with-yahoo/#decoding-id-token)
 holding user identity attributes.
 
 * sgate validates and retrieves user identity attributes from JWT and maps them into client session social and federated User cookies. Then it checks if this user is already known within current fedid-store.
