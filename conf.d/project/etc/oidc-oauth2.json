@@ -42,7 +42,7 @@
             "schema": {
                 "fedid" :"sub",
                 "avatar":"picture",
-                "pseudo":"preferred_username", 
+                "pseudo":"preferred_username",
                 "name": "name",
                 "company": "company",
                 "email": "email",
@@ -61,14 +61,14 @@
         {
             "uid": "phantauth",
             "type": "oidc",
-            "info": "OpenIdC testing authority (https://phantauth.net/)",
+            "info": "OpenIdC testing authority (https://www.phantauth.net/)",
             "credentials": {
                 "clientid": "sec-gate-oidc-iotbzh",
                 "secret": "3ON5yAxX"
             },
             "wellknown": {
                 "lazy": true,
-                "discovery": "https://phantauth.net/.well-known/openid-configuration"
+                "discovery": "https://www.phantauth.net/.well-known/openid-configuration"
             },
             "schema": {
                 "fedid" :"sub",

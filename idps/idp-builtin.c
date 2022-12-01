@@ -22,7 +22,7 @@
  *
  *  References:
  *      https://onelogin.com
- *      https://phantauth.net/
+ *      https://www.phantauth.net/
  *      https://benmcollins.github.io/libjwt/group__jwt__header.html#ga308c00b85ab5ebfa76b1d2485a494104
 */
 

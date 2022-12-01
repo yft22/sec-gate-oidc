@@ -12,7 +12,7 @@ Phantauth is fully opensource, and no registration is required. This does not pr
 
 ## 2- get your application client-id
 
-Phantauth allows you to use any random client-id. Simply generate a secret [here](https://phantauth.net/)
+Phantauth allows you to use any random client-id. Simply generate a secret [here](https://www.phantauth.net/)
 
 ![register-clientid](../../docs/assets/phantauth/02-get-clientid.png)
 
@@ -90,7 +90,7 @@ A minimalist configuration may look like the following one. Check for config cha
                 "secret": "3ON5yAxX",
             },
             "wellknown": {
-                "discovery": "https://phantauth.net/.well-known/openid-configuration",
+                "discovery": "https://www.phantauth.net/.well-known/openid-configuration",
             },
             "statics": {
                 "login": "/sgate/phantauth/login",
