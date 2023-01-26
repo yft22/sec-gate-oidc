@@ -1,5 +1,5 @@
 cmake_policy(SET CMP0048 NEW)
-project(sec-gate-oidc VERSION 0.0.1)
+project(sec-gate-oidc VERSION 1.0.10)
 CMAKE_MINIMUM_REQUIRED(VERSION 3.6)
 include(${CMAKE_CURRENT_SOURCE_DIR}/conf.d/cmake/config.cmake)
 
