@@ -28,7 +28,7 @@
 
 #define AFB_BINDING_NO_ROOT 1
 #include <libafb/afb-extension.h>
-#include <libafb/sys/verbose.h>
+#include <libafb/misc/afb-verbose.h>
 
 // few magic to help debugging
 typedef enum {
@@ -38,14 +38,14 @@ typedef enum {
 
 // redefine debug/log to avoid conflict
 #ifndef EXT_EMERGENCY
-#define EXT_EMERGENCY(...)            _VERBOSE_(Log_Level_Emergency, __VA_ARGS__)
-#define EXT_ALERT(...)                _VERBOSE_(Log_Level_Alert, __VA_ARGS__)
-#define EXT_CRITICAL(...)             _VERBOSE_(Log_Level_Critical, __VA_ARGS__)
-#define EXT_ERROR(...)                _VERBOSE_(Log_Level_Error, __VA_ARGS__)
-#define EXT_WARNING(...)              _VERBOSE_(Log_Level_Warning, __VA_ARGS__)
-#define EXT_NOTICE(...)               _VERBOSE_(Log_Level_Notice, __VA_ARGS__)
-#define EXT_INFO(...)                 _VERBOSE_(Log_Level_Info, __VA_ARGS__)
-#define EXT_DEBUG(...)                _VERBOSE_(Log_Level_Debug, __VA_ARGS__)
+#define EXT_EMERGENCY(...)            _LIBAFB_VERBOSE_(afb_Log_Level_Emergency, __VA_ARGS__)
+#define EXT_ALERT(...)                _LIBAFB_VERBOSE_(afb_Log_Level_Alert, __VA_ARGS__)
+#define EXT_CRITICAL(...)             _LIBAFB_VERBOSE_(afb_Log_Level_Critical, __VA_ARGS__)
+#define EXT_ERROR(...)                _LIBAFB_VERBOSE_(afb_Log_Level_Error, __VA_ARGS__)
+#define EXT_WARNING(...)              _LIBAFB_VERBOSE_(afb_Log_Level_Warning, __VA_ARGS__)
+#define EXT_NOTICE(...)               _LIBAFB_VERBOSE_(afb_Log_Level_Notice, __VA_ARGS__)
+#define EXT_INFO(...)                 _LIBAFB_VERBOSE_(afb_Log_Level_Info, __VA_ARGS__)
+#define EXT_DEBUG(...)                _LIBAFB_VERBOSE_(afb_Log_Level_Debug, __VA_ARGS__)
 #endif
 
 // few defaults

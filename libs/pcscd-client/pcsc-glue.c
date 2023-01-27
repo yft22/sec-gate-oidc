@@ -30,7 +30,7 @@
 
 #include "pcsc-glue.h"
 
-#include <libafb/sys/verbose.h>
+#include <libafb/misc/afb-verbose.h>
 
 #include <sys/types.h>
 #include <stdlib.h>

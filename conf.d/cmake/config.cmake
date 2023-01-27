@@ -71,9 +71,9 @@ set (gcc_minimal_version 4.9)
 # PKG_CONFIG required packages
 # -----------------------------
 set (PKG_REQUIRED_LIST
-	libafb>=4.0
+	libafb>=5
 	libcurl
-    fedid-types
+	fedid-types
 	afb-binding>=4.0.2
 	afb-libhelpers
 )

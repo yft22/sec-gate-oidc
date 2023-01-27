@@ -24,7 +24,7 @@
 #define _GNU_SOURCE
 
 #include "pcsc-config.h"
-#include <libafb/sys/verbose.h>
+#include <libafb/misc/afb-verbose.h>
 
 #include <sys/types.h>
 #include <stdlib.h>

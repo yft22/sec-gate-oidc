@@ -43,7 +43,7 @@
 #include <pcsclite.h>
 
 #include <wrap-json.h>
-#include <libafb/utils/json-locator.h>
+//#include <libafb/utils/json-locator.h>
 
 static struct option options[] = {
 	{"verbose", optional_argument, 0,  'v' },
@@ -210,7 +210,8 @@ int main (int argc, char *argv[])
     if (setjmp(JumpBuffer) != 0) goto OnSignalExit;
 
     if (params->cnfpath) {
-        err= json_locator_from_file (&configJ, params->cnfpath);
+        //err= json_locator_from_file (&configJ, params->cnfpath);
+	configJ = json_object_from_file(params->cnfpath);
         //json_object *configJ= json_tokener_parse(buffer);
         if (!configJ) {
             fprintf (stderr, "Fail to parse params.json (try jq < %s\n", params->cnfpath);
