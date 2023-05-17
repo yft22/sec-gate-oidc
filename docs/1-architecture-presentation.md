@@ -1,6 +1,6 @@
 # Introduction
 
-afb-sec-gate-oidc is an afb-binder-v4 extension. It leverages binder hooking capabilities to enforce authentication from an external authority (IDP) to allow/deny HTTP/REST/WEBsocket requests.
+`sec-gate-oidc` is an afb-binder v4 extension. It leverages binder hooking capabilities to enforce authentication from an external authority (IDP) to allow/deny HTTP/REST/WEBsocket requests.
 
 Hooked input request can be checked against:
 
@@ -16,9 +16,9 @@ Hooked input request can be checked against:
 
     * Enterprise IDPs typically provide either groups or roles.
     * github' provides organizations, repositories, ...
-    * onelogin map groups on local roles or ldap/AD memberof request
+    * onelogin map groups on local roles or ldap/AD member of request
 
-    Each IDP has its own way to provide attributes. Idp security labels map to Cynagora's permissions through an independant json configuration file, where security administrator may define a per IDP label/privilege mapping.
+    Each IDP has its own way to provide attributes. Idp security labels map to Cynagora's permissions through an independent json configuration file, where security administrator may define a per IDP label/privilege mapping.
 
 Typical access control:
 ``` json
@@ -61,7 +61,7 @@ Detail on OpenId-Connect specifications can be found [here](https://openid.net/d
 
 ## Support/sources
 
-afb-sec-gate-oidc is part of redpesk-common and relies on [redpesk-core]({% chapter_link apis-services-doc.services-list %})
+`sec-gate-oidc` is part of redpesk-common and relies on [redpesk-core]({% chapter_link apis-services-doc.services-list %})
 
 * Community support [#redpesk-core:matrix.org]( {% chapter_link community-doc.support %})
 * source code: [github/redpesk-common](https://github.com/redpesk-common)

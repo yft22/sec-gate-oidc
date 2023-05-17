@@ -193,5 +193,5 @@ Like API section but for HTTP request. Alias array is somehow equivalent to an a
   * **uid**: alias name as exported on sgate external interface.
   * **info**: misc user info presented to application then an authentication is required.
   * **loa**: level of assurance requested to access this page.
-  * **require**: a logical 'OR' list of requested IDP attributes. Note that you usually do not control IDP group/roles attributes and when supporting multiple auhtority you may have two names for the same privilege.
+  * **require**: a logical 'OR' list of requested IDP attributes. Note that you usually do not control IDP group/roles attributes and when supporting multiple authority you may have two names for the same privilege.
   * **prio**: access control priority list. Priority is an option to implement logical AND access control. The highest priority is executed first and all rules should pass for access to be granted to requesting client.

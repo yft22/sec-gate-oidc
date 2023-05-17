@@ -2,10 +2,11 @@
 
 ## Redpesk
 
-afb-sec-gate-oidc is part of redpesk-common and is available on any redpesk installation.
+`sec-gate-oidc` is part of redpesk-common and is available on any redpesk installation.
 
 ```bash
-sudo dnf install afb-sec-gate-oidc afb-oidc-webui
+# on a target running redpesk OS
+sudo dnf install sec-gate-oidc sec-gate-webui
 ```
 
 ## Other Linux Distributions
@@ -14,24 +15,24 @@ sudo dnf install afb-sec-gate-oidc afb-oidc-webui
 
 ```bash
 # Fedora
-sudo dnf install sec-gate-oidc sec-gate-fedid-binding afb-oidc-webui
+sudo dnf install sec-gate-oidc sec-gate-fedid-binding sec-gate-webui
 
 # OpenSuse
-sudo zypper install sec-gate-oidc sec-gate-fedid-binding afb-oidc-webui
+sudo zypper install sec-gate-oidc sec-gate-fedid-binding sec-gate-webui
 
 # Ubuntu
-sudo apt-get install sec-gate-oidc-bin sec-gate-fedid-binding afb-oidc-webui
+sudo apt-get install sec-gate-oidc-bin sec-gate-fedid-binding sec-gate-webui
 ```
 
 Note:
 
-* afb-oidc-webui: is an optional angular/html5 frontend. If you do not use Angular, you should check basic HTML/JS testing UI and write your own one.
+* `sec-gate-webui`: is an optional angular/html5 frontend. If you do not use Angular, you should check basic HTML/JS testing UI and write your own one.
 
-* sec-gate-fedid-binding: is the companion binding that handles the federation database.  It implements locally an identity storage with a sqllite backend. The Identity store is implemented as an external binding to allow developers to replace it with their preferred identity store model.
+* `sec-gate-fedid-binding`: is the companion binding that handles the federation database.  It implements locally an identity storage with a sqlite backend. The Identity store is implemented as an external binding to allow developers to replace it with their preferred identity store model.
 
 # Quick test
 
-## start afb-sec-gate-oidc samples
+## start sec-gate-oidc samples
 Use one of the default config templates to write your own one and start the binder with your own oidc-config.json
 
 ```
@@ -51,9 +52,10 @@ Connect your browser to your sec-gate-oidc service with ```https://target:port``
     * Warning: most IDPs impose HTTPS connection when using anything different from localhost as redirect login URL.
 
 
-## Rebuild 'afb-sec-gate-oidc' from sources
+## Rebuild 'sec-gate-oidc' from sources
 
-**Notice**: recompiling afb-sec-gate-oidc is not required to implement your own set of rules. You should recompile 'afb-sec-gate-oidc' when:
+**Notice**: recompiling `sec-gate-oidc` is not required to implement your own set of rules.\
+You should recompile `sec-gate-oidc` when:
 
 * targeting a not supported environment/distribution.
 * changing code to fix bugs or propose improvements *(contributions are more than welcome)*
@@ -73,7 +75,7 @@ Connect your browser to your sec-gate-oidc service with ```https://target:port``
 
 >Note: For Ubuntu/OpenSuse/Fedora specific instructions check [redpesk-developer-guide]({% chapter_link host-configuration-doc.setup-your-build-host#install-the-application-framework-1 %})
 
-#### Install afb-sec-gate-oidc specific dependencies
+#### Install sec-gate-oidc specific dependencies
 
 * standard linux dependencies
     * libpam-devel
@@ -85,7 +87,7 @@ Connect your browser to your sec-gate-oidc service with ```https://target:port``
     * afb-cmake-modules
     * afb-libafb-devel
 
->Note: all previous dependencies should be available out-of-the-box for major Linux distrutions (Fedora, OpenSuse, Ubuntu). Note that Debian/Ubuntu use '.dev' in place of '.devel'.
+>Note: all previous dependencies should be available out-of-the-box for major Linux distributions (Fedora, OpenSuse, Ubuntu). Note that Debian/Ubuntu use '.dev' in place of '.devel'.
 
 ### Download source from git
 
@@ -110,7 +112,7 @@ Both should compile with standard AGL cmake template.
 
 ### Run a test from building tree
 
-Create a custom config file from samples avaliable at '../conf.d/project/etc/oidc-*.json'. When config looks good try it with afb-binder --config. Note that it is a good 'best-practice' to check your json config with 'jq' on equivalent tools before trying to use it.
+Create a custom config file from samples available at '../conf.d/project/etc/oidc-*.json'. When config looks good try it with afb-binder --config. Note that it is a good 'best-practice' to check your json config with 'jq' on equivalent tools before trying to use it.
 
 ```bash
     jq < ../conf.d/project/etc/my-oidc-config.json

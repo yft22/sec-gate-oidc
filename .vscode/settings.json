@@ -1,13 +1,21 @@
 {
     "cSpell.words": [
-        "Cynagora",
         "bubblewrap",
         "bwrap",
         "cgroup",
         "cgroups",
+        "Cynagora",
+        "devel",
+        "fedid",
+        "geoloc",
+        "libafb",
         "libcap",
+        "oidc",
         "redpesk",
-        "seccomp"
+        "seccomp",
+        "sgate",
+        "SGATE",
+        "webui"
     ],
     "files.associations": {
         "oidc-core.h": "c",

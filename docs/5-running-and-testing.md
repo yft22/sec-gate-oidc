@@ -8,15 +8,15 @@ afb-sec-gate-oidc is an afb-binder-v4 extension and cannot work with afb-binder-
 * you should write or copy a sample oidc-config.json
 * you should know the path to:
 
-  * 'libafb-sec-gate-oidc-ext.so' extention
+  * 'libafb-sec-gate-oidc-ext.so' extension
   * 'fedid-binding.so' binding
   * 'libfedid-types.so' type converters
 
 * you need a test client
-  * sec-gate-oidc basic HTML/JS testing pages.
-  * afb-oidc-webui for one-page HTML Angular
+  * `sec-gate-oidc` basic HTML/JS testing pages.
+  * `sec-gate-webui` for one-page HTML Angular
 
-If you run redpesk simply install the package with `dnf install afb-sec-gate-oidc` for other platforms check redpesk [developer guide]({% chapter_link host-configuration-doc.setup-your-build-host %})
+If you run redpesk simply install the package with `dnf install sec-gate-oidc` for other platforms check redpesk [developer guide]({% chapter_link host-configuration-doc.setup-your-build-host %})
 
 ## set up your HTTPS/TLS environment
 
