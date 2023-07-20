@@ -284,15 +284,10 @@ pcscConfigT *pcscParseConfig (json_object *configJ, const int verbosity)
     config->verbose= verbosity;
     config->maxdev= PCSC_MAX_DEV;
 
-    err= wrap_json_unpack (configJ, "{s?s s?s ss s?i s?i s?i s?o s?o !}"
-        , "uid", &config->uid
+    err= wrap_json_unpack (configJ, "{s?s ss s?o !}"
         , "info", &config->info
         , "reader", &config->reader
-        , "maxdev", &config->maxdev
-        , "debug", &config->verbose
-        , "timeout", &config->timeout
         , "cmds", &cmdsJ
-        , "keys", &keysJ
     );
     if (err) {
         EXT_CRITICAL ("[pcsc-config-fail] config json supported keys:[into,reader,cmds,keys] (pcscParseConfig)");
@@ -386,25 +381,9 @@ int pcscExecOneCmd (pcscHandleT *handle, const pcscCmdT *cmd, u_int8_t *data) {
     switch (cmd->action) {
 
         case PCSC_ACTION_READ:
-            err= pcscReadBlock (handle, cmd->uid, cmd->sec, cmd->blk, data, dlen, cmd->key);
+            err= pcscRead (handle, cmd->uid, data, dlen);
             if (err) goto OnErrorExit;
             break;
-
-        case PCSC_ACTION_WRITE:
-            err= pcsWriteBlock (handle, cmd->uid, cmd->sec, cmd->blk, cmd->data, cmd->dlen, cmd->key);
-            if (err) goto OnErrorExit;
-            break;
-
-        case PCSC_ACTION_TRAILER:
-            err= pcsWriteTrailer (handle, cmd->uid, cmd->sec, cmd->blk, cmd->key, cmd->trailer);
-            if (err) goto OnErrorExit;
-            break;
-
-        case PCSC_ACTION_UUID:
-            err= pcscReadUuid (handle, cmd->uid, data, &dlen);
-            if (err) goto OnErrorExit;
-            break;
-
         default:
             goto OnErrorExit;
     }

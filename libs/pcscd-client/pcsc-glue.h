@@ -59,6 +59,7 @@ typedef enum {
     ATR_FELICA_212K,
     ATR_FELICA_424K,
     ATR_BANK_FR,
+    ATR_FCODEGEN2,
 } atrCardidEnumT;
 
 typedef enum {
@@ -101,4 +102,4 @@ const pcscKeyT *pcscNewKey (const char *uid, u_int8_t *value, size_t len);
 int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, ulong *dlen);
 int pcsWriteTrailer (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, const pcscKeyT *key, const pcscTrailerT *trailer);
 int pcsWriteBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *dataBuf, ulong dataLen, const pcscKeyT *key);
-int pcscReadBlock (pcscHandleT *handle, const char *uid, u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, ulong dataLen, const pcscKeyT *key);
+int pcscRead (pcscHandleT *handle, const char *uid, u_int8_t *data, ulong dataLen);

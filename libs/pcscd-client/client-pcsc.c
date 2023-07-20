@@ -64,6 +64,7 @@ typedef struct {
     int forced;
     int async;
     int list;
+    int idemia;
     pcscConfigT *config;
 } pcscParamsT;
 
@@ -108,7 +109,7 @@ pcscParamsT *parseArgs(int argc, char *argv[]) {
                 params->async++;
                 if (optarg) params->async=atoi(optarg);
 				break;
-
+				
 			case 'h':
 			default:
 				goto OnErrorExit;
@@ -120,7 +121,7 @@ pcscParamsT *parseArgs(int argc, char *argv[]) {
     return params;
 
 OnErrorExit:
-	fprintf (stderr, "usage: pcsc-client --config=/xxx/my-config.json [--async] [--group=-+0-9] [--verbose] [--force] [--list]\n");
+	fprintf (stderr, "usage: pcsc-client --config=/xxx/my-config.json [--async] [--group=-+0-9] [--verbose] [--force] [--list] \n");
 	return NULL;
 }
 
@@ -208,7 +209,6 @@ int main (int argc, char *argv[])
     signal(SIGINT , sigHandlerCB);
     signal(SIGSEGV, sigHandlerCB);
     if (setjmp(JumpBuffer) != 0) goto OnSignalExit;
-
     if (params->cnfpath) {
         //err= json_locator_from_file (&configJ, params->cnfpath);
 	configJ = json_object_from_file(params->cnfpath);

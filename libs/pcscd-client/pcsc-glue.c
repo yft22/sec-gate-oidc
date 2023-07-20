@@ -61,7 +61,7 @@ typedef union {
 
 static BYTE defaultKey[]= {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 static BYTE pcPsRid[]= {0xA0,0x00,0x00,0x03,0x06};
-
+static BYTE AID_APPLET[]={0xA0, 0x00, 0x00, 0x00, 0x77, 0x03, 0x06, 0x60, 0x00, 0x10, 0x00, 0xFE, 0x00, 0x00, 0x01, 0x00 };
 typedef union {
     u_int16_t  id;
     BYTE data[2];
@@ -100,6 +100,14 @@ typedef union {
         BYTE checkSum;
     } value;
 } isoAtrDataP3T;
+
+typedef struct  {
+	BYTE ts;
+	BYTE t0;
+	BYTE td[2];
+	BYTE hist[11];
+	BYTE checkSum;
+} fcodeGen2AtrDataP3T;
 
 
 typedef struct pcscHandleS {
@@ -179,7 +187,7 @@ static atrCardidEnumT isoAtrParseCard (pcscHandleT *handle, BYTE *buffer, DWORD 
     atrIsoCardid   cardid;
     // reference http://ludovic.rousseau.free.fr/softwares/pcsc-tools/smartcard_list.txt
     switch (len) {
-
+		
         case sizeof(isoAtrDataP3T):
             // mirefare1K= .data={0x3B,0x8F,0x80,0x01,0x80,0x4F,0x0C,0xA0,0x00,0x00,0x03,0x06,0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x6A}
             atr= (isoAtrDataP3T*)buffer;
@@ -204,7 +212,10 @@ static atrCardidEnumT isoAtrParseCard (pcscHandleT *handle, BYTE *buffer, DWORD 
             atr= (isoAtrDataP3T*)buffer;
             atrUid= ATR_BANK_FR;
             break;
-
+		case sizeof(fcodeGen2AtrDataP3T):
+			//atr= (fcodeGen2AtrDataP3T*)buffer;
+			atrUid= ATR_FCODEGEN2;
+			break;
         default:
             goto OnErrorExit;
     }
@@ -219,8 +230,16 @@ OnErrorExit:
 // get card UUID (block 0 read only execpt on Chineese smartcard)
 int pcscReadUuid (pcscHandleT *handle, const char *uid, u_int8_t *data, ulong *dlen) {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
-    BYTE cmdData[] = {0xFF, 0xCA, 0x00, 0x00, 0x00};
     long rv;
+	u_int8_t selectAns[2];
+    // getdata command
+	u_int8_t selectApplet[] = {0x00, 0xA4, 0x04, 0x00, 0x10, 0xA0, 0x00, 0x00, 0x00, 0x77, 0x03, 0x06, 0x60, 0x00, 0x10, 0x00, 0xFE, 0x00, 0x00, 0x01, 0x00};
+    u_int8_t cmdData[] = {0x00, 0xCA, 0xDF, 0x7C, 0x00};
+	ulong selectLen = sizeof(selectApplet);
+
+	rv= pcscSendCmd (handle, uid, "select", selectApplet, sizeof(selectApplet), &selectAns[0], &selectLen);
+	if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+	
 
     rv= pcscSendCmd (handle, uid, "read-uuid", cmdData, sizeof(cmdData), data, dlen);
     if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
@@ -255,12 +274,14 @@ static long pcscAuthSCard (pcscHandleT *handle, const char *uid, u_int8_t secIdx
     u_int8_t *keyVal;
     u_int8_t keyIdx;
     BYTE status[32];
-
+    u_int8_t selectCmd[] = {0x00, 0xA4, 0x04, 0x00, 0x10, 0xA0, 0x00, 0x00, 0x00, 0x77, 0x03, 0x06, 0x60, 0x00, 0x10, 0x00, 0xFE, 0x00, 0x00, 0x01, 0x00};
+	ulong selectStatusLen= sizeof(selectCmd);
+	
     switch (handle->cardId) {
 
         case ATR_MIFARE_1K:
         case ATR_MIFARE_4K:
-
+			/*
             *blkSector=4L; // mifare classic block/sector organisation
             *blkLength=16L;   // fixe block size
 
@@ -289,16 +310,13 @@ static long pcscAuthSCard (pcscHandleT *handle, const char *uid, u_int8_t secIdx
                 keyVal= key->kval;
                 keyIdx= key->kidx;
             }
-            BYTE keyCmd[] = {0xFF, 0x82, 0x00, 0x00, 0x06, keyVal[0], keyVal[1], keyVal[2], keyVal[3], keyVal[4], keyVal[5]};
-            ulong keyStatusLen= sizeof(status);
-            rv= pcscSendCmd (handle, uid, "key", keyCmd, sizeof(keyCmd), status, &keyStatusLen);
+            */
+            // select the applet
+            
+            handle->verbose=1;
+            rv= pcscSendCmd (handle, uid, "select", selectCmd, sizeof(selectCmd), status, &selectStatusLen);
             if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
-
-            // send authentication block
-            BYTE authCmd[] = {0xFF, 0x86, 0x00, 0x00, 0x05, 0x01, secIdx, blkIdx, 0x60|keyIdx, 0x00};
-            ulong authStatusLen= sizeof(status);
-            rv= pcscSendCmd (handle, uid, "authent", authCmd, sizeof(authCmd), status, &authStatusLen);
-            if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+			            printf("YFT\n");
 
             break;
 
@@ -323,49 +341,76 @@ OnErrorExit:
     return -1;
 }
 
+
 // try to read data bloc
-int pcscReadBlock (pcscHandleT *handle, const char *uid,  u_int8_t secIdx, u_int8_t blkIdx, u_int8_t *data, ulong dataLen, const pcscKeyT *key)
+int pcscRead (pcscHandleT *handle, const char *uid, u_int8_t *data, ulong dataLen)
 {
     assert (handle->magic == PCSC_HANDLE_MAGIC);
     long rv=0;
-    ulong blkSector, blkLength;
-    ulong dlen;
+    ulong dlen=dataLen;
+    u_int8_t selectAns[2];
+    ulong selectLen;
 
-    if (handle->verbose) fprintf (stderr, "\n# pcscReadBlock reader=%s cmd=%s scard=%ld sec=%d blk=%d dlen=%ld", handle->readerName, uid, handle->uuid, secIdx, blkIdx, dataLen);
+    if (handle->verbose) fprintf (stderr, "\n# pcscRead reader=%s cmd=%s scard=%ld dlen=%ld", handle->readerName, uid, handle->uuid, dataLen);
 
-    rv= pcscAuthSCard (handle, uid, secIdx, blkIdx, dataLen-PCSC_MIFARE_STATUS_LEN, key, &blkSector, &blkLength);
-    if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+    // commands
+	u_int8_t selectApplet[] = {0x00, 0xA4, 0x04, 0x00, 0x10, 0xA0, 0x00, 0x00, 0x00, 0x77, 0x03, 0x06, 0x60, 0x00, 0x10, 0x00, 0xFE, 0x00, 0x00, 0x01, 0x00};
+    u_int8_t getData[] = {0x00, 0xCA, 0xFF, 0xFF, 0x00};
+	
+	selectLen = sizeof(selectApplet);
+	
+	rv= pcscSendCmd (handle, uid, "select", selectApplet, sizeof(selectApplet), &selectAns[0], &selectLen);
+	if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
+	
+	if ( strcmp(uid,"pseudo") == 0)
+	{
+		getData[2]=0xDF;
+		getData[3]=0x7D;
+	}
+	else if ( strcmp(uid,"email") == 0)
+	{
+		getData[2]=0xDF;
+		getData[3]=0x7E;
+	}
+	else if ( strcmp(uid,"name") == 0)
+	{
+		getData[2]=0xDF;
+		getData[3]=0x7F;
+	}
+	else if ( strcmp(uid,"company") == 0)
+	{
+		getData[2]=0xDF;
+		getData[3]=0x80;
+	}
+	else if ( strcmp(uid,"roles") == 0)
+	{
+		getData[2]=0xDF;
+		getData[3]=0x81;
+	}
+	else if ( strcmp(uid,"apps") == 0)
+	{
+		getData[2]=0xDF;
+		getData[3]=0x82;
+	}
+	else if ( strcmp(uid,"admin") == 0)
+	{
+		getData[2]=0xDF;
+		getData[3]=0x83;
+	}
+	else
+	{
+		fprintf(stderr, "unrecognized cmd uid=%s", uid);
+		goto OnErrorExit;
+	}
 
-    // try to read bloc
-    ulong dataIdx=0;
-    for (ulong idx=blkIdx%blkSector; (idx<blkSector && dataIdx < dataLen-PCSC_MIFARE_STATUS_LEN); idx++) {
-        mifareSecBlkT sIdx;
-        sIdx.u16= (u_int16_t)(secIdx*4 + blkIdx + idx);
-
-        dlen = blkLength + PCSC_MIFARE_STATUS_LEN;  // add cmd status to buffer size
-        u_int8_t readBlk[] = {0xFF, 0xB0, sIdx.u8[1], sIdx.u8[0], (u_int8_t)blkLength};
-        rv= pcscSendCmd (handle, uid, "read", readBlk, sizeof(readBlk), &data[dataIdx], &dlen);
-        if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
-
-        // move to new block if any
-        dataIdx += blkLength;
-    }
-    if (handle->verbose) {
-        fprintf(stderr, "recieved=%ld data:[", dataIdx);
-        for (int idx=0; idx< dataIdx; idx++) {
-            if (!data[idx]) break;
-            if (data[idx] >= ' ' && data[idx] <= '~') {
-                fwrite(&data[idx], sizeof(char), 1, stderr);
-            }
-        }
-        fprintf (stderr, "]\n");
-    }
+	rv= pcscSendCmd (handle, uid, "read", getData, sizeof(getData), &data[0], &dlen);
+	if (rv != SCARD_S_SUCCESS) goto OnErrorExit;
 
     return 0;
 
 OnErrorExit:
     if (handle->verbose) fprintf (stderr, " error=%s\n", handle->error);
-    EXT_DEBUG ("[pcsc-readblk-fail] cmd=%s action:read err=%s", uid, handle->error);
+    EXT_DEBUG ("[pcsc-read] cmd=%s action:read err=%s", uid, handle->error);
     return -1;
 }
 
@@ -423,7 +468,6 @@ int pcscCardCheckAtr(pcscHandleT *handle)
         EXT_ERROR ("[pcsc-reader-status] should 1st use pcscReaderCheck to reader=%s presence", handle->readerName);
         goto OnErrorExit;
     }
-
     // use status to retreive smart cart ATR
     rv = SCardStatus(handle->hCard, readerName, &readerLen, &readerState, &handle->activeProtocol, atrData, &atrLen);
     if (rv != SCARD_S_SUCCESS) {
@@ -782,7 +826,6 @@ u_int64_t pcscGetCardUuid (pcscHandleT *handle) {
         err = pcscCardCheckAtr(handle);
         if (err) goto OnErrorExit;
     }
-
     // if uuid not store check it now
     if (!handle->uuid) handle->uuid= pcscGetCardUuidNum (handle);
     return (handle->uuid);
